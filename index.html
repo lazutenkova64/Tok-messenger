@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Web</title>
+    <title>Ток</title>
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -1232,78 +1232,53 @@
             opacity: 0.5;
             pointer-events: none;
         }
-        
-        .error-message {
-            background-color: rgba(245, 101, 101, 0.2);
-            color: var(--accent-red);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            text-align: center;
-            border: 1px solid var(--accent-red);
-        }
-        
-        .success-message {
-            background-color: rgba(43, 154, 106, 0.2);
-            color: var(--accent-green);
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-            text-align: center;
-            border: 1px solid var(--accent-green);
-        }
     </style>
 </head>
 <body>
     <!-- Media Viewer -->
-    <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()">
+    <div class="media-viewer" id="mediaViewer" onclick="window.closeMediaViewer()">
         <div class="media-viewer-content" id="mediaViewerContent"></div>
-        <button class="media-viewer-close" onclick="closeMediaViewer()">×</button>
+        <button class="media-viewer-close" onclick="window.closeMediaViewer()">×</button>
     </div>
 
     <!-- Login/Register Modal -->
     <div class="modal active" id="loginModal">
         <div class="modal-content">
-            <h2>Добро пожаловать!</h2>
-            
-            <div id="authError" class="error-message" style="display: none;"></div>
-            <div id="authSuccess" class="success-message" style="display: none;"></div>
+            <h2>Добро пожаловать в Ток!</h2>
             
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthMode('login')" id="loginTabBtn">Вход</button>
-                <button class="auth-tab" onclick="switchAuthMode('register')" id="registerTabBtn">Регистрация</button>
+                <button class="auth-tab active" onclick="window.switchAuthMode('login')" id="loginTabBtn">Вход</button>
+                <button class="auth-tab" onclick="window.switchAuthMode('register')" id="registerTabBtn">Регистрация</button>
             </div>
 
             <div id="loginForm">
                 <input type="text" class="modal-input" id="loginUsername" placeholder="Имя пользователя" autocomplete="off">
                 <div class="password-input-container">
                     <input type="password" class="modal-input" id="loginPassword" placeholder="Пароль">
-                    <button class="toggle-password" onclick="togglePassword('loginPassword')">👁️</button>
+                    <button class="toggle-password" onclick="window.togglePassword('loginPassword')">👁️</button>
                 </div>
                 <div class="remember-checkbox">
                     <input type="checkbox" id="rememberMe" checked>
                     <label for="rememberMe">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="login()">Войти</button>
+                <button class="modal-btn" onclick="window.login()">Войти</button>
             </div>
 
             <div id="registerForm" style="display: none;">
-                <input type="text" class="modal-input" id="registerUsername" placeholder="Имя пользователя (только буквы и цифры)" maxlength="20">
+                <input type="text" class="modal-input" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
                 <div class="password-input-container">
-                    <input type="password" class="modal-input" id="registerPassword" placeholder="Пароль (мин. 6 символов)">
-                    <button class="toggle-password" onclick="togglePassword('registerPassword')">👁️</button>
+                    <input type="password" class="modal-input" id="registerPassword" placeholder="Пароль">
+                    <button class="toggle-password" onclick="window.togglePassword('registerPassword')">👁️</button>
                 </div>
                 <div class="password-input-container">
                     <input type="password" class="modal-input" id="registerConfirmPassword" placeholder="Подтвердите пароль">
-                    <button class="toggle-password" onclick="togglePassword('registerConfirmPassword')">👁️</button>
+                    <button class="toggle-password" onclick="window.togglePassword('registerConfirmPassword')">👁️</button>
                 </div>
                 <div class="remember-checkbox">
                     <input type="checkbox" id="rememberMeRegister" checked>
                     <label for="rememberMeRegister">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="register()">Зарегистрироваться</button>
+                <button class="modal-btn" onclick="window.register()">Зарегистрироваться</button>
             </div>
         </div>
     </div>
@@ -1312,7 +1287,7 @@
     <div class="app-container" id="appContainer" style="display: none;">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="avatar" id="profileAvatar" onclick="openProfileModal()">👤</div>
+                <div class="avatar" id="profileAvatar" onclick="window.openProfileModal()">👤</div>
                 <div class="profile-info">
                     <div class="profile-name" id="profileName">Загрузка...</div>
                     <div class="profile-status" id="profileStatusDisplay">онлайн <span class="online-indicator"></span></div>
@@ -1320,26 +1295,26 @@
             </div>
 
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('chats')" id="tabChats">Мои чаты</button>
-                <button class="tab" onclick="switchTab('public')" id="tabPublic">Публичные</button>
-                <button class="tab" onclick="switchTab('users')" id="tabUsers">Пользователи</button>
+                <button class="tab active" onclick="window.switchTab('chats')" id="tabChats">Мои чаты</button>
+                <button class="tab" onclick="window.switchTab('public')" id="tabPublic">Публичные</button>
+                <button class="tab" onclick="window.switchTab('users')" id="tabUsers">Пользователи</button>
             </div>
 
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Поиск..." oninput="handleSearch()">
-                <button class="create-chat-btn" onclick="openCreateChatModal()">+</button>
+                <input type="text" id="searchInput" placeholder="Поиск..." oninput="window.handleSearch()">
+                <button class="create-chat-btn" onclick="window.openCreateChatModal()">+</button>
             </div>
 
             <div class="chats-list" id="chatsList"></div>
             
             <div style="padding: 16px; border-top: 1px solid var(--border-color);">
-                <button class="modal-btn secondary" style="width: 100%;" onclick="logout()">Выйти</button>
+                <button class="modal-btn secondary" style="width: 100%;" onclick="window.logout()">Выйти</button>
             </div>
         </div>
 
         <div class="chat-area">
             <div class="chat-header">
-                <button class="back-button" onclick="toggleSidebar()">←</button>
+                <button class="back-button" onclick="window.toggleSidebar()">←</button>
                 <div class="chat-info">
                     <div class="chat-title" id="currentChatName">
                         Выберите чат
@@ -1347,14 +1322,14 @@
                     <div class="chat-subtitle" id="chatStatus"></div>
                 </div>
                 <div class="chat-actions">
-                    <button class="action-btn" onclick="openProfileModal()">👤</button>
+                    <button class="action-btn" onclick="window.openProfileModal()">👤</button>
                 </div>
             </div>
 
-            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
+            <div class="messages-container" id="messagesContainer" onclick="window.handleMessagesContainerClick(event)"></div>
 
             <div class="message-input-container" id="messageInputContainer">
-                <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
+                <button class="emoji-toggle-btn" onclick="window.toggleEmojiPicker()">😊</button>
                 <button class="mic-btn" id="micBtn">🎤</button>
                 <div class="input-wrapper">
                     <div class="emoji-picker" id="emojiPicker" style="display: none;"></div>
@@ -1363,12 +1338,12 @@
                         id="messageInput" 
                         placeholder="Напишите сообщение..."
                         rows="1"
-                        onkeydown="handleKeyPress(event)"
-                        onfocus="handleInputFocus()"
-                        onblur="handleInputBlur()"
+                        onkeydown="window.handleKeyPress(event)"
+                        onfocus="window.handleInputFocus()"
+                        onblur="window.handleInputBlur()"
                     ></textarea>
                 </div>
-                <button class="send-btn" onclick="sendMessage()" id="sendBtn">➤</button>
+                <button class="send-btn" onclick="window.sendMessage()" id="sendBtn">➤</button>
             </div>
         </div>
     </div>
@@ -1376,48 +1351,48 @@
     <!-- Create Chat Modal -->
     <div class="modal" id="createChatModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeCreateChatModal()">×</button>
+            <button class="close-btn" onclick="window.closeCreateChatModal()">×</button>
             <h2>Создать публичный чат</h2>
             <input type="text" class="modal-input" id="chatNameInput" placeholder="Название чата" maxlength="30">
             <div class="password-input-container">
                 <input type="password" class="modal-input" id="chatPasswordInput" placeholder="Пароль (необязательно)">
-                <button class="toggle-password" onclick="togglePassword('chatPasswordInput')">👁️</button>
+                <button class="toggle-password" onclick="window.togglePassword('chatPasswordInput')">👁️</button>
             </div>
             <input type="text" class="modal-input" id="chatDescriptionInput" placeholder="Описание (необязательно)">
-            <button class="modal-btn" onclick="createPublicChat()">Создать чат</button>
+            <button class="modal-btn" onclick="window.createPublicChat()">Создать чат</button>
         </div>
     </div>
 
     <!-- Join Chat Modal -->
     <div class="modal" id="joinChatModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeJoinChatModal()">×</button>
+            <button class="close-btn" onclick="window.closeJoinChatModal()">×</button>
             <h2 id="joinChatTitle">Введите пароль</h2>
             <div class="password-input-container">
                 <input type="password" class="modal-input" id="joinPasswordInput" placeholder="Пароль чата">
-                <button class="toggle-password" onclick="togglePassword('joinPasswordInput')">👁️</button>
+                <button class="toggle-password" onclick="window.togglePassword('joinPasswordInput')">👁️</button>
             </div>
-            <button class="modal-btn" onclick="joinProtectedChat()">Войти</button>
+            <button class="modal-btn" onclick="window.joinProtectedChat()">Войти</button>
         </div>
     </div>
 
     <!-- Edit Message Modal -->
     <div class="modal" id="editMessageModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeEditMessageModal()">×</button>
+            <button class="close-btn" onclick="window.closeEditMessageModal()">×</button>
             <h2>Редактировать сообщение</h2>
             <textarea class="modal-input" id="editMessageText" rows="3" style="resize: none;"></textarea>
-            <button class="modal-btn" onclick="saveEditedMessage()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveEditedMessage()">Сохранить</button>
         </div>
     </div>
 
     <!-- Profile Modal -->
     <div class="modal" id="profileModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeProfileModal()">×</button>
+            <button class="close-btn" onclick="window.closeProfileModal()">×</button>
             <h2>Редактировать профиль</h2>
             <div style="text-align: center; margin-bottom: 20px;">
-                <div class="avatar" style="width: 80px; height: 80px; font-size: 42px; margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="openAvatarModal()">👤</div>
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 42px; margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="window.openAvatarModal()">👤</div>
                 <small style="color: var(--text-secondary);">Нажмите, чтобы сменить аватар</small>
             </div>
             <input type="text" class="modal-input" id="profileNameInput" placeholder="Имя (никнейм)" maxlength="20">
@@ -1426,48 +1401,40 @@
                 <input type="checkbox" id="profileDNDCheckbox">
                 <label for="profileDNDCheckbox">Не беспокоить (DND)</label>
             </div>
-            <button class="modal-btn" onclick="saveProfile()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveProfile()">Сохранить</button>
         </div>
     </div>
 
     <!-- Avatar selection modal -->
     <div class="modal" id="avatarModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeAvatarModal()">×</button>
+            <button class="close-btn" onclick="window.closeAvatarModal()">×</button>
             <h2>Выберите аватар</h2>
             <div class="avatar-grid" id="avatarGrid"></div>
-            <button class="modal-btn" onclick="saveAvatar()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveAvatar()">Сохранить</button>
         </div>
     </div>
 
     <script>
         // ============================================================
-        // SUPABASE CONFIGURATION
+        // Supabase и Ably API ключи
         // ============================================================
-        const SUPABASE_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
-        
-        // Initialize Supabase client
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                persistSession: false
-            }
-        });
-
-        // ============================================================
-        // ABLY API KEY
-        // ============================================================
+        const SUPABASE_URL = 'https://nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzQwMDQyODAwLAogICJleHAiOiAxODk3ODA5MjAwCn0.3-kWohcIy1GS7L5cYtqkLAMQy6sEfNFRMxZqQq_R-OU';
         const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
+        
+        // Инициализация Supabase
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let ably;
         let currentUser = null;
         
         // Data structures
+        let publicChats = JSON.parse(localStorage.getItem('publicChats')) || [];
         let myChats = [];
-        let publicChats = [];
         let onlineUsers = {};
         let currentChat = null;
-        let messages = JSON.parse(localStorage.getItem('messages')) || {};
+        let messages = {};
         let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
         let currentTab = 'chats';
         let pendingChatToJoin = null;
@@ -1477,6 +1444,7 @@
         // Для статусов сообщений
         let messageStatuses = JSON.parse(localStorage.getItem('messageStatuses')) || {};
         let deliveredMessages = JSON.parse(localStorage.getItem('deliveredMessages')) || {};
+        let readMessages = JSON.parse(localStorage.getItem('readMessages')) || {};
 
         // ID для отслеживания удаленных сообщений
         let deletedMessages = JSON.parse(localStorage.getItem('deletedMessages')) || {};
@@ -1503,12 +1471,6 @@
         let heartbeatInterval;
         let reconnectTimeout;
 
-        // Для защиты от DDoS: лимит на попытки входа/регистрации
-        let loginAttempts = 0;
-        let lastLoginAttemptTime = 0;
-        const MAX_LOGIN_ATTEMPTS = 3;
-        const LOGIN_TIMEFRAME = 60000;
-
         // Расширенный набор эмодзи
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '🙈', '🙉', '🙊', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁', '👅', '👄', '💋', '🩸'
@@ -1528,49 +1490,16 @@
 
         // ========== Инициализация ==========
         function init() {
+            try {
+                messages = JSON.parse(localStorage.getItem('messages')) || {};
+            } catch (e) {
+                messages = {};
+            }
+            
             setupMicrophoneHandlers();
             populateEmojiPicker();
             checkSavedSession();
             setupMobileKeyboardHandlers();
-            loadPublicChats();
-        }
-
-        function showError(message) {
-            const errorDiv = document.getElementById('authError');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
-
-        function showSuccess(message) {
-            const successDiv = document.getElementById('authSuccess');
-            successDiv.textContent = message;
-            successDiv.style.display = 'block';
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 3000);
-        }
-
-        async function loadPublicChats() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('chats')
-                    .select('*')
-                    .eq('type', 'public');
-                
-                if (error) {
-                    console.error('Error loading public chats:', error);
-                    return;
-                }
-                
-                publicChats = data || [];
-                localStorage.setItem('publicChats', JSON.stringify(publicChats));
-                if (currentTab === 'public') updateChatsList();
-            } catch (err) {
-                console.error('Error loading public chats:', err);
-            }
         }
 
         function setupMobileKeyboardHandlers() {
@@ -1647,24 +1576,24 @@
                 try {
                     const parsedUser = JSON.parse(savedUser);
                     
-                    const { data: userData, error } = await supabaseClient
+                    const { data: user, error } = await supabase
                         .from('users')
                         .select('*')
                         .eq('id', parsedUser.id)
                         .single();
                     
-                    if (error || !userData) {
+                    if (error || !user) {
                         localStorage.removeItem('currentUser');
                         return;
                     }
                     
                     currentUser = {
-                        id: userData.id,
-                        name: userData.username,
-                        avatar: userData.avatar || '👤',
-                        bio: userData.bio || '',
-                        isAdmin: userData.username === ADMIN_USERNAME,
-                        dnd: userData.dnd || false
+                        id: user.id,
+                        name: user.username,
+                        avatar: user.avatar || '👤',
+                        bio: user.bio || '',
+                        isAdmin: user.username === ADMIN_USERNAME,
+                        dnd: user.dnd || false
                     };
                     
                     myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
@@ -1890,7 +1819,6 @@
                     }
                 });
 
-                // Подписываемся на все мои чаты
                 myChats.forEach(chat => subscribeToChat(chat));
             });
 
@@ -1948,6 +1876,7 @@
                         renderMessages(true);
                         unreadCounts[chat.id] = 0;
                         localStorage.setItem('unreadCounts', JSON.stringify(unreadCounts));
+                        
                         markMessagesAsRead(chat.id);
                     }
                     
@@ -2019,7 +1948,6 @@
                 }
             });
             
-            // Загружаем историю
             chatChannel.history({ limit: 200 }, (err, resultPage) => {
                 if (resultPage && resultPage.items.length > 0) {
                     if (!messages[chat.id]) messages[chat.id] = [];
@@ -2090,52 +2018,42 @@
             }
         }
 
-        // ========== Аутентификация ==========
+        // ========== Аутентификация через Supabase ==========
         async function login() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                showError('Слишком много попыток входа. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
             const username = document.getElementById('loginUsername').value.trim();
             const password = document.getElementById('loginPassword').value;
             const remember = document.getElementById('rememberMe').checked;
             
             if (!username || !password) {
-                showError('Введите имя и пароль');
+                alert('Введите имя и пароль');
                 return;
             }
             
             try {
-                const { data: users, error } = await supabaseClient
+                const { data: users, error } = await supabase
                     .from('users')
                     .select('*')
                     .eq('username', username)
                     .eq('password', password);
                 
-                if (error) {
-                    console.error('Login error:', error);
-                    showError('Ошибка при входе: ' + error.message);
-                    return;
-                }
+                if (error) throw error;
                 
                 if (users && users.length > 0) {
                     const user = users[0];
+                    const isAdmin = username === ADMIN_USERNAME;
                     
                     currentUser = {
                         id: user.id,
                         name: user.username,
                         avatar: user.avatar || '👤',
                         bio: user.bio || '',
-                        isAdmin: user.username === ADMIN_USERNAME,
+                        isAdmin: isAdmin,
                         dnd: user.dnd || false
                     };
                     
-                    if (remember) localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    if (remember) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    }
                     
                     myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
                     
@@ -2148,69 +2066,48 @@
                     startHeartbeat();
                     checkUrlForChat();
                 } else {
-                    showError('Неверное имя пользователя или пароль');
+                    alert('Неверное имя пользователя или пароль');
                 }
-            } catch (err) {
-                console.error('Login error:', err);
-                showError('Ошибка при входе: ' + err.message);
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Ошибка при входе');
             }
         }
 
         async function register() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                showError('Слишком много попыток регистрации. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
             const username = document.getElementById('registerUsername').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
             const remember = document.getElementById('rememberMeRegister').checked;
             
             if (!username || !password) {
-                showError('Заполните все поля');
+                alert('Заполните все поля');
                 return;
             }
             if (password !== confirmPassword) {
-                showError('Пароли не совпадают');
+                alert('Пароли не совпадают');
                 return;
             }
-            if (password.length < 6) {
-                showError('Пароль должен быть минимум 6 символов');
-                return;
-            }
-            
-            // Проверка на допустимые символы в имени
-            if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-                showError('Имя пользователя может содержать только буквы, цифры и подчеркивание');
+            if (password.length < 3) {
+                alert('Пароль должен быть минимум 3 символа');
                 return;
             }
             
             try {
-                // Проверяем, существует ли пользователь
-                const { data: existingUsers, error: checkError } = await supabaseClient
+                const { data: existingUsers, error: checkError } = await supabase
                     .from('users')
                     .select('username')
                     .eq('username', username);
                 
-                if (checkError) {
-                    console.error('Check error:', checkError);
-                    showError('Ошибка при проверке пользователя');
-                    return;
-                }
+                if (checkError) throw checkError;
                 
                 if (existingUsers && existingUsers.length > 0) {
-                    showError('Пользователь с таким именем уже существует');
+                    alert('Пользователь с таким именем уже существует');
                     return;
                 }
                 
                 const isAdmin = username === ADMIN_USERNAME;
                 const newUser = {
-                    id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
                     username: username,
                     password: password,
                     avatar: '👤',
@@ -2219,30 +2116,28 @@
                     created_at: new Date().toISOString()
                 };
                 
-                const { error: insertError } = await supabaseClient
+                const { data, error } = await supabase
                     .from('users')
-                    .insert([newUser]);
+                    .insert([newUser])
+                    .select();
                 
-                if (insertError) {
-                    console.error('Insert error:', insertError);
-                    showError('Ошибка при регистрации: ' + insertError.message);
-                    return;
-                }
+                if (error) throw error;
                 
-                currentUser = {
-                    id: newUser.id,
-                    name: newUser.username,
-                    avatar: newUser.avatar,
-                    bio: newUser.bio,
-                    isAdmin: isAdmin,
-                    dnd: false
-                };
-                
-                if (remember) localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
-                showSuccess('Регистрация успешна!');
-                
-                setTimeout(() => {
+                if (data && data.length > 0) {
+                    const user = data[0];
+                    currentUser = {
+                        id: user.id,
+                        name: user.username,
+                        avatar: user.avatar || '👤',
+                        bio: user.bio || '',
+                        isAdmin: isAdmin,
+                        dnd: false
+                    };
+                    
+                    if (remember) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    }
+                    
                     document.getElementById('loginModal').classList.remove('active');
                     document.getElementById('appContainer').style.display = 'flex';
                     
@@ -2250,14 +2145,14 @@
                     
                     initAbly();
                     startHeartbeat();
-                }, 1000);
-            } catch (err) {
-                console.error('Registration error:', err);
-                showError('Ошибка при регистрации: ' + err.message);
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Ошибка при регистрации');
             }
         }
 
-        async function logout() {
+        function logout() {
             if (mediaRecorder && isRecording) {
                 stopRecording();
             }
@@ -2669,8 +2564,8 @@
                     content = `
                         <div class="message-bubble audio-message">
                             <div class="audio-player">
-                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
-                                <div class="audio-progress" onclick="seekAudio('${messageId}', event)">
+                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="window.toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
+                                <div class="audio-progress" onclick="window.seekAudio('${messageId}', event)">
                                     <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
                                 </div>
                                 <span class="audio-time" data-message-id="${messageId}">0:00/${formatTime(duration)}</span>
@@ -2679,7 +2574,7 @@
                     `;
                 } else if (msg.media) {
                     if (msg.media.type.startsWith('image/')) {
-                        content = `<img src="${msg.media.url}" class="message-media" onclick="openMedia('${msg.media.url}')">`;
+                        content = `<img src="${msg.media.url}" class="message-media" onclick="window.openMedia('${msg.media.url}')">`;
                     } else if (msg.media.type.startsWith('video/')) {
                         content = `<video src="${msg.media.url}" class="message-media" controls onclick="event.stopPropagation()"></video>`;
                     }
@@ -2689,8 +2584,8 @@
                 if (msg.sender === currentUser.id || (currentUser && currentUser.isAdmin)) {
                     actions = `
                         <div class="message-actions">
-                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
-                            <button class="message-action-btn" onclick="deleteMessage('${msg.id}', event)">🗑️</button>
+                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="window.editMessage('${msg.id}', event)">✏️</button>` : ''}
+                            <button class="message-action-btn" onclick="window.deleteMessage('${msg.id}', event)">🗑️</button>
                         </div>
                     `;
                 }
@@ -2992,7 +2887,7 @@
             }
         }
 
-        async function createPublicChat() {
+        function createPublicChat() {
             const name = document.getElementById('chatNameInput').value.trim();
             const password = document.getElementById('chatPasswordInput').value.trim();
             const description = document.getElementById('chatDescriptionInput').value.trim();
@@ -3000,40 +2895,24 @@
                 alert('Введите название чата');
                 return;
             }
-            
             const newChat = {
                 id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
                 name: name,
                 description: description || '',
                 password: password || null,
-                created_by: currentUser.id,
-                created_by_name: currentUser.name,
+                createdBy: currentUser.id,
+                createdByName: currentUser.name,
                 members: [currentUser.id],
-                type: 'public',
-                created_at: new Date().toISOString()
+                createdAt: new Date().toISOString()
             };
-            
-            try {
-                const { error } = await supabaseClient
-                    .from('chats')
-                    .insert([newChat]);
-                
-                if (error) throw error;
-                
-                publicChats.push(newChat);
-                localStorage.setItem('publicChats', JSON.stringify(publicChats));
-                
-                if (ably) {
-                    const globalChatsChannel = ably.channels.get('global-chats');
-                    globalChatsChannel.publish('new-chat', newChat);
-                }
-                
-                joinChat(newChat);
-                closeCreateChatModal();
-            } catch (err) {
-                console.error('Error creating chat:', err);
-                alert('Ошибка при создании чата');
+            publicChats.push(newChat);
+            localStorage.setItem('publicChats', JSON.stringify(publicChats));
+            if (ably) {
+                const globalChatsChannel = ably.channels.get('global-chats');
+                globalChatsChannel.publish('new-chat', newChat);
             }
+            joinChat(newChat);
+            closeCreateChatModal();
         }
 
         // ========== Редактирование/удаление сообщений ==========
@@ -3127,37 +3006,44 @@
             const newBio = document.getElementById('profileBioInput').value.trim();
             const dnd = document.getElementById('profileDNDCheckbox').checked;
             
-            if (newName && newName !== currentUser.name) {
-                // Проверяем, существует ли пользователь с таким именем
-                const { data: existingUsers } = await supabaseClient
-                    .from('users')
-                    .select('username')
-                    .eq('username', newName)
-                    .neq('id', currentUser.id);
+            try {
+                const updates = {};
                 
-                if (existingUsers && existingUsers.length > 0) {
-                    alert('Пользователь с таким именем уже существует');
-                    return;
+                if (newName && newName !== currentUser.name) {
+                    const { data: existingUsers } = await supabase
+                        .from('users')
+                        .select('username')
+                        .eq('username', newName)
+                        .neq('id', currentUser.id);
+                    
+                    if (existingUsers && existingUsers.length > 0) {
+                        alert('Пользователь с таким именем уже существует');
+                        return;
+                    }
+                    
+                    updates.username = newName;
                 }
                 
-                currentUser.name = newName;
-            }
-            
-            currentUser.bio = newBio;
-            currentUser.dnd = dnd;
-            
-            try {
-                const { error } = await supabaseClient
-                    .from('users')
-                    .update({
-                        username: currentUser.name,
-                        bio: currentUser.bio,
-                        dnd: currentUser.dnd,
-                        avatar: currentUser.avatar
-                    })
-                    .eq('id', currentUser.id);
+                if (newBio !== currentUser.bio) {
+                    updates.bio = newBio;
+                }
                 
-                if (error) throw error;
+                if (dnd !== currentUser.dnd) {
+                    updates.dnd = dnd;
+                }
+                
+                if (Object.keys(updates).length > 0) {
+                    const { error } = await supabase
+                        .from('users')
+                        .update(updates)
+                        .eq('id', currentUser.id);
+                    
+                    if (error) throw error;
+                }
+                
+                if (updates.username) currentUser.name = updates.username;
+                if (updates.bio !== undefined) currentUser.bio = updates.bio;
+                if (updates.dnd !== undefined) currentUser.dnd = updates.dnd;
                 
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
@@ -3174,8 +3060,8 @@
                 
                 updateProfileUI();
                 closeProfileModal();
-            } catch (err) {
-                console.error('Error updating profile:', err);
+            } catch (error) {
+                console.error('Error saving profile:', error);
                 alert('Ошибка при сохранении профиля');
             }
         }
@@ -3203,16 +3089,15 @@
 
         async function saveAvatar() {
             if (selectedAvatar) {
-                currentUser.avatar = selectedAvatar;
-                
                 try {
-                    const { error } = await supabaseClient
+                    const { error } = await supabase
                         .from('users')
-                        .update({ avatar: currentUser.avatar })
+                        .update({ avatar: selectedAvatar })
                         .eq('id', currentUser.id);
                     
                     if (error) throw error;
                     
+                    currentUser.avatar = selectedAvatar;
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     updateProfileUI();
                     
@@ -3226,8 +3111,8 @@
                             dnd: currentUser.dnd
                         });
                     }
-                } catch (err) {
-                    console.error('Error saving avatar:', err);
+                } catch (error) {
+                    console.error('Error saving avatar:', error);
                     alert('Ошибка при сохранении аватара');
                 }
             }
@@ -3330,11 +3215,11 @@
             if (chat) {
                 const newUrl = `${window.location.pathname}#${chat.id}`;
                 window.history.pushState({ chatId: chat.id }, chat.name, newUrl);
-                document.title = `${chat.name} - Telegram Web`;
+                document.title = `${chat.name} - Ток`;
             } else {
                 const newUrl = window.location.pathname;
-                window.history.pushState({}, 'Telegram Web', newUrl);
-                document.title = 'Telegram Web';
+                window.history.pushState({}, 'Ток', newUrl);
+                document.title = 'Ток';
             }
         }
 
@@ -3361,6 +3246,41 @@
             document.getElementById('mediaViewer').classList.remove('active');
             document.getElementById('mediaViewerContent').innerHTML = '';
         }
+
+        // Привязываем все функции к объекту window для доступа из HTML
+        window.login = login;
+        window.register = register;
+        window.logout = logout;
+        window.switchAuthMode = switchAuthMode;
+        window.togglePassword = togglePassword;
+        window.switchTab = switchTab;
+        window.handleSearch = handleSearch;
+        window.openCreateChatModal = openCreateChatModal;
+        window.closeCreateChatModal = closeCreateChatModal;
+        window.createPublicChat = createPublicChat;
+        window.closeJoinChatModal = closeJoinChatModal;
+        window.joinProtectedChat = joinProtectedChat;
+        window.sendMessage = sendMessage;
+        window.toggleEmojiPicker = toggleEmojiPicker;
+        window.handleKeyPress = handleKeyPress;
+        window.handleInputFocus = handleInputFocus;
+        window.handleInputBlur = handleInputBlur;
+        window.handleMessagesContainerClick = handleMessagesContainerClick;
+        window.openProfileModal = openProfileModal;
+        window.closeProfileModal = closeProfileModal;
+        window.saveProfile = saveProfile;
+        window.openAvatarModal = openAvatarModal;
+        window.closeAvatarModal = closeAvatarModal;
+        window.saveAvatar = saveAvatar;
+        window.toggleSidebar = toggleSidebar;
+        window.closeEditMessageModal = closeEditMessageModal;
+        window.saveEditedMessage = saveEditedMessage;
+        window.editMessage = editMessage;
+        window.deleteMessage = deleteMessage;
+        window.openMedia = openMedia;
+        window.closeMediaViewer = closeMediaViewer;
+        window.toggleAudio = toggleAudio;
+        window.seekAudio = seekAudio;
 
         // Обработчики событий
         window.addEventListener('popstate', function(event) {
