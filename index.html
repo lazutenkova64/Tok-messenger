@@ -1236,9 +1236,9 @@
 </head>
 <body>
     <!-- Media Viewer -->
-    <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()">
+    <div class="media-viewer" id="mediaViewer" onclick="window.closeMediaViewer()">
         <div class="media-viewer-content" id="mediaViewerContent"></div>
-        <button class="media-viewer-close" onclick="closeMediaViewer()">×</button>
+        <button class="media-viewer-close" onclick="window.closeMediaViewer()">×</button>
     </div>
 
     <!-- Login/Register Modal -->
@@ -1247,38 +1247,38 @@
             <h2>Добро пожаловать!</h2>
             
             <div class="auth-tabs">
-                <button class="auth-tab active" onclick="switchAuthMode('login')" id="loginTabBtn">Вход</button>
-                <button class="auth-tab" onclick="switchAuthMode('register')" id="registerTabBtn">Регистрация</button>
+                <button class="auth-tab active" onclick="window.switchAuthMode('login')" id="loginTabBtn">Вход</button>
+                <button class="auth-tab" onclick="window.switchAuthMode('register')" id="registerTabBtn">Регистрация</button>
             </div>
 
             <div id="loginForm">
                 <input type="text" class="modal-input" id="loginUsername" placeholder="Имя пользователя" autocomplete="off">
                 <div class="password-input-container">
                     <input type="password" class="modal-input" id="loginPassword" placeholder="Пароль">
-                    <button class="toggle-password" onclick="togglePassword('loginPassword')">👁️</button>
+                    <button class="toggle-password" onclick="window.togglePassword('loginPassword')">👁️</button>
                 </div>
                 <div class="remember-checkbox">
                     <input type="checkbox" id="rememberMe" checked>
                     <label for="rememberMe">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="login()">Войти</button>
+                <button class="modal-btn" onclick="window.login()">Войти</button>
             </div>
 
             <div id="registerForm" style="display: none;">
                 <input type="text" class="modal-input" id="registerUsername" placeholder="Имя пользователя" maxlength="20">
                 <div class="password-input-container">
                     <input type="password" class="modal-input" id="registerPassword" placeholder="Пароль">
-                    <button class="toggle-password" onclick="togglePassword('registerPassword')">👁️</button>
+                    <button class="toggle-password" onclick="window.togglePassword('registerPassword')">👁️</button>
                 </div>
                 <div class="password-input-container">
                     <input type="password" class="modal-input" id="registerConfirmPassword" placeholder="Подтвердите пароль">
-                    <button class="toggle-password" onclick="togglePassword('registerConfirmPassword')">👁️</button>
+                    <button class="toggle-password" onclick="window.togglePassword('registerConfirmPassword')">👁️</button>
                 </div>
                 <div class="remember-checkbox">
                     <input type="checkbox" id="rememberMeRegister" checked>
                     <label for="rememberMeRegister">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="register()">Зарегистрироваться</button>
+                <button class="modal-btn" onclick="window.register()">Зарегистрироваться</button>
             </div>
         </div>
     </div>
@@ -1287,7 +1287,7 @@
     <div class="app-container" id="appContainer" style="display: none;">
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <div class="avatar" id="profileAvatar" onclick="openProfileModal()">👤</div>
+                <div class="avatar" id="profileAvatar" onclick="window.openProfileModal()">👤</div>
                 <div class="profile-info">
                     <div class="profile-name" id="profileName">Загрузка...</div>
                     <div class="profile-status" id="profileStatusDisplay">онлайн <span class="online-indicator"></span></div>
@@ -1295,26 +1295,26 @@
             </div>
 
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('chats')" id="tabChats">Мои чаты</button>
-                <button class="tab" onclick="switchTab('public')" id="tabPublic">Публичные</button>
-                <button class="tab" onclick="switchTab('users')" id="tabUsers">Пользователи</button>
+                <button class="tab active" onclick="window.switchTab('chats')" id="tabChats">Мои чаты</button>
+                <button class="tab" onclick="window.switchTab('public')" id="tabPublic">Публичные</button>
+                <button class="tab" onclick="window.switchTab('users')" id="tabUsers">Пользователи</button>
             </div>
 
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="Поиск..." oninput="handleSearch()">
-                <button class="create-chat-btn" onclick="openCreateChatModal()">+</button>
+                <input type="text" id="searchInput" placeholder="Поиск..." oninput="window.handleSearch()">
+                <button class="create-chat-btn" onclick="window.openCreateChatModal()">+</button>
             </div>
 
             <div class="chats-list" id="chatsList"></div>
             
             <div style="padding: 16px; border-top: 1px solid var(--border-color);">
-                <button class="modal-btn secondary" style="width: 100%;" onclick="logout()">Выйти</button>
+                <button class="modal-btn secondary" style="width: 100%;" onclick="window.logout()">Выйти</button>
             </div>
         </div>
 
         <div class="chat-area">
             <div class="chat-header">
-                <button class="back-button" onclick="toggleSidebar()">←</button>
+                <button class="back-button" onclick="window.toggleSidebar()">←</button>
                 <div class="chat-info">
                     <div class="chat-title" id="currentChatName">
                         Выберите чат
@@ -1322,14 +1322,14 @@
                     <div class="chat-subtitle" id="chatStatus"></div>
                 </div>
                 <div class="chat-actions">
-                    <button class="action-btn" onclick="openProfileModal()">👤</button>
+                    <button class="action-btn" onclick="window.openProfileModal()">👤</button>
                 </div>
             </div>
 
-            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
+            <div class="messages-container" id="messagesContainer" onclick="window.handleMessagesContainerClick(event)"></div>
 
             <div class="message-input-container" id="messageInputContainer">
-                <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
+                <button class="emoji-toggle-btn" onclick="window.toggleEmojiPicker()">😊</button>
                 <button class="mic-btn" id="micBtn">🎤</button>
                 <div class="input-wrapper">
                     <div class="emoji-picker" id="emojiPicker" style="display: none;"></div>
@@ -1338,12 +1338,12 @@
                         id="messageInput" 
                         placeholder="Напишите сообщение..."
                         rows="1"
-                        onkeydown="handleKeyPress(event)"
-                        onfocus="handleInputFocus()"
-                        onblur="handleInputBlur()"
+                        onkeydown="window.handleKeyPress(event)"
+                        onfocus="window.handleInputFocus()"
+                        onblur="window.handleInputBlur()"
                     ></textarea>
                 </div>
-                <button class="send-btn" onclick="sendMessage()" id="sendBtn">➤</button>
+                <button class="send-btn" onclick="window.sendMessage()" id="sendBtn">➤</button>
             </div>
         </div>
     </div>
@@ -1351,48 +1351,48 @@
     <!-- Create Chat Modal -->
     <div class="modal" id="createChatModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeCreateChatModal()">×</button>
+            <button class="close-btn" onclick="window.closeCreateChatModal()">×</button>
             <h2>Создать публичный чат</h2>
             <input type="text" class="modal-input" id="chatNameInput" placeholder="Название чата" maxlength="30">
             <div class="password-input-container">
                 <input type="password" class="modal-input" id="chatPasswordInput" placeholder="Пароль (необязательно)">
-                <button class="toggle-password" onclick="togglePassword('chatPasswordInput')">👁️</button>
+                <button class="toggle-password" onclick="window.togglePassword('chatPasswordInput')">👁️</button>
             </div>
             <input type="text" class="modal-input" id="chatDescriptionInput" placeholder="Описание (необязательно)">
-            <button class="modal-btn" onclick="createPublicChat()">Создать чат</button>
+            <button class="modal-btn" onclick="window.createPublicChat()">Создать чат</button>
         </div>
     </div>
 
     <!-- Join Chat Modal -->
     <div class="modal" id="joinChatModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeJoinChatModal()">×</button>
+            <button class="close-btn" onclick="window.closeJoinChatModal()">×</button>
             <h2 id="joinChatTitle">Введите пароль</h2>
             <div class="password-input-container">
                 <input type="password" class="modal-input" id="joinPasswordInput" placeholder="Пароль чата">
-                <button class="toggle-password" onclick="togglePassword('joinPasswordInput')">👁️</button>
+                <button class="toggle-password" onclick="window.togglePassword('joinPasswordInput')">👁️</button>
             </div>
-            <button class="modal-btn" onclick="joinProtectedChat()">Войти</button>
+            <button class="modal-btn" onclick="window.joinProtectedChat()">Войти</button>
         </div>
     </div>
 
     <!-- Edit Message Modal -->
     <div class="modal" id="editMessageModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeEditMessageModal()">×</button>
+            <button class="close-btn" onclick="window.closeEditMessageModal()">×</button>
             <h2>Редактировать сообщение</h2>
             <textarea class="modal-input" id="editMessageText" rows="3" style="resize: none;"></textarea>
-            <button class="modal-btn" onclick="saveEditedMessage()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveEditedMessage()">Сохранить</button>
         </div>
     </div>
 
     <!-- Profile Modal -->
     <div class="modal" id="profileModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeProfileModal()">×</button>
+            <button class="close-btn" onclick="window.closeProfileModal()">×</button>
             <h2>Редактировать профиль</h2>
             <div style="text-align: center; margin-bottom: 20px;">
-                <div class="avatar" style="width: 80px; height: 80px; font-size: 42px; margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="openAvatarModal()">👤</div>
+                <div class="avatar" style="width: 80px; height: 80px; font-size: 42px; margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="window.openAvatarModal()">👤</div>
                 <small style="color: var(--text-secondary);">Нажмите, чтобы сменить аватар</small>
             </div>
             <input type="text" class="modal-input" id="profileNameInput" placeholder="Имя (никнейм)" maxlength="20">
@@ -1401,17 +1401,17 @@
                 <input type="checkbox" id="profileDNDCheckbox">
                 <label for="profileDNDCheckbox">Не беспокоить (DND)</label>
             </div>
-            <button class="modal-btn" onclick="saveProfile()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveProfile()">Сохранить</button>
         </div>
     </div>
 
     <!-- Avatar selection modal -->
     <div class="modal" id="avatarModal">
         <div class="modal-content">
-            <button class="close-btn" onclick="closeAvatarModal()">×</button>
+            <button class="close-btn" onclick="window.closeAvatarModal()">×</button>
             <h2>Выберите аватар</h2>
             <div class="avatar-grid" id="avatarGrid"></div>
-            <button class="modal-btn" onclick="saveAvatar()">Сохранить</button>
+            <button class="modal-btn" onclick="window.saveAvatar()">Сохранить</button>
         </div>
     </div>
 
@@ -2578,8 +2578,8 @@
                     content = `
                         <div class="message-bubble audio-message">
                             <div class="audio-player">
-                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
-                                <div class="audio-progress" onclick="seekAudio('${messageId}', event)">
+                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="window.toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
+                                <div class="audio-progress" onclick="window.seekAudio('${messageId}', event)">
                                     <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
                                 </div>
                                 <span class="audio-time" data-message-id="${messageId}">0:00/${formatTime(duration)}</span>
@@ -2588,7 +2588,7 @@
                     `;
                 } else if (msg.media) {
                     if (msg.media.type.startsWith('image/')) {
-                        content = `<img src="${msg.media.url}" class="message-media" onclick="openMedia('${msg.media.url}')">`;
+                        content = `<img src="${msg.media.url}" class="message-media" onclick="window.openMedia('${msg.media.url}')">`;
                     } else if (msg.media.type.startsWith('video/')) {
                         content = `<video src="${msg.media.url}" class="message-media" controls onclick="event.stopPropagation()"></video>`;
                     }
@@ -2598,8 +2598,8 @@
                 if (msg.sender === currentUser.id || (currentUser && currentUser.isAdmin)) {
                     actions = `
                         <div class="message-actions">
-                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
-                            <button class="message-action-btn" onclick="deleteMessage('${msg.id}', event)">🗑️</button>
+                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="window.editMessage('${msg.id}', event)">✏️</button>` : ''}
+                            <button class="message-action-btn" onclick="window.deleteMessage('${msg.id}', event)">🗑️</button>
                         </div>
                     `;
                 }
@@ -3262,6 +3262,41 @@
             document.getElementById('mediaViewerContent').innerHTML = '';
         }
 
+        // ========== Привязываем все функции к window ==========
+        window.switchAuthMode = switchAuthMode;
+        window.togglePassword = togglePassword;
+        window.login = login;
+        window.register = register;
+        window.logout = logout;
+        window.switchTab = switchTab;
+        window.handleSearch = handleSearch;
+        window.openCreateChatModal = openCreateChatModal;
+        window.closeCreateChatModal = closeCreateChatModal;
+        window.createPublicChat = createPublicChat;
+        window.closeJoinChatModal = closeJoinChatModal;
+        window.joinProtectedChat = joinProtectedChat;
+        window.sendMessage = sendMessage;
+        window.toggleEmojiPicker = toggleEmojiPicker;
+        window.handleKeyPress = handleKeyPress;
+        window.handleInputFocus = handleInputFocus;
+        window.handleInputBlur = handleInputBlur;
+        window.handleMessagesContainerClick = handleMessagesContainerClick;
+        window.openProfileModal = openProfileModal;
+        window.closeProfileModal = closeProfileModal;
+        window.saveProfile = saveProfile;
+        window.openAvatarModal = openAvatarModal;
+        window.closeAvatarModal = closeAvatarModal;
+        window.saveAvatar = saveAvatar;
+        window.toggleSidebar = toggleSidebar;
+        window.closeEditMessageModal = closeEditMessageModal;
+        window.saveEditedMessage = saveEditedMessage;
+        window.editMessage = editMessage;
+        window.deleteMessage = deleteMessage;
+        window.openMedia = openMedia;
+        window.closeMediaViewer = closeMediaViewer;
+        window.toggleAudio = toggleAudio;
+        window.seekAudio = seekAudio;
+
         // Обработчики событий
         window.addEventListener('popstate', function(event) {
             const hash = window.location.hash.substring(1);
@@ -3302,10 +3337,7 @@
         });
 
         // Запуск инициализации
-init();
-
-window.login = login; window.register = register; window.togglePassword = togglePassword; window.switchAuthMode = switchAuthMode; window.logout = logout; window.switchTab = switchTab; window.handleSearch = handleSearch; window.openCreateChatModal = openCreateChatModal; window.closeCreateChatModal = closeCreateChatModal; window.createPublicChat = createPublicChat; window.closeJoinChatModal = closeJoinChatModal; window.joinProtectedChat = joinProtectedChat; window.sendMessage = sendMessage; window.toggleEmojiPicker = toggleEmojiPicker; window.handleKeyPress = handleKeyPress; window.handleInputFocus = handleInputFocus; window.handleInputBlur = handleInputBlur; window.handleMessagesContainerClick = handleMessagesContainerClick; window.openProfileModal = openProfileModal; window.closeProfileModal = closeProfileModal; window.saveProfile = saveProfile; window.openAvatarModal = openAvatarModal; window.closeAvatarModal = closeAvatarModal; window.saveAvatar = saveAvatar; window.toggleSidebar = toggleSidebar; window.closeEditMessageModal = closeEditMessageModal; window.saveEditedMessage = saveEditedMessage; window.editMessage = editMessage; window.deleteMessage = deleteMessage; window.openMedia = openMedia; window.closeMediaViewer = closeMediaViewer; window.toggleAudio = toggleAudio; window.seekAudio = seekAudio;
+        init();
     </script>
 </body>
 </html>
-
