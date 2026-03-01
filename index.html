@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth App</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      background:#111;
+      color:white;
+      font-family:Arial;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+    }
+    .box {
+      background:#1e1e1e;
+      padding:30px;
+      border-radius:12px;
+      width:320px;
+    }
+    input {
+      width:100%;
+      padding:10px;
+      margin-bottom:10px;
+      border-radius:6px;
+      border:none;
+    }
+    button {
+      width:100%;
+      padding:10px;
+      border:none;
+      border-radius:6px;
+      background:#3b82f6;
+      color:white;
+      cursor:pointer;
+    }
+    button:hover {
+      background:#2563eb;
+    }
+  </style>
+</head>
+<body>
+
+<div class="box">
+  <h2>Регистрация</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Пароль">
+  <button onclick="register()">Зарегистрироваться</button>
+
+  <hr>
+
+  <h2>Вход</h2>
+  <input type="email" id="loginEmail" placeholder="Email">
+  <input type="password" id="loginPassword" placeholder="Пароль">
+  <button onclick="login()">Войти</button>
+</div>
+
+<script>
+const SUPABASE_URL = "https://olqwgfsedzrnprwfwqpa.supabase.co";
+const SUPABASE_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function register() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) alert(error.message);
+  else alert("Регистрация успешна!");
+}
+
+async function login() {
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) alert(error.message);
+  else alert("Вход выполнен!");
+}
+</script>
+
+</body>
+</html>
