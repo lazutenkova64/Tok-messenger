@@ -1417,24 +1417,24 @@
 
     <script>
         // ============================================================
-        // Supabase и Ably API ключи
+        // Supabase и Ably API ключи - ЗАМЕНИТЕ НА СВОИ!
         // ============================================================
-        const SUPABASE_URL = 'https://nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzQwMDQyODAwLAogICJleHAiOiAxODk3ODA5MjAwCn0.3-kWohcIy1GS7L5cYtqkLAMQy6sEfNFRMxZqQq_R-OU';
-        const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
-        
+        const SUPABASE_URL = 'https://ваш-проект.supabase.co';
+        const SUPABASE_ANON_KEY = 'ваш-anon-key';
+        const ABLY_API_KEY = "ваш-ably-key";
+
         // Инициализация Supabase
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
         let ably;
         let currentUser = null;
         
-        // Data structures
-        let publicChats = JSON.parse(localStorage.getItem('publicChats')) || [];
+        // Структуры данных
+        let publicChats = [];
         let myChats = [];
         let onlineUsers = {};
         let currentChat = null;
-        let messages = {};
+        let messages = JSON.parse(localStorage.getItem('messages')) || {};
         let unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
         let currentTab = 'chats';
         let pendingChatToJoin = null;
@@ -1444,9 +1444,8 @@
         // Для статусов сообщений
         let messageStatuses = JSON.parse(localStorage.getItem('messageStatuses')) || {};
         let deliveredMessages = JSON.parse(localStorage.getItem('deliveredMessages')) || {};
-        let readMessages = JSON.parse(localStorage.getItem('readMessages')) || {};
 
-        // ID для отслеживания удаленных сообщений
+        // Для удаленных сообщений
         let deletedMessages = JSON.parse(localStorage.getItem('deletedMessages')) || {};
 
         // Для защиты от DDoS
@@ -1466,17 +1465,33 @@
         let activeAudioId = null;
         let audioElements = {};
 
-        // Таймеры и debounce
+        // Таймеры
         let saveMessagesTimeout;
         let heartbeatInterval;
         let reconnectTimeout;
 
-        // Расширенный набор эмодзи
+        // Эмодзи
         const emojiList = [
-            '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '💀', '👻', '👽', '🤖', '💩', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '🙈', '🙉', '🙊', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁', '👅', '👄', '💋', '🩸'
+            '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', 
+            '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
+            '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸',
+            '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️',
+            '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡',
+            '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓',
+            '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄',
+            '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵',
+            '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠',
+            '😈', '👿', '👹', '👺', '💀', '👻', '👽', '🤖', '💩', '😺',
+            '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾', '🙈', '🙉',
+            '🙊', '👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌️',
+            '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️',
+            '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲',
+            '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶',
+            '👂', '🦻', '👃', '🧠', '🦷', '🦴', '👀', '👁', '👅', '👄',
+            '💋', '🩸'
         ];
 
-        // Необычные эмодзи для аватара
+        // Аватары
         const weirdEmojis = [
             '👾', '🤖', '👽', '💀', '👻', '👹', '👺', '🤡', '💩', '🔥',
             '🌀', '🌚', '🌝', '⭐', '🌟', '💫', '✨', '⚡', '☄️', '💥',
@@ -1488,7 +1503,9 @@
             '🐉', '🐲', '🌊', '🧙', '🧝', '🧞', '🧟', '🧌', '🦄', '🐲'
         ];
 
-        // ========== Инициализация ==========
+        // ============================================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
         function init() {
             try {
                 messages = JSON.parse(localStorage.getItem('messages')) || {};
@@ -1570,6 +1587,9 @@
             });
         }
 
+        // ============================================================
+        // ПРОВЕРКА СОХРАНЕННОЙ СЕССИИ
+        // ============================================================
         async function checkSavedSession() {
             const savedUser = localStorage.getItem('currentUser');
             if (savedUser) {
@@ -1596,7 +1616,8 @@
                         dnd: user.dnd || false
                     };
                     
-                    myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
+                    // Загружаем чаты пользователя
+                    await loadUserChats();
                     
                     document.getElementById('loginModal').classList.remove('active');
                     document.getElementById('appContainer').style.display = 'flex';
@@ -1605,8 +1626,9 @@
                     
                     setTimeout(() => {
                         initAbly();
-                        checkUrlForChat();
+                        loadPublicChats();
                         startHeartbeat();
+                        checkUrlForChat();
                     }, 100);
                 } catch (e) {
                     console.error('Failed to load session', e);
@@ -1615,78 +1637,254 @@
             }
         }
 
-        function startHeartbeat() {
-            if (heartbeatInterval) clearInterval(heartbeatInterval);
-            heartbeatInterval = setInterval(() => {
-                if (ably && ably.connection.state === 'connected' && currentUser) {
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.update({ 
-                        name: currentUser.name,
-                        avatar: currentUser.avatar || '👤',
-                        bio: currentUser.bio || '',
-                        isAdmin: currentUser.isAdmin || false,
-                        dnd: currentUser.dnd || false,
-                        lastSeen: Date.now()
-                    });
-                }
-            }, 30000);
-        }
-
-        function saveMessagesDebounced() {
-            if (saveMessagesTimeout) clearTimeout(saveMessagesTimeout);
-            saveMessagesTimeout = setTimeout(() => {
-                localStorage.setItem('messages', JSON.stringify(messages));
-                localStorage.setItem('messageStatuses', JSON.stringify(messageStatuses));
-                localStorage.setItem('deliveredMessages', JSON.stringify(deliveredMessages));
-            }, 500);
-        }
-
-        function updateProfileUI() {
+        // ============================================================
+        // ЗАГРУЗКА ЧАТОВ
+        // ============================================================
+        async function loadUserChats() {
             if (!currentUser) return;
-            const nameSpan = document.getElementById('profileName');
-            if (currentUser.isAdmin) {
-                nameSpan.innerHTML = '';
-                const nameText = document.createTextNode(currentUser.name + ' ');
-                nameSpan.appendChild(nameText);
-                const badge = document.createElement('span');
-                badge.className = 'admin-badge';
-                badge.textContent = 'ADMIN';
-                nameSpan.appendChild(badge);
+            
+            const saved = localStorage.getItem(`myChats_${currentUser.id}`);
+            if (saved) {
+                myChats = JSON.parse(saved);
             } else {
-                nameSpan.textContent = currentUser.name;
+                myChats = [];
             }
-            const statusDisplay = document.getElementById('profileStatusDisplay');
-            if (currentUser.dnd) {
-                statusDisplay.innerHTML = 'не беспокоить <span class="dnd-badge">DND</span>';
-            } else {
-                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
-            }
-            document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileBioInput').value = currentUser.bio || '';
-            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
         }
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        async function loadPublicChats() {
+            try {
+                const { data, error } = await supabase
+                    .from('public_chats')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                publicChats = data || [];
+                localStorage.setItem('publicChats', JSON.stringify(publicChats));
+                
+                if (currentTab === 'public') {
+                    updateChatsList();
+                }
+            } catch (error) {
+                console.error('Error loading public chats:', error);
+            }
         }
 
-        function populateEmojiPicker() {
-            const picker = document.getElementById('emojiPicker');
-            picker.innerHTML = '';
-            emojiList.forEach(emoji => {
-                const btn = document.createElement('button');
-                btn.className = 'emoji-btn';
-                btn.textContent = emoji;
-                btn.onclick = () => addEmoji(emoji);
-                picker.appendChild(btn);
+        // ============================================================
+        // АУТЕНТИФИКАЦИЯ
+        // ============================================================
+        async function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const remember = document.getElementById('rememberMe').checked;
+            
+            if (!username || !password) {
+                alert('Введите имя и пароль');
+                return;
+            }
+            
+            try {
+                const { data: users, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('username', username);
+                
+                if (error) throw error;
+                
+                if (users && users.length > 0) {
+                    const user = users[0];
+                    
+                    // Прямое сравнение паролей (в продакшне используйте хэширование!)
+                    if (user.password_hash !== password) {
+                        alert('Неверный пароль');
+                        return;
+                    }
+                    
+                    const isAdmin = username === ADMIN_USERNAME;
+                    
+                    currentUser = {
+                        id: user.id,
+                        name: user.username,
+                        avatar: user.avatar || '👤',
+                        bio: user.bio || '',
+                        isAdmin: isAdmin,
+                        dnd: user.dnd || false
+                    };
+                    
+                    if (remember) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    }
+                    
+                    await loadUserChats();
+                    
+                    document.getElementById('loginModal').classList.remove('active');
+                    document.getElementById('appContainer').style.display = 'flex';
+                    
+                    updateProfileUI();
+                    initAbly();
+                    loadPublicChats();
+                    startHeartbeat();
+                    checkUrlForChat();
+                } else {
+                    alert('Пользователь не найден');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Ошибка при входе');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const remember = document.getElementById('rememberMeRegister').checked;
+            
+            if (!username || !password) {
+                alert('Заполните все поля');
+                return;
+            }
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают');
+                return;
+            }
+            if (password.length < 3) {
+                alert('Пароль должен быть минимум 3 символа');
+                return;
+            }
+            
+            try {
+                // Проверяем, существует ли пользователь
+                const { data: existingUsers } = await supabase
+                    .from('users')
+                    .select('username')
+                    .eq('username', username);
+                
+                if (existingUsers && existingUsers.length > 0) {
+                    alert('Пользователь с таким именем уже существует');
+                    return;
+                }
+                
+                // Создаём нового пользователя
+                const isAdmin = username === ADMIN_USERNAME;
+                const newUser = {
+                    username: username,
+                    password_hash: password, // В реальном проекте используйте bcrypt!
+                    avatar: '👤',
+                    bio: '',
+                    dnd: false
+                };
+                
+                const { data, error } = await supabase
+                    .from('users')
+                    .insert([newUser])
+                    .select();
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    const user = data[0];
+                    currentUser = {
+                        id: user.id,
+                        name: user.username,
+                        avatar: user.avatar || '👤',
+                        bio: user.bio || '',
+                        isAdmin: isAdmin,
+                        dnd: false
+                    };
+                    
+                    if (remember) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    }
+                    
+                    document.getElementById('loginModal').classList.remove('active');
+                    document.getElementById('appContainer').style.display = 'flex';
+                    
+                    updateProfileUI();
+                    initAbly();
+                    loadPublicChats();
+                    startHeartbeat();
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Ошибка при регистрации');
+            }
+        }
+
+        function logout() {
+            // Останавливаем запись
+            if (mediaRecorder && isRecording) {
+                stopRecording();
+            }
+            
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            // Останавливаем аудио
+            Object.values(audioElements).forEach(audio => {
+                if (audio) {
+                    audio.pause();
+                    audio.currentTime = 0;
+                }
             });
+            audioElements = {};
+            activeAudio = null;
+            activeAudioId = null;
+            
+            // Очищаем таймеры
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            if (saveMessagesTimeout) {
+                clearTimeout(saveMessagesTimeout);
+                saveMessagesTimeout = null;
+            }
+            if (recordingTimeout) {
+                clearTimeout(recordingTimeout);
+                recordingTimeout = null;
+            }
+            
+            // Отключаем Ably
+            if (ably) {
+                try {
+                    const presenceChannel = ably.channels.get('presence');
+                    presenceChannel.presence.leave();
+                    ably.close();
+                } catch (e) {
+                    console.error('Error closing Ably:', e);
+                }
+                ably = null;
+            }
+            
+            localStorage.removeItem('currentUser');
+            currentUser = null;
+            currentChat = null;
+            myChats = [];
+            onlineUsers = {};
+            
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('loginModal').classList.add('active');
+            updateUrlWithChat(null);
+            
+            // Очищаем поля ввода
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            document.getElementById('registerUsername').value = '';
+            document.getElementById('registerPassword').value = '';
+            document.getElementById('registerConfirmPassword').value = '';
         }
 
-        // ========== Ably и чаты ==========
+        // ============================================================
+        // ABLY ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
         function initAbly() {
             if (!currentUser) return;
             
@@ -1783,42 +1981,7 @@
                     }
                 });
 
-                const adminChannel = ably.channels.get('admin-actions');
-                adminChannel.subscribe('delete-chat', (message) => {
-                    const { chatId } = message.data;
-                    publicChats = publicChats.filter(c => c.id !== chatId);
-                    localStorage.setItem('publicChats', JSON.stringify(publicChats));
-                    myChats = myChats.filter(c => c.id !== chatId);
-                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    if (messages[chatId]) {
-                        delete messages[chatId];
-                        saveMessagesDebounced();
-                    }
-                    if (currentChat && currentChat.id === chatId) {
-                        currentChat = null;
-                        document.getElementById('messagesContainer').innerHTML = '<div class="chat-deleted-message">⚠️ Чат был удален администратором</div>';
-                        document.getElementById('currentChatName').innerHTML = 'Чат удален';
-                        document.getElementById('chatStatus').innerHTML = '';
-                        updateUrlWithChat(null);
-                    }
-                    updateChatsList();
-                });
-
-                adminChannel.subscribe('delete-message', (message) => {
-                    const { chatId, messageId } = message.data;
-                    if (!deletedMessages[chatId]) deletedMessages[chatId] = [];
-                    if (!deletedMessages[chatId].includes(messageId)) {
-                        deletedMessages[chatId].push(messageId);
-                        localStorage.setItem('deletedMessages', JSON.stringify(deletedMessages));
-                    }
-                    if (messages[chatId]) {
-                        messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
-                        saveMessagesDebounced();
-                        if (currentChat && currentChat.id === chatId) renderMessages();
-                        updateChatsList();
-                    }
-                });
-
+                // Подписываемся на чаты пользователя
                 myChats.forEach(chat => subscribeToChat(chat));
             });
 
@@ -1841,6 +2004,386 @@
             updateChatsList();
         }
 
+        function startHeartbeat() {
+            if (heartbeatInterval) clearInterval(heartbeatInterval);
+            heartbeatInterval = setInterval(() => {
+                if (ably && ably.connection.state === 'connected' && currentUser) {
+                    const presenceChannel = ably.channels.get('presence');
+                    presenceChannel.presence.update({ 
+                        name: currentUser.name,
+                        avatar: currentUser.avatar || '👤',
+                        bio: currentUser.bio || '',
+                        isAdmin: currentUser.isAdmin || false,
+                        dnd: currentUser.dnd || false,
+                        lastSeen: Date.now()
+                    });
+                }
+            }, 30000);
+        }
+
+        // ============================================================
+        // СОЗДАНИЕ ПУБЛИЧНОГО ЧАТА
+        // ============================================================
+        async function createPublicChat() {
+            const name = document.getElementById('chatNameInput').value.trim();
+            const password = document.getElementById('chatPasswordInput').value.trim();
+            const description = document.getElementById('chatDescriptionInput').value.trim();
+            
+            if (!name) {
+                alert('Введите название чата');
+                return;
+            }
+            
+            try {
+                const newChat = {
+                    id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
+                    name: name,
+                    description: description || '',
+                    password: password || null,
+                    created_by: currentUser.id,
+                    created_by_name: currentUser.name,
+                    members: [currentUser.id]
+                };
+                
+                const { data, error } = await supabase
+                    .from('public_chats')
+                    .insert([newChat])
+                    .select();
+                
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    const createdChat = data[0];
+                    
+                    // Добавляем в локальный список
+                    publicChats.unshift(createdChat);
+                    localStorage.setItem('publicChats', JSON.stringify(publicChats));
+                    
+                    // Оповещаем других через Ably
+                    if (ably) {
+                        const globalChatsChannel = ably.channels.get('global-chats');
+                        globalChatsChannel.publish('new-chat', createdChat);
+                    }
+                    
+                    // Присоединяемся к чату
+                    joinChat(createdChat);
+                    
+                    closeCreateChatModal();
+                }
+            } catch (error) {
+                console.error('Error creating chat:', error);
+                alert('Ошибка при создании чата');
+            }
+        }
+
+        // ============================================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================================
+        function updateProfileUI() {
+            if (!currentUser) return;
+            const nameSpan = document.getElementById('profileName');
+            if (currentUser.isAdmin) {
+                nameSpan.innerHTML = '';
+                const nameText = document.createTextNode(currentUser.name + ' ');
+                nameSpan.appendChild(nameText);
+                const badge = document.createElement('span');
+                badge.className = 'admin-badge';
+                badge.textContent = 'ADMIN';
+                nameSpan.appendChild(badge);
+            } else {
+                nameSpan.textContent = currentUser.name;
+            }
+            const statusDisplay = document.getElementById('profileStatusDisplay');
+            if (currentUser.dnd) {
+                statusDisplay.innerHTML = 'не беспокоить <span class="dnd-badge">DND</span>';
+            } else {
+                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
+            }
+            document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileBioInput').value = currentUser.bio || '';
+            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function populateEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            picker.innerHTML = '';
+            emojiList.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.className = 'emoji-btn';
+                btn.textContent = emoji;
+                btn.onclick = () => addEmoji(emoji);
+                picker.appendChild(btn);
+            });
+        }
+
+        function switchAuthMode(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const loginTab = document.getElementById('loginTabBtn');
+            const registerTab = document.getElementById('registerTabBtn');
+            if (mode === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                loginTab.className = 'auth-tab active';
+                registerTab.className = 'auth-tab';
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                loginTab.className = 'auth-tab';
+                registerTab.className = 'auth-tab active';
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tabChats').className = tab === 'chats' ? 'tab active' : 'tab';
+            document.getElementById('tabPublic').className = tab === 'public' ? 'tab active' : 'tab';
+            document.getElementById('tabUsers').className = tab === 'users' ? 'tab active' : 'tab';
+            document.getElementById('searchInput').value = '';
+            updateChatsList();
+        }
+
+        function handleSearch() {
+            updateChatsList();
+        }
+
+        function openCreateChatModal() {
+            document.getElementById('createChatModal').classList.add('active');
+        }
+
+        function closeCreateChatModal() {
+            document.getElementById('createChatModal').classList.remove('active');
+            document.getElementById('chatNameInput').value = '';
+            document.getElementById('chatPasswordInput').value = '';
+            document.getElementById('chatDescriptionInput').value = '';
+        }
+
+        function closeJoinChatModal() {
+            document.getElementById('joinChatModal').classList.remove('active');
+            document.getElementById('joinPasswordInput').value = '';
+            pendingChatToJoin = null;
+        }
+
+        function closeEditMessageModal() {
+            document.getElementById('editMessageModal').classList.remove('active');
+            document.getElementById('editMessageText').value = '';
+            messageToEdit = null;
+        }
+
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function toggleEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function addEmoji(emoji) {
+            const input = document.getElementById('messageInput');
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + emoji.length;
+            input.style.height = 'auto';
+            input.style.height = input.scrollHeight + 'px';
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function updateUrlWithChat(chat) {
+            if (chat) {
+                const newUrl = `${window.location.pathname}#${chat.id}`;
+                window.history.pushState({ chatId: chat.id }, chat.name, newUrl);
+                document.title = `${chat.name} - Ток`;
+            } else {
+                const newUrl = window.location.pathname;
+                window.history.pushState({}, 'Ток', newUrl);
+                document.title = 'Ток';
+            }
+        }
+
+        function checkUrlForChat() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                const chat = myChats.find(c => c.id === hash) || publicChats.find(c => c.id === hash);
+                if (chat) setTimeout(() => joinChat(chat), 500);
+            }
+        }
+
+        function openMedia(url) {
+            const viewer = document.getElementById('mediaViewer');
+            const content = document.getElementById('mediaViewerContent');
+            if (url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video')) {
+                content.innerHTML = `<video src="${url}" controls autoplay></video>`;
+            } else {
+                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%;">`;
+            }
+            viewer.classList.add('active');
+        }
+
+        function closeMediaViewer() {
+            document.getElementById('mediaViewer').classList.remove('active');
+            document.getElementById('mediaViewerContent').innerHTML = '';
+        }
+
+        function openProfileModal() {
+            document.getElementById('profileNameInput').value = currentUser.name;
+            document.getElementById('profileBioInput').value = currentUser.bio || '';
+            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
+            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileModal').classList.add('active');
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileModal').classList.remove('active');
+        }
+
+        async function saveProfile() {
+            const newName = document.getElementById('profileNameInput').value.trim();
+            const newBio = document.getElementById('profileBioInput').value.trim();
+            const dnd = document.getElementById('profileDNDCheckbox').checked;
+            
+            try {
+                const updates = {};
+                
+                if (newName && newName !== currentUser.name) {
+                    const { data: existingUsers } = await supabase
+                        .from('users')
+                        .select('username')
+                        .eq('username', newName)
+                        .neq('id', currentUser.id);
+                    
+                    if (existingUsers && existingUsers.length > 0) {
+                        alert('Пользователь с таким именем уже существует');
+                        return;
+                    }
+                    
+                    updates.username = newName;
+                }
+                
+                if (newBio !== currentUser.bio) {
+                    updates.bio = newBio;
+                }
+                
+                if (dnd !== currentUser.dnd) {
+                    updates.dnd = dnd;
+                }
+                
+                if (Object.keys(updates).length > 0) {
+                    const { error } = await supabase
+                        .from('users')
+                        .update(updates)
+                        .eq('id', currentUser.id);
+                    
+                    if (error) throw error;
+                }
+                
+                if (updates.username) currentUser.name = updates.username;
+                if (updates.bio !== undefined) currentUser.bio = updates.bio;
+                if (updates.dnd !== undefined) currentUser.dnd = updates.dnd;
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                if (ably) {
+                    const presenceChannel = ably.channels.get('presence');
+                    presenceChannel.presence.update({ 
+                        name: currentUser.name, 
+                        avatar: currentUser.avatar,
+                        bio: currentUser.bio,
+                        isAdmin: currentUser.isAdmin,
+                        dnd: dnd
+                    });
+                }
+                
+                updateProfileUI();
+                closeProfileModal();
+            } catch (error) {
+                console.error('Error saving profile:', error);
+                alert('Ошибка при сохранении профиля');
+            }
+        }
+
+        function openAvatarModal() {
+            const grid = document.getElementById('avatarGrid');
+            grid.innerHTML = '';
+            weirdEmojis.forEach(emoji => {
+                const div = document.createElement('div');
+                div.className = 'avatar-option';
+                div.textContent = emoji;
+                div.onclick = () => selectAvatar(emoji, div);
+                if (currentUser.avatar === emoji) div.classList.add('selected');
+                grid.appendChild(div);
+            });
+            document.getElementById('avatarModal').classList.add('active');
+        }
+
+        let selectedAvatar = null;
+        function selectAvatar(emoji, element) {
+            document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedAvatar = emoji;
+        }
+
+        async function saveAvatar() {
+            if (selectedAvatar) {
+                try {
+                    const { error } = await supabase
+                        .from('users')
+                        .update({ avatar: selectedAvatar })
+                        .eq('id', currentUser.id);
+                    
+                    if (error) throw error;
+                    
+                    currentUser.avatar = selectedAvatar;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    updateProfileUI();
+                    
+                    if (ably) {
+                        const presenceChannel = ably.channels.get('presence');
+                        presenceChannel.presence.update({ 
+                            name: currentUser.name, 
+                            avatar: selectedAvatar,
+                            bio: currentUser.bio,
+                            isAdmin: currentUser.isAdmin,
+                            dnd: currentUser.dnd
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error saving avatar:', error);
+                    alert('Ошибка при сохранении аватара');
+                }
+            }
+            closeAvatarModal();
+        }
+
+        function closeAvatarModal() {
+            document.getElementById('avatarModal').classList.remove('active');
+            selectedAvatar = null;
+        }
+
+        // ============================================================
+        // РАБОТА С ЧАТАМИ
+        // ============================================================
         function subscribeToChat(chat) {
             if (!ably) return;
             const chatChannel = ably.channels.get(`chat-${chat.id}`);
@@ -2018,608 +2561,15 @@
             }
         }
 
-        // ========== Аутентификация через Supabase ==========
-        async function login() {
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const remember = document.getElementById('rememberMe').checked;
-            
-            if (!username || !password) {
-                alert('Введите имя и пароль');
-                return;
-            }
-            
-            try {
-                const { data: users, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('username', username)
-                    .eq('password', password);
-                
-                if (error) throw error;
-                
-                if (users && users.length > 0) {
-                    const user = users[0];
-                    const isAdmin = username === ADMIN_USERNAME;
-                    
-                    currentUser = {
-                        id: user.id,
-                        name: user.username,
-                        avatar: user.avatar || '👤',
-                        bio: user.bio || '',
-                        isAdmin: isAdmin,
-                        dnd: user.dnd || false
-                    };
-                    
-                    if (remember) {
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    }
-                    
-                    myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
-                    
-                    document.getElementById('loginModal').classList.remove('active');
-                    document.getElementById('appContainer').style.display = 'flex';
-                    
-                    updateProfileUI();
-                    
-                    initAbly();
-                    startHeartbeat();
-                    checkUrlForChat();
-                } else {
-                    alert('Неверное имя пользователя или пароль');
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                alert('Ошибка при входе');
-            }
+        function saveMessagesDebounced() {
+            if (saveMessagesTimeout) clearTimeout(saveMessagesTimeout);
+            saveMessagesTimeout = setTimeout(() => {
+                localStorage.setItem('messages', JSON.stringify(messages));
+                localStorage.setItem('messageStatuses', JSON.stringify(messageStatuses));
+                localStorage.setItem('deliveredMessages', JSON.stringify(deliveredMessages));
+            }, 500);
         }
 
-        async function register() {
-            const username = document.getElementById('registerUsername').value.trim();
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('registerConfirmPassword').value;
-            const remember = document.getElementById('rememberMeRegister').checked;
-            
-            if (!username || !password) {
-                alert('Заполните все поля');
-                return;
-            }
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
-            if (password.length < 3) {
-                alert('Пароль должен быть минимум 3 символа');
-                return;
-            }
-            
-            try {
-                const { data: existingUsers, error: checkError } = await supabase
-                    .from('users')
-                    .select('username')
-                    .eq('username', username);
-                
-                if (checkError) throw checkError;
-                
-                if (existingUsers && existingUsers.length > 0) {
-                    alert('Пользователь с таким именем уже существует');
-                    return;
-                }
-                
-                const isAdmin = username === ADMIN_USERNAME;
-                const newUser = {
-                    username: username,
-                    password: password,
-                    avatar: '👤',
-                    bio: '',
-                    dnd: false,
-                    created_at: new Date().toISOString()
-                };
-                
-                const { data, error } = await supabase
-                    .from('users')
-                    .insert([newUser])
-                    .select();
-                
-                if (error) throw error;
-                
-                if (data && data.length > 0) {
-                    const user = data[0];
-                    currentUser = {
-                        id: user.id,
-                        name: user.username,
-                        avatar: user.avatar || '👤',
-                        bio: user.bio || '',
-                        isAdmin: isAdmin,
-                        dnd: false
-                    };
-                    
-                    if (remember) {
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    }
-                    
-                    document.getElementById('loginModal').classList.remove('active');
-                    document.getElementById('appContainer').style.display = 'flex';
-                    
-                    updateProfileUI();
-                    
-                    initAbly();
-                    startHeartbeat();
-                }
-            } catch (error) {
-                console.error('Registration error:', error);
-                alert('Ошибка при регистрации');
-            }
-        }
-
-        function logout() {
-            if (mediaRecorder && isRecording) {
-                stopRecording();
-            }
-            
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            
-            Object.values(audioElements).forEach(audio => {
-                if (audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                }
-            });
-            audioElements = {};
-            activeAudio = null;
-            activeAudioId = null;
-            
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-                heartbeatInterval = null;
-            }
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-            if (saveMessagesTimeout) {
-                clearTimeout(saveMessagesTimeout);
-                saveMessagesTimeout = null;
-            }
-            if (recordingTimeout) {
-                clearTimeout(recordingTimeout);
-                recordingTimeout = null;
-            }
-            
-            if (ably) {
-                try {
-                    myChats.forEach(chat => {
-                        const channel = ably.channels.get(`chat-${chat.id}`);
-                        channel.unsubscribe();
-                    });
-                    
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.leave();
-                    
-                    ably.close();
-                } catch (e) {
-                    console.error('Error closing Ably:', e);
-                }
-                ably = null;
-            }
-            
-            localStorage.removeItem('currentUser');
-            currentUser = null;
-            currentChat = null;
-            myChats = [];
-            onlineUsers = {};
-            
-            document.getElementById('appContainer').style.display = 'none';
-            document.getElementById('loginModal').classList.add('active');
-            updateUrlWithChat(null);
-            
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('registerUsername').value = '';
-            document.getElementById('registerPassword').value = '';
-            document.getElementById('registerConfirmPassword').value = '';
-        }
-
-        // ========== Отправка сообщений ==========
-        function sendMessage() {
-            if (sendBtnDisabled) {
-                alert('Слишком часто! Подождите секунду.');
-                return;
-            }
-
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-            if (!text) return;
-            
-            disableSendButton();
-
-            if (!myChats.find(c => c.id === currentChat.id)) {
-                myChats.push(currentChat);
-                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(currentChat);
-            }
-            
-            const now = new Date();
-            const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-            const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-            const timestamp = Date.now();
-            
-            messageStatuses[messageId] = { status: 'sent', sentAt: timestamp };
-            
-            const message = {
-                id: messageId,
-                chatId: currentChat.id,
-                sender: currentUser.id,
-                senderName: currentUser.name,
-                text: text,
-                time: timeString,
-                isAdmin: currentUser.isAdmin || false,
-                timestamp: timestamp,
-                status: 'sent'
-            };
-            
-            if (!messages[currentChat.id]) messages[currentChat.id] = [];
-            messages[currentChat.id].push({ ...message, type: 'out' });
-            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
-            saveMessagesDebounced();
-            
-            updateChatLastMessageTime(currentChat.id, timestamp);
-            
-            if (ably) {
-                const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                chatChannel.publish('message', message);
-            }
-            
-            input.value = '';
-            input.style.height = 'auto';
-            renderMessages(true);
-            updateChatsList();
-        }
-
-        async function sendAudioMessage(audioBlob, duration) {
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-
-            if (!myChats.find(c => c.id === currentChat.id)) {
-                myChats.push(currentChat);
-                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(currentChat);
-            }
-
-            const now = new Date();
-            const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
-            const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
-            const timestamp = Date.now();
-
-            messageStatuses[messageId] = { status: 'pending', sentAt: timestamp };
-
-            const reader = new FileReader();
-            reader.readAsDataURL(audioBlob);
-            reader.onloadend = () => {
-                const base64Audio = reader.result;
-
-                const message = {
-                    id: messageId,
-                    chatId: currentChat.id,
-                    sender: currentUser.id,
-                    senderName: currentUser.name,
-                    audio: base64Audio,
-                    duration: duration,
-                    time: timeString,
-                    isAdmin: currentUser.isAdmin || false,
-                    timestamp: timestamp,
-                    status: 'pending'
-                };
-
-                if (!messages[currentChat.id]) messages[currentChat.id] = [];
-                messages[currentChat.id].push({ ...message, type: 'out' });
-                messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-
-                saveMessagesDebounced();
-
-                updateChatLastMessageTime(currentChat.id, timestamp);
-
-                if (ably) {
-                    const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                    chatChannel.publish('message', message);
-                    
-                    setTimeout(() => {
-                        if (messageStatuses[messageId]) {
-                            messageStatuses[messageId].status = 'sent';
-                            saveMessagesDebounced();
-                            renderMessages(true);
-                        }
-                    }, 500);
-                }
-
-                renderMessages(true);
-                updateChatsList();
-            };
-        }
-
-        function disableSendButton() {
-            sendBtnDisabled = true;
-            document.getElementById('sendBtn').style.opacity = '0.5';
-            document.getElementById('sendBtn').style.pointerEvents = 'none';
-            setTimeout(() => {
-                sendBtnDisabled = false;
-                document.getElementById('sendBtn').style.opacity = '1';
-                document.getElementById('sendBtn').style.pointerEvents = 'auto';
-            }, MESSAGE_COOLDOWN);
-        }
-
-        // ========== Голосовые сообщения и аудиоплеер ==========
-        async function startRecording() {
-            if (isRecording) return;
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('Ваш браузер не поддерживает запись аудио');
-                return;
-            }
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(mediaStream);
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const duration = Math.round(audioBlob.size / 16000);
-                    
-                    if (mediaStream) {
-                        mediaStream.getTracks().forEach(track => track.stop());
-                        mediaStream = null;
-                    }
-                    
-                    if (audioBlob.size > 0) {
-                        sendAudioMessage(audioBlob, duration);
-                    }
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                document.getElementById('micBtn').classList.add('recording');
-                
-                recordingTimeout = setTimeout(() => {
-                    if (isRecording) stopRecording();
-                }, 60000);
-            } catch (err) {
-                alert('Не удалось получить доступ к микрофону');
-                console.error(err);
-            }
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                document.getElementById('micBtn').classList.remove('recording');
-                if (recordingTimeout) {
-                    clearTimeout(recordingTimeout);
-                    recordingTimeout = null;
-                }
-            }
-        }
-
-        function toggleAudio(messageId, audioSrc) {
-            if (activeAudioId === messageId && activeAudio) {
-                if (!activeAudio.paused) {
-                    activeAudio.pause();
-                } else {
-                    activeAudio.play().catch(e => console.error('Play failed:', e));
-                }
-                return;
-            }
-            
-            if (activeAudio) {
-                activeAudio.pause();
-                activeAudio.currentTime = 0;
-                updateAudioButton(activeAudioId, false);
-            }
-            
-            if (!audioElements[messageId]) {
-                audioElements[messageId] = new Audio(audioSrc);
-                audioElements[messageId].addEventListener('timeupdate', () => updateAudioProgress(messageId));
-                audioElements[messageId].addEventListener('ended', () => {
-                    updateAudioButton(messageId, false);
-                    updateAudioProgress(messageId);
-                });
-                audioElements[messageId].addEventListener('pause', () => updateAudioButton(messageId, false));
-                audioElements[messageId].addEventListener('play', () => updateAudioButton(messageId, true));
-            }
-            
-            activeAudio = audioElements[messageId];
-            activeAudioId = messageId;
-            
-            activeAudio.play().catch(e => console.error('Play failed:', e));
-        }
-
-        function updateAudioButton(messageId, isPlaying) {
-            const btn = document.querySelector(`.play-pause-btn[data-message-id="${messageId}"]`);
-            if (btn) {
-                btn.textContent = isPlaying ? '⏸️' : '▶️';
-            }
-        }
-
-        function updateAudioProgress(messageId) {
-            const audio = audioElements[messageId];
-            if (!audio) return;
-            
-            const progressFill = document.querySelector(`.audio-progress-fill[data-message-id="${messageId}"]`);
-            const timeDisplay = document.querySelector(`.audio-time[data-message-id="${messageId}"]`);
-            
-            if (progressFill) {
-                const percent = (audio.currentTime / audio.duration) * 100 || 0;
-                progressFill.style.width = percent + '%';
-            }
-            
-            if (timeDisplay) {
-                const current = formatTime(audio.currentTime);
-                const total = formatTime(audio.duration);
-                timeDisplay.textContent = `${current}/${total}`;
-            }
-        }
-
-        function seekAudio(messageId, event) {
-            const audio = audioElements[messageId];
-            if (!audio) return;
-            
-            const progressBar = event.currentTarget;
-            const rect = progressBar.getBoundingClientRect();
-            const clickX = event.clientX - rect.left;
-            const percent = clickX / rect.width;
-            audio.currentTime = percent * audio.duration;
-        }
-
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return '0:00';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs.toString().padStart(2, '0')}`;
-        }
-
-        function getStatusIcon(status) {
-            switch(status) {
-                case 'pending': return '⏳';
-                case 'sent': return '✓';
-                case 'delivered': return '✓✓';
-                case 'read': return '✓✓';
-                default: return '';
-            }
-        }
-
-        function getStatusClass(status) {
-            switch(status) {
-                case 'pending': return 'status-pending';
-                case 'sent': return 'status-sent';
-                case 'delivered': return 'status-delivered';
-                case 'read': return 'status-read';
-                default: return '';
-            }
-        }
-
-        // ========== Рендер сообщений ==========
-        function renderMessages(animate = true) {
-            const container = document.getElementById('messagesContainer');
-            if (!container) return;
-            
-            const oldScrollHeight = container.scrollHeight;
-            const oldScrollTop = container.scrollTop;
-            const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
-            
-            container.innerHTML = '';
-            
-            if (!currentChat) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 40px;">👈 Выберите чат</div>';
-                return;
-            }
-            
-            if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 40px;">Нет сообщений. Напишите что-нибудь!</div>';
-                return;
-            }
-            
-            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
-            const fragment = document.createDocumentFragment();
-            
-            messages[currentChat.id].forEach(msg => {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = `message ${msg.type}`;
-                if (!animate) messageDiv.style.animation = 'none';
-                messageDiv.setAttribute('data-id', msg.id);
-                
-                let content = '';
-                let statusHtml = '';
-                
-                const status = messageStatuses[msg.id] || { status: msg.sender === currentUser.id ? 'sent' : 'delivered' };
-                
-                if (msg.type === 'out') {
-                    statusHtml = `<span class="message-status ${getStatusClass(status.status)}"><span class="status-icon">${getStatusIcon(status.status)}</span></span>`;
-                }
-                
-                if (msg.text) {
-                    content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
-                } else if (msg.audio) {
-                    const messageId = msg.id;
-                    const duration = msg.duration || 0;
-                    
-                    content = `
-                        <div class="message-bubble audio-message">
-                            <div class="audio-player">
-                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="window.toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
-                                <div class="audio-progress" onclick="window.seekAudio('${messageId}', event)">
-                                    <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
-                                </div>
-                                <span class="audio-time" data-message-id="${messageId}">0:00/${formatTime(duration)}</span>
-                            </div>
-                        </div>
-                    `;
-                } else if (msg.media) {
-                    if (msg.media.type.startsWith('image/')) {
-                        content = `<img src="${msg.media.url}" class="message-media" onclick="window.openMedia('${msg.media.url}')">`;
-                    } else if (msg.media.type.startsWith('video/')) {
-                        content = `<video src="${msg.media.url}" class="message-media" controls onclick="event.stopPropagation()"></video>`;
-                    }
-                }
-                
-                let actions = '';
-                if (msg.sender === currentUser.id || (currentUser && currentUser.isAdmin)) {
-                    actions = `
-                        <div class="message-actions">
-                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="window.editMessage('${msg.id}', event)">✏️</button>` : ''}
-                            <button class="message-action-btn" onclick="window.deleteMessage('${msg.id}', event)">🗑️</button>
-                        </div>
-                    `;
-                }
-                
-                const showAdminBadge = msg.isAdmin && msg.senderName === ADMIN_USERNAME;
-                
-                messageDiv.innerHTML = `
-                    ${actions}
-                    ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>` : ''}
-                    ${content}
-                    <div class="message-footer">
-                        <span class="message-time">${msg.time}</span>
-                        ${statusHtml}
-                    </div>
-                `;
-                
-                fragment.appendChild(messageDiv);
-            });
-            
-            container.appendChild(fragment);
-            
-            if (isAtBottom) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: animate ? 'smooth' : 'auto'
-                });
-            }
-            
-            if (currentChat) {
-                markMessagesAsRead(currentChat.id);
-            }
-        }
-
-        // ========== Управление чатами и списком ==========
         function updateChatsList() {
             const list = document.getElementById('chatsList');
             if (!list) return;
@@ -2830,6 +2780,18 @@
             if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('active');
         }
 
+        function joinProtectedChat() {
+            const password = document.getElementById('joinPasswordInput').value;
+            if (pendingChatToJoin && password === pendingChatToJoin.password) {
+                if (!pendingChatToJoin.members) pendingChatToJoin.members = [];
+                pendingChatToJoin.members.push(currentUser.id);
+                joinChat(pendingChatToJoin);
+                closeJoinChatModal();
+            } else {
+                alert('Неверный пароль');
+            }
+        }
+
         function createPrivateChat(user) {
             const chatId = [currentUser.id, user.id].sort().join('-');
             let privateChat = myChats.find(c => c.id === chatId);
@@ -2875,47 +2837,408 @@
             updateChatsList();
         }
 
-        function joinProtectedChat() {
-            const password = document.getElementById('joinPasswordInput').value;
-            if (pendingChatToJoin && password === pendingChatToJoin.password) {
-                if (!pendingChatToJoin.members) pendingChatToJoin.members = [];
-                pendingChatToJoin.members.push(currentUser.id);
-                joinChat(pendingChatToJoin);
-                closeJoinChatModal();
-            } else {
-                alert('Неверный пароль');
-            }
-        }
-
-        function createPublicChat() {
-            const name = document.getElementById('chatNameInput').value.trim();
-            const password = document.getElementById('chatPasswordInput').value.trim();
-            const description = document.getElementById('chatDescriptionInput').value.trim();
-            if (!name) {
-                alert('Введите название чата');
+        // ============================================================
+        // ОТПРАВКА СООБЩЕНИЙ
+        // ============================================================
+        function sendMessage() {
+            if (sendBtnDisabled) {
+                alert('Слишком часто! Подождите секунду.');
                 return;
             }
-            const newChat = {
-                id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
-                name: name,
-                description: description || '',
-                password: password || null,
-                createdBy: currentUser.id,
-                createdByName: currentUser.name,
-                members: [currentUser.id],
-                createdAt: new Date().toISOString()
-            };
-            publicChats.push(newChat);
-            localStorage.setItem('publicChats', JSON.stringify(publicChats));
-            if (ably) {
-                const globalChatsChannel = ably.channels.get('global-chats');
-                globalChatsChannel.publish('new-chat', newChat);
+
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            
+            if (!currentChat) {
+                alert('Сначала выберите чат');
+                return;
             }
-            joinChat(newChat);
-            closeCreateChatModal();
+            if (!text) return;
+            
+            disableSendButton();
+
+            if (!myChats.find(c => c.id === currentChat.id)) {
+                myChats.push(currentChat);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                if (ably) subscribeToChat(currentChat);
+            }
+            
+            const now = new Date();
+            const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+            const timestamp = Date.now();
+            
+            messageStatuses[messageId] = { status: 'sent', sentAt: timestamp };
+            
+            const message = {
+                id: messageId,
+                chatId: currentChat.id,
+                sender: currentUser.id,
+                senderName: currentUser.name,
+                text: text,
+                time: timeString,
+                isAdmin: currentUser.isAdmin || false,
+                timestamp: timestamp,
+                status: 'sent'
+            };
+            
+            if (!messages[currentChat.id]) messages[currentChat.id] = [];
+            messages[currentChat.id].push({ ...message, type: 'out' });
+            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            saveMessagesDebounced();
+            
+            updateChatLastMessageTime(currentChat.id, timestamp);
+            
+            if (ably) {
+                const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
+                chatChannel.publish('message', message);
+            }
+            
+            input.value = '';
+            input.style.height = 'auto';
+            renderMessages(true);
+            updateChatsList();
         }
 
-        // ========== Редактирование/удаление сообщений ==========
+        function disableSendButton() {
+            sendBtnDisabled = true;
+            document.getElementById('sendBtn').style.opacity = '0.5';
+            document.getElementById('sendBtn').style.pointerEvents = 'none';
+            setTimeout(() => {
+                sendBtnDisabled = false;
+                document.getElementById('sendBtn').style.opacity = '1';
+                document.getElementById('sendBtn').style.pointerEvents = 'auto';
+            }, MESSAGE_COOLDOWN);
+        }
+
+        // ============================================================
+        // ГОЛОСОВЫЕ СООБЩЕНИЯ
+        // ============================================================
+        async function startRecording() {
+            if (isRecording) return;
+            if (!currentChat) {
+                alert('Сначала выберите чат');
+                return;
+            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Ваш браузер не поддерживает запись аудио');
+                return;
+            }
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(mediaStream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const duration = Math.round(audioBlob.size / 16000);
+                    
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(track => track.stop());
+                        mediaStream = null;
+                    }
+                    
+                    if (audioBlob.size > 0) {
+                        sendAudioMessage(audioBlob, duration);
+                    }
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                document.getElementById('micBtn').classList.add('recording');
+                
+                recordingTimeout = setTimeout(() => {
+                    if (isRecording) stopRecording();
+                }, 60000);
+            } catch (err) {
+                alert('Не удалось получить доступ к микрофону');
+                console.error(err);
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                document.getElementById('micBtn').classList.remove('recording');
+                if (recordingTimeout) {
+                    clearTimeout(recordingTimeout);
+                    recordingTimeout = null;
+                }
+            }
+        }
+
+        async function sendAudioMessage(audioBlob, duration) {
+            if (!currentChat) {
+                alert('Сначала выберите чат');
+                return;
+            }
+
+            if (!myChats.find(c => c.id === currentChat.id)) {
+                myChats.push(currentChat);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                if (ably) subscribeToChat(currentChat);
+            }
+
+            const now = new Date();
+            const timeString = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+            const timestamp = Date.now();
+
+            messageStatuses[messageId] = { status: 'pending', sentAt: timestamp };
+
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = () => {
+                const base64Audio = reader.result;
+
+                const message = {
+                    id: messageId,
+                    chatId: currentChat.id,
+                    sender: currentUser.id,
+                    senderName: currentUser.name,
+                    audio: base64Audio,
+                    duration: duration,
+                    time: timeString,
+                    isAdmin: currentUser.isAdmin || false,
+                    timestamp: timestamp,
+                    status: 'pending'
+                };
+
+                if (!messages[currentChat.id]) messages[currentChat.id] = [];
+                messages[currentChat.id].push({ ...message, type: 'out' });
+                messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                saveMessagesDebounced();
+
+                updateChatLastMessageTime(currentChat.id, timestamp);
+
+                if (ably) {
+                    const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
+                    chatChannel.publish('message', message);
+                    
+                    setTimeout(() => {
+                        if (messageStatuses[messageId]) {
+                            messageStatuses[messageId].status = 'sent';
+                            saveMessagesDebounced();
+                            renderMessages(true);
+                        }
+                    }, 500);
+                }
+
+                renderMessages(true);
+                updateChatsList();
+            };
+        }
+
+        // ============================================================
+        // АУДИОПЛЕЕР
+        // ============================================================
+        function toggleAudio(messageId, audioSrc) {
+            if (activeAudioId === messageId && activeAudio) {
+                if (!activeAudio.paused) {
+                    activeAudio.pause();
+                } else {
+                    activeAudio.play().catch(e => console.error('Play failed:', e));
+                }
+                return;
+            }
+            
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio.currentTime = 0;
+                updateAudioButton(activeAudioId, false);
+            }
+            
+            if (!audioElements[messageId]) {
+                audioElements[messageId] = new Audio(audioSrc);
+                audioElements[messageId].addEventListener('timeupdate', () => updateAudioProgress(messageId));
+                audioElements[messageId].addEventListener('ended', () => {
+                    updateAudioButton(messageId, false);
+                    updateAudioProgress(messageId);
+                });
+                audioElements[messageId].addEventListener('pause', () => updateAudioButton(messageId, false));
+                audioElements[messageId].addEventListener('play', () => updateAudioButton(messageId, true));
+            }
+            
+            activeAudio = audioElements[messageId];
+            activeAudioId = messageId;
+            
+            activeAudio.play().catch(e => console.error('Play failed:', e));
+        }
+
+        function updateAudioButton(messageId, isPlaying) {
+            const btn = document.querySelector(`.play-pause-btn[data-message-id="${messageId}"]`);
+            if (btn) {
+                btn.textContent = isPlaying ? '⏸️' : '▶️';
+            }
+        }
+
+        function updateAudioProgress(messageId) {
+            const audio = audioElements[messageId];
+            if (!audio) return;
+            
+            const progressFill = document.querySelector(`.audio-progress-fill[data-message-id="${messageId}"]`);
+            const timeDisplay = document.querySelector(`.audio-time[data-message-id="${messageId}"]`);
+            
+            if (progressFill) {
+                const percent = (audio.currentTime / audio.duration) * 100 || 0;
+                progressFill.style.width = percent + '%';
+            }
+            
+            if (timeDisplay) {
+                const current = formatTime(audio.currentTime);
+                const total = formatTime(audio.duration);
+                timeDisplay.textContent = `${current}/${total}`;
+            }
+        }
+
+        function seekAudio(messageId, event) {
+            const audio = audioElements[messageId];
+            if (!audio) return;
+            
+            const progressBar = event.currentTarget;
+            const rect = progressBar.getBoundingClientRect();
+            const clickX = event.clientX - rect.left;
+            const percent = clickX / rect.width;
+            audio.currentTime = percent * audio.duration;
+        }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ============================================================
+        // РЕНДЕР СООБЩЕНИЙ
+        // ============================================================
+        function renderMessages(animate = true) {
+            const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
+            const oldScrollHeight = container.scrollHeight;
+            const oldScrollTop = container.scrollTop;
+            const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
+            
+            container.innerHTML = '';
+            
+            if (!currentChat) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 40px;">👈 Выберите чат</div>';
+                return;
+            }
+            
+            if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 40px;">Нет сообщений. Напишите что-нибудь!</div>';
+                return;
+            }
+            
+            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            
+            const fragment = document.createDocumentFragment();
+            
+            messages[currentChat.id].forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.type}`;
+                if (!animate) messageDiv.style.animation = 'none';
+                messageDiv.setAttribute('data-id', msg.id);
+                
+                let content = '';
+                let statusHtml = '';
+                
+                const status = messageStatuses[msg.id] || { status: msg.sender === currentUser.id ? 'sent' : 'delivered' };
+                
+                function getStatusIcon(status) {
+                    switch(status) {
+                        case 'pending': return '⏳';
+                        case 'sent': return '✓';
+                        case 'delivered': return '✓✓';
+                        case 'read': return '✓✓';
+                        default: return '';
+                    }
+                }
+
+                function getStatusClass(status) {
+                    switch(status) {
+                        case 'pending': return 'status-pending';
+                        case 'sent': return 'status-sent';
+                        case 'delivered': return 'status-delivered';
+                        case 'read': return 'status-read';
+                        default: return '';
+                    }
+                }
+                
+                if (msg.type === 'out') {
+                    statusHtml = `<span class="message-status ${getStatusClass(status.status)}"><span class="status-icon">${getStatusIcon(status.status)}</span></span>`;
+                }
+                
+                if (msg.text) {
+                    content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
+                } else if (msg.audio) {
+                    const messageId = msg.id;
+                    const duration = msg.duration || 0;
+                    
+                    content = `
+                        <div class="message-bubble audio-message">
+                            <div class="audio-player">
+                                <button class="play-pause-btn" data-message-id="${messageId}" onclick="window.toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
+                                <div class="audio-progress" onclick="window.seekAudio('${messageId}', event)">
+                                    <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
+                                </div>
+                                <span class="audio-time" data-message-id="${messageId}">0:00/${formatTime(duration)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                let actions = '';
+                if (msg.sender === currentUser.id || (currentUser && currentUser.isAdmin)) {
+                    actions = `
+                        <div class="message-actions">
+                            ${msg.sender === currentUser.id ? `<button class="message-action-btn" onclick="window.editMessage('${msg.id}', event)">✏️</button>` : ''}
+                            <button class="message-action-btn" onclick="window.deleteMessage('${msg.id}', event)">🗑️</button>
+                        </div>
+                    `;
+                }
+                
+                const showAdminBadge = msg.isAdmin && msg.senderName === ADMIN_USERNAME;
+                
+                messageDiv.innerHTML = `
+                    ${actions}
+                    ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>` : ''}
+                    ${content}
+                    <div class="message-footer">
+                        <span class="message-time">${msg.time}</span>
+                        ${statusHtml}
+                    </div>
+                `;
+                
+                fragment.appendChild(messageDiv);
+            });
+            
+            container.appendChild(fragment);
+            
+            if (isAtBottom) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: animate ? 'smooth' : 'auto'
+                });
+            }
+            
+            if (currentChat) {
+                markMessagesAsRead(currentChat.id);
+            }
+        }
+
+        // ============================================================
+        // РЕДАКТИРОВАНИЕ/УДАЛЕНИЕ СООБЩЕНИЙ
+        // ============================================================
         function deleteMessage(messageId, event) {
             if (event) {
                 event.stopPropagation();
@@ -2988,266 +3311,9 @@
             }
         }
 
-        // ========== Профиль и аватар ==========
-        function openProfileModal() {
-            document.getElementById('profileNameInput').value = currentUser.name;
-            document.getElementById('profileBioInput').value = currentUser.bio || '';
-            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
-            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileModal').classList.add('active');
-        }
-
-        function closeProfileModal() {
-            document.getElementById('profileModal').classList.remove('active');
-        }
-
-        async function saveProfile() {
-            const newName = document.getElementById('profileNameInput').value.trim();
-            const newBio = document.getElementById('profileBioInput').value.trim();
-            const dnd = document.getElementById('profileDNDCheckbox').checked;
-            
-            try {
-                const updates = {};
-                
-                if (newName && newName !== currentUser.name) {
-                    const { data: existingUsers } = await supabase
-                        .from('users')
-                        .select('username')
-                        .eq('username', newName)
-                        .neq('id', currentUser.id);
-                    
-                    if (existingUsers && existingUsers.length > 0) {
-                        alert('Пользователь с таким именем уже существует');
-                        return;
-                    }
-                    
-                    updates.username = newName;
-                }
-                
-                if (newBio !== currentUser.bio) {
-                    updates.bio = newBio;
-                }
-                
-                if (dnd !== currentUser.dnd) {
-                    updates.dnd = dnd;
-                }
-                
-                if (Object.keys(updates).length > 0) {
-                    const { error } = await supabase
-                        .from('users')
-                        .update(updates)
-                        .eq('id', currentUser.id);
-                    
-                    if (error) throw error;
-                }
-                
-                if (updates.username) currentUser.name = updates.username;
-                if (updates.bio !== undefined) currentUser.bio = updates.bio;
-                if (updates.dnd !== undefined) currentUser.dnd = updates.dnd;
-                
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
-                if (ably) {
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.update({ 
-                        name: currentUser.name, 
-                        avatar: currentUser.avatar,
-                        bio: currentUser.bio,
-                        isAdmin: currentUser.isAdmin,
-                        dnd: dnd
-                    });
-                }
-                
-                updateProfileUI();
-                closeProfileModal();
-            } catch (error) {
-                console.error('Error saving profile:', error);
-                alert('Ошибка при сохранении профиля');
-            }
-        }
-
-        function openAvatarModal() {
-            const grid = document.getElementById('avatarGrid');
-            grid.innerHTML = '';
-            weirdEmojis.forEach(emoji => {
-                const div = document.createElement('div');
-                div.className = 'avatar-option';
-                div.textContent = emoji;
-                div.onclick = () => selectAvatar(emoji, div);
-                if (currentUser.avatar === emoji) div.classList.add('selected');
-                grid.appendChild(div);
-            });
-            document.getElementById('avatarModal').classList.add('active');
-        }
-
-        let selectedAvatar = null;
-        function selectAvatar(emoji, element) {
-            document.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
-            element.classList.add('selected');
-            selectedAvatar = emoji;
-        }
-
-        async function saveAvatar() {
-            if (selectedAvatar) {
-                try {
-                    const { error } = await supabase
-                        .from('users')
-                        .update({ avatar: selectedAvatar })
-                        .eq('id', currentUser.id);
-                    
-                    if (error) throw error;
-                    
-                    currentUser.avatar = selectedAvatar;
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    updateProfileUI();
-                    
-                    if (ably) {
-                        const presenceChannel = ably.channels.get('presence');
-                        presenceChannel.presence.update({ 
-                            name: currentUser.name, 
-                            avatar: selectedAvatar,
-                            bio: currentUser.bio,
-                            isAdmin: currentUser.isAdmin,
-                            dnd: currentUser.dnd
-                        });
-                    }
-                } catch (error) {
-                    console.error('Error saving avatar:', error);
-                    alert('Ошибка при сохранении аватара');
-                }
-            }
-            closeAvatarModal();
-        }
-
-        function closeAvatarModal() {
-            document.getElementById('avatarModal').classList.remove('active');
-            selectedAvatar = null;
-        }
-
-        // ========== Вспомогательные функции ==========
-        function switchAuthMode(mode) {
-            const loginForm = document.getElementById('loginForm');
-            const registerForm = document.getElementById('registerForm');
-            const loginTab = document.getElementById('loginTabBtn');
-            const registerTab = document.getElementById('registerTabBtn');
-            if (mode === 'login') {
-                loginForm.style.display = 'block';
-                registerForm.style.display = 'none';
-                loginTab.className = 'auth-tab active';
-                registerTab.className = 'auth-tab';
-            } else {
-                loginForm.style.display = 'none';
-                registerForm.style.display = 'block';
-                loginTab.className = 'auth-tab';
-                registerTab.className = 'auth-tab active';
-            }
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tabChats').className = tab === 'chats' ? 'tab active' : 'tab';
-            document.getElementById('tabPublic').className = tab === 'public' ? 'tab active' : 'tab';
-            document.getElementById('tabUsers').className = tab === 'users' ? 'tab active' : 'tab';
-            document.getElementById('searchInput').value = '';
-            updateChatsList();
-        }
-
-        function handleSearch() {
-            updateChatsList();
-        }
-
-        function openCreateChatModal() {
-            document.getElementById('createChatModal').classList.add('active');
-        }
-
-        function closeCreateChatModal() {
-            document.getElementById('createChatModal').classList.remove('active');
-            document.getElementById('chatNameInput').value = '';
-            document.getElementById('chatPasswordInput').value = '';
-            document.getElementById('chatDescriptionInput').value = '';
-        }
-
-        function closeJoinChatModal() {
-            document.getElementById('joinChatModal').classList.remove('active');
-            document.getElementById('joinPasswordInput').value = '';
-            pendingChatToJoin = null;
-        }
-
-        function closeEditMessageModal() {
-            document.getElementById('editMessageModal').classList.remove('active');
-            document.getElementById('editMessageText').value = '';
-            messageToEdit = null;
-        }
-
-        function togglePassword(inputId) {
-            const input = document.getElementById(inputId);
-            input.type = input.type === 'password' ? 'text' : 'password';
-        }
-
-        function toggleEmojiPicker() {
-            const picker = document.getElementById('emojiPicker');
-            picker.style.display = picker.style.display === 'none' ? 'flex' : 'none';
-        }
-
-        function addEmoji(emoji) {
-            const input = document.getElementById('messageInput');
-            const start = input.selectionStart;
-            const end = input.selectionEnd;
-            input.value = input.value.substring(0, start) + emoji + input.value.substring(end);
-            input.focus();
-            input.selectionStart = input.selectionEnd = start + emoji.length;
-            input.style.height = 'auto';
-            input.style.height = input.scrollHeight + 'px';
-        }
-
-        function handleKeyPress(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        }
-
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-        }
-
-        function updateUrlWithChat(chat) {
-            if (chat) {
-                const newUrl = `${window.location.pathname}#${chat.id}`;
-                window.history.pushState({ chatId: chat.id }, chat.name, newUrl);
-                document.title = `${chat.name} - Ток`;
-            } else {
-                const newUrl = window.location.pathname;
-                window.history.pushState({}, 'Ток', newUrl);
-                document.title = 'Ток';
-            }
-        }
-
-        function checkUrlForChat() {
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                const chat = myChats.find(c => c.id === hash) || publicChats.find(c => c.id === hash);
-                if (chat) setTimeout(() => joinChat(chat), 500);
-            }
-        }
-
-        function openMedia(url) {
-            const viewer = document.getElementById('mediaViewer');
-            const content = document.getElementById('mediaViewerContent');
-            if (url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video')) {
-                content.innerHTML = `<video src="${url}" controls autoplay></video>`;
-            } else {
-                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%;">`;
-            }
-            viewer.classList.add('active');
-        }
-
-        function closeMediaViewer() {
-            document.getElementById('mediaViewer').classList.remove('active');
-            document.getElementById('mediaViewerContent').innerHTML = '';
-        }
-
-        // Привязываем все функции к объекту window для доступа из HTML
+        // ============================================================
+        // ЭКСПОРТ ФУНКЦИЙ В ГЛОБАЛЬНУЮ ОБЛАСТЬ
+        // ============================================================
         window.login = login;
         window.register = register;
         window.logout = logout;
@@ -3282,7 +3348,9 @@
         window.toggleAudio = toggleAudio;
         window.seekAudio = seekAudio;
 
-        // Обработчики событий
+        // ============================================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ
+        // ============================================================
         window.addEventListener('popstate', function(event) {
             const hash = window.location.hash.substring(1);
             if (hash) {
