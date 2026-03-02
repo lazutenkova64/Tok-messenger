@@ -1231,53 +1231,100 @@
             font-size: 16px;
         }
 
-        /* Аудио сообщения */
+        /* Аудио сообщения - современный дизайн */
         .audio-player {
             display: flex;
             align-items: center;
-            gap: 10px;
-            min-width: 200px;
+            gap: 12px;
+            min-width: 220px;
+            padding: 4px 0;
         }
 
         .play-pause-btn {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background-color: var(--accent-blue);
             border: none;
             color: white;
-            font-size: 16px;
+            font-size: 18px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .play-pause-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.4);
         }
 
         .play-pause-btn:active {
-            opacity: 0.8;
+            transform: scale(0.95);
         }
 
-        .audio-progress {
+        .audio-progress-container {
             flex: 1;
-            height: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .audio-progress-bar {
+            width: 100%;
+            height: 6px;
             background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 2px;
+            border-radius: 3px;
             cursor: pointer;
             position: relative;
+            overflow: hidden;
         }
 
         .audio-progress-fill {
             height: 100%;
-            background-color: white;
-            border-radius: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), #5ca5ff);
+            border-radius: 3px;
             width: 0%;
+            transition: width 0.1s linear;
         }
 
-        .audio-time {
-            font-size: 12px;
+        .audio-time-container {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
             color: var(--text-secondary);
-            min-width: 45px;
+        }
+
+        .audio-current-time, .audio-duration {
+            font-family: monospace;
+        }
+
+        .audio-waveform {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            height: 24px;
+        }
+
+        .audio-waveform span {
+            width: 3px;
+            height: 100%;
+            background-color: var(--accent-blue);
+            border-radius: 1.5px;
+            animation: waveform 1s ease-in-out infinite;
+        }
+
+        .audio-waveform span:nth-child(2) { animation-delay: 0.2s; }
+        .audio-waveform span:nth-child(3) { animation-delay: 0.4s; }
+        .audio-waveform span:nth-child(4) { animation-delay: 0.3s; }
+        .audio-waveform span:nth-child(5) { animation-delay: 0.1s; }
+
+        @keyframes waveform {
+            0%, 100% { transform: scaleY(0.5); }
+            50% { transform: scaleY(1); }
         }
 
         /* Профиль пользователя */
@@ -1370,6 +1417,10 @@
                 display: flex !important;
                 padding: 8px 10px;
             }
+
+            .audio-player {
+                min-width: 180px;
+            }
         }
 
         /* Адаптация для очень маленьких экранов */
@@ -1396,6 +1447,10 @@
             
             .message {
                 max-width: 90%;
+            }
+
+            .audio-player {
+                min-width: 150px;
             }
         }
 
@@ -1663,6 +1718,7 @@
         let activeAudio = null;
         let activeAudioId = null;
         let audioElements = {};
+        let audioUpdateInterval = null;
 
         // Таймеры и debounce
         let saveMessagesTimeout;
@@ -1749,9 +1805,22 @@
                 // Периодически проверяем видимость поля ввода
                 setInterval(forceShowInput, 1000);
                 
+                // Запускаем проверку непрочитанных сообщений
+                startUnreadCheck();
+                
             } catch (err) {
                 console.error('Init error:', err);
             }
+        }
+
+        // ========== Проверка непрочитанных сообщений ==========
+        function startUnreadCheck() {
+            setInterval(async () => {
+                if (currentUser) {
+                    await loadUnreadCounts();
+                    updateChatsList();
+                }
+            }, 5000);
         }
 
         // ========== Принудительное отображение поля ввода ==========
@@ -2328,7 +2397,10 @@
                 if (deletedMessages[chat.id] && deletedMessages[chat.id].includes(msg.id)) return;
                 
                 // Сохраняем в БД даже если пользователь не в сети
-                saveMessageToDatabase(msg);
+                saveMessageToDatabase(msg).then(() => {
+                    // После сохранения загружаем историю
+                    loadChatHistory(chat.id);
+                });
                 
                 if (!messages[chat.id]) messages[chat.id] = [];
                 
@@ -2530,6 +2602,8 @@
                 
                 if (error) {
                     console.error('❌ Ошибка сохранения в БД:', error);
+                } else {
+                    console.log('✅ Сообщение сохранено в БД:', message.id);
                 }
             } catch (err) {
                 console.error('❌ Критическая ошибка при сохранении:', err);
@@ -2573,6 +2647,15 @@
                                 ...msg,
                                 type: msg.sender_id == currentUser.id ? 'out' : 'in'
                             });
+                            
+                            // Обновляем статус для своих сообщений
+                            if (msg.sender_id == currentUser.id) {
+                                messageStatuses[msg.id] = {
+                                    status: msg.read ? 'read' : (msg.delivered ? 'delivered' : 'sent'),
+                                    deliveredAt: msg.delivered ? msg.delivered_at : null,
+                                    readAt: msg.read ? msg.read_at : null
+                                };
+                            }
                         }
                     });
                     
@@ -2780,7 +2863,8 @@
                             mediaStream = null;
                         }
                         
-                        if (audioBlob.size > 0 && duration > 1) {
+                        // Отправляем даже очень короткие сообщения (от 0.1 секунды)
+                        if (audioBlob.size > 0 && duration > 0.1) {
                             sendAudioMessage(audioBlob, duration);
                         }
                         
@@ -3085,6 +3169,11 @@
             activeAudio = null;
             activeAudioId = null;
             
+            if (audioUpdateInterval) {
+                clearInterval(audioUpdateInterval);
+                audioUpdateInterval = null;
+            }
+            
             // Обновляем last_seen перед выходом
             await updateUserLastSeen();
             
@@ -3192,7 +3281,13 @@
             };
             
             // Сохраняем в БД
-            saveMessageToDatabase(message);
+            saveMessageToDatabase(message).then(() => {
+                // После сохранения отправляем через Ably
+                if (ably && !currentChat.isSelf) {
+                    const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
+                    chatChannel.publish('message', message);
+                }
+            });
             
             // Добавляем в локальные сообщения
             if (!messages[currentChat.id]) messages[currentChat.id] = [];
@@ -3205,12 +3300,6 @@
             saveMessagesDebounced();
             
             updateChatLastMessageTime(currentChat.id, timestamp);
-            
-            // Отправляем через Ably (даже если пользователь не в сети, сообщение сохранится в БД)
-            if (ably && !currentChat.isSelf) {
-                const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                chatChannel.publish('message', message);
-            }
             
             // Обновляем статус на "отправлено" через небольшую задержку
             setTimeout(() => {
@@ -3268,7 +3357,12 @@
                     read: false
                 };
 
-                saveMessageToDatabase(message);
+                saveMessageToDatabase(message).then(() => {
+                    if (ably && !currentChat.isSelf) {
+                        const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
+                        chatChannel.publish('message', message);
+                    }
+                });
 
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
                 messages[currentChat.id].push({ ...message, type: 'out' });
@@ -3279,18 +3373,13 @@
 
                 updateChatLastMessageTime(currentChat.id, timestamp);
 
-                if (ably && !currentChat.isSelf) {
-                    const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                    chatChannel.publish('message', message);
-                    
-                    setTimeout(() => {
-                        if (messageStatuses[messageId]) {
-                            messageStatuses[messageId].status = 'sent';
-                            saveMessagesDebounced();
-                            renderMessages();
-                        }
-                    }, 300);
-                }
+                setTimeout(() => {
+                    if (messageStatuses[messageId]) {
+                        messageStatuses[messageId].status = 'sent';
+                        saveMessagesDebounced();
+                        renderMessages();
+                    }
+                }, 300);
 
                 renderMessages();
                 updateChatsList();
@@ -3314,6 +3403,7 @@
                     activeAudio.pause();
                 } else {
                     activeAudio.play().catch(e => console.error('Play failed:', e));
+                    startAudioProgressUpdate(messageId);
                 }
                 return;
             }
@@ -3322,6 +3412,7 @@
                 activeAudio.pause();
                 activeAudio.currentTime = 0;
                 updateAudioButton(activeAudioId, false);
+                stopAudioProgressUpdate();
             }
             
             if (!audioElements[messageId]) {
@@ -3330,21 +3421,44 @@
                 audioElements[messageId].addEventListener('ended', () => {
                     updateAudioButton(messageId, false);
                     updateAudioProgress(messageId);
+                    stopAudioProgressUpdate();
                 });
-                audioElements[messageId].addEventListener('pause', () => updateAudioButton(messageId, false));
-                audioElements[messageId].addEventListener('play', () => updateAudioButton(messageId, true));
+                audioElements[messageId].addEventListener('pause', () => {
+                    updateAudioButton(messageId, false);
+                    stopAudioProgressUpdate();
+                });
+                audioElements[messageId].addEventListener('play', () => {
+                    updateAudioButton(messageId, true);
+                    startAudioProgressUpdate(messageId);
+                });
             }
             
             activeAudio = audioElements[messageId];
             activeAudioId = messageId;
             
             activeAudio.play().catch(e => console.error('Play failed:', e));
+            startAudioProgressUpdate(messageId);
+        }
+
+        function startAudioProgressUpdate(messageId) {
+            if (audioUpdateInterval) clearInterval(audioUpdateInterval);
+            audioUpdateInterval = setInterval(() => {
+                updateAudioProgress(messageId);
+            }, 100);
+        }
+
+        function stopAudioProgressUpdate() {
+            if (audioUpdateInterval) {
+                clearInterval(audioUpdateInterval);
+                audioUpdateInterval = null;
+            }
         }
 
         function updateAudioButton(messageId, isPlaying) {
             const btn = document.querySelector(`.play-pause-btn[data-message-id="${messageId}"]`);
             if (btn) {
                 btn.textContent = isPlaying ? '⏸️' : '▶️';
+                btn.style.backgroundColor = isPlaying ? '#ff3b30' : '#007aff';
             }
         }
 
@@ -3353,17 +3467,20 @@
             if (!audio) return;
             
             const progressFill = document.querySelector(`.audio-progress-fill[data-message-id="${messageId}"]`);
-            const timeDisplay = document.querySelector(`.audio-time[data-message-id="${messageId}"]`);
+            const currentTimeSpan = document.querySelector(`.audio-current-time[data-message-id="${messageId}"]`);
+            const durationSpan = document.querySelector(`.audio-duration[data-message-id="${messageId}"]`);
             
             if (progressFill) {
                 const percent = (audio.currentTime / audio.duration) * 100 || 0;
                 progressFill.style.width = percent + '%';
             }
             
-            if (timeDisplay) {
-                const current = formatTime(audio.currentTime);
-                const total = formatTime(audio.duration);
-                timeDisplay.textContent = `${current}/${total}`;
+            if (currentTimeSpan) {
+                currentTimeSpan.textContent = formatTime(audio.currentTime);
+            }
+            
+            if (durationSpan && !durationSpan.textContent) {
+                durationSpan.textContent = formatTime(audio.duration);
             }
         }
 
@@ -3376,6 +3493,7 @@
             const clickX = event.clientX - rect.left;
             const percent = clickX / rect.width;
             audio.currentTime = percent * audio.duration;
+            updateAudioProgress(messageId);
         }
 
         function formatTime(seconds) {
@@ -3450,11 +3568,16 @@
                         content = `
                             <div class="message-bubble audio-message">
                                 <div class="audio-player">
-                                    <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
-                                    <div class="audio-progress" onclick="seekAudio('${messageId}', event)">
-                                        <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
+                                    <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}')">▶️</button>
+                                    <div class="audio-progress-container">
+                                        <div class="audio-progress-bar" onclick="seekAudio('${messageId}', event)">
+                                            <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
+                                        </div>
+                                        <div class="audio-time-container">
+                                            <span class="audio-current-time" data-message-id="${messageId}">0:00</span>
+                                            <span class="audio-duration" data-message-id="${messageId}">${formatTime(duration)}</span>
+                                        </div>
                                     </div>
-                                    <span class="audio-time" data-message-id="${messageId}">0:00/${formatTime(duration)}</span>
                                 </div>
                             </div>
                         `;
