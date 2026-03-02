@@ -7,7 +7,6 @@
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Все стили остаются без изменений как в предыдущих версиях */
         * {
             margin: 0;
             padding: 0;
@@ -467,6 +466,9 @@
             line-height: 1.5;
             word-wrap: break-word;
             box-shadow: var(--shadow-sm);
+            position: relative;
+            transition: all 0.2s;
+            cursor: pointer;
         }
 
         .message.out .message-bubble {
@@ -527,33 +529,47 @@
             z-index: 10;
         }
 
-        .message:hover .message-actions {
+        .message-actions.visible {
             display: flex;
         }
 
-        @media (max-width: 768px) {
-            .message-actions {
-                display: flex;
-                top: -25px;
-                padding: 4px 8px;
-            }
-        }
-
         .message-action-btn {
-            background: none;
+            background: var(--gradient-1);
             border: none;
-            color: var(--text-secondary);
+            color: white;
             font-size: 14px;
             cursor: pointer;
             padding: 8px 12px;
             border-radius: 20px;
             transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 20;
+            box-shadow: var(--shadow-sm);
         }
 
         .message-action-btn:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
             transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(43, 154, 255, 0.5);
+        }
+
+        .message-action-btn.delete {
+            background: var(--gradient-2);
+        }
+
+        .message-action-btn.delete:hover {
+            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .message-actions {
+                top: -25px;
+                padding: 4px 8px;
+            }
+            
+            .message-action-btn {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
         }
 
         .message-input-container {
@@ -564,6 +580,7 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
+            transition: transform 0.3s ease;
         }
 
         .emoji-toggle-btn {
@@ -576,11 +593,18 @@
             border-radius: 50%;
             transition: all 0.2s;
             flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
             width: 44px;
             height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .emoji-toggle-btn:hover {
+            background: var(--bg-secondary);
+            color: var(--accent-blue);
+            transform: scale(1.1);
         }
 
         .mic-btn {
@@ -598,11 +622,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
         }
         .mic-btn.recording {
             background: var(--accent-red);
             color: white;
             animation: pulse 1s infinite;
+        }
+        .mic-btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         .input-wrapper {
@@ -625,6 +655,7 @@
             resize: none;
             max-height: 100px;
             min-height: 44px;
+            transition: all 0.2s;
         }
 
         .message-input:focus {
@@ -672,6 +703,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .emoji-btn:hover {
@@ -692,6 +724,7 @@
             cursor: pointer;
             flex-shrink: 0;
             font-size: 18px;
+            -webkit-tap-highlight-color: transparent;
             box-shadow: var(--shadow-sm);
             transition: all 0.2s;
         }
@@ -730,7 +763,7 @@
             background: var(--bg-glass);
             backdrop-filter: blur(10px);
             border-radius: 30px;
-            padding: 28px;
+            padding: 32px 28px;
             width: 100%;
             max-width: 400px;
             max-height: 90vh;
@@ -752,25 +785,54 @@
         }
 
         .modal-content h2 {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             text-align: center;
-            font-size: 22px;
+            font-size: 26px;
+            font-weight: 600;
             background: var(--gradient-1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
 
-        .modal-input {
-            width: 100%;
-            padding: 14px;
+        .auth-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 28px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 14px 12px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            cursor: pointer;
             border-radius: 16px;
+            font-size: 17px;
+            font-weight: 600;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .auth-tab.active {
+            background: var(--gradient-1);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
             color: var(--text-primary);
             font-size: 16px;
             outline: none;
             margin-bottom: 16px;
+            transition: all 0.2s;
         }
 
         .modal-input:focus {
@@ -782,15 +844,16 @@
             background: var(--gradient-1);
             border: none;
             color: white;
-            padding: 14px;
-            border-radius: 16px;
-            font-size: 16px;
+            padding: 16px;
+            border-radius: 20px;
+            font-size: 17px;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             margin-bottom: 8px;
-            box-shadow: var(--shadow-sm);
+            -webkit-tap-highlight-color: transparent;
             transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
         }
 
         .modal-btn:hover {
@@ -801,6 +864,12 @@
         .modal-btn.secondary {
             background: var(--bg-tertiary);
             color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-btn.secondary:hover {
+            background: var(--bg-secondary);
+            transform: translateY(-2px);
         }
 
         .close-btn {
@@ -811,6 +880,7 @@
             cursor: pointer;
             float: right;
             padding: 0 8px;
+            -webkit-tap-highlight-color: transparent;
             transition: all 0.2s;
         }
 
@@ -825,7 +895,7 @@
 
         .toggle-password {
             position: absolute;
-            right: 14px;
+            right: 16px;
             top: 50%;
             transform: translateY(-50%);
             background: none;
@@ -833,6 +903,40 @@
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .toggle-password:hover {
+            color: var(--text-primary);
+        }
+
+        .remember-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 15px;
+        }
+
+        .delete-chat-btn {
+            background: var(--gradient-2);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.2s;
+            z-index: 10;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .delete-chat-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(245, 101, 101, 0.4);
         }
 
         .admin-badge {
@@ -843,6 +947,8 @@
             border-radius: 16px;
             margin-left: 6px;
             font-weight: bold;
+            text-shadow: 0 1px 2px rgba(255, 215, 0, 0.3);
+            box-shadow: 0 2px 4px rgba(255, 215, 0, 0.2);
             display: inline-block;
         }
 
@@ -921,10 +1027,6 @@
                 max-width: 85%;
             }
 
-            .message-actions {
-                top: -25px;
-            }
-
             .chat-header {
                 padding: 10px 12px;
             }
@@ -934,7 +1036,27 @@
             }
 
             .modal-content {
-                padding: 20px;
+                padding: 24px 20px;
+            }
+
+            .auth-tab {
+                padding: 16px 12px;
+                font-size: 16px;
+            }
+
+            .modal-btn {
+                padding: 18px;
+                font-size: 16px;
+            }
+
+            .modal-input {
+                padding: 18px;
+                font-size: 16px;
+            }
+
+            .delete-chat-btn {
+                padding: 8px 16px;
+                font-size: 13px;
             }
         }
 
@@ -957,6 +1079,10 @@
 
             .chat-last-message {
                 font-size: 12px;
+            }
+
+            .modal-content h2 {
+                font-size: 24px;
             }
         }
         
@@ -1185,6 +1311,7 @@
         let currentTab = 'chats';
         let pendingChatToJoin = null;
         let messageToEdit = null;
+        let activeMessageId = null; // Для отслеживания активного сообщения на мобильных
         const ADMIN_USERNAME = "K1lame";
 
         // Для статусов сообщений
@@ -1253,6 +1380,25 @@
             setupMobileKeyboardHandlers();
             loadPublicChats();
             loadAllUsers();
+            
+            // Добавляем обработчик клика для скрытия клавиатуры
+            document.addEventListener('click', handleDocumentClick);
+        }
+
+        function handleDocumentClick(e) {
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const emojiPicker = document.getElementById('emojiPicker');
+            const emojiBtn = document.querySelector('.emoji-toggle-btn');
+            
+            // Если клик не по полю ввода, не по кнопке отправки, не по эмодзи-пикеру и не по кнопке эмодзи
+            if (!messageInput.contains(e.target) && 
+                !sendBtn.contains(e.target) && 
+                !emojiPicker.contains(e.target) && 
+                !emojiBtn.contains(e.target)) {
+                messageInput.blur();
+                document.body.classList.remove('keyboard-open');
+            }
         }
 
         async function loadAllUsers() {
@@ -1426,13 +1572,6 @@
                     if (!sidebar.contains(e.target) && !backButton.contains(e.target)) {
                         sidebar.classList.remove('active');
                     }
-                    
-                    if (!messageInput.contains(e.target) && 
-                        !emojiPicker.contains(e.target) && 
-                        !emojiBtn.contains(e.target)) {
-                        messageInput.blur();
-                        document.body.classList.remove('keyboard-open');
-                    }
                 }
             });
         }
@@ -1456,11 +1595,41 @@
         }
 
         function handleMessagesContainerClick(event) {
-            if (window.innerWidth <= 768) {
-                const messageInput = document.getElementById('messageInput');
-                if (document.activeElement === messageInput) {
-                    messageInput.blur();
+            // Скрываем активное меню сообщения при клике вне его
+            if (activeMessageId) {
+                const activeMessage = document.querySelector(`.message[data-id="${activeMessageId}"]`);
+                if (activeMessage && !activeMessage.contains(event.target)) {
+                    hideMessageActions();
                 }
+            }
+        }
+
+        function showMessageActions(messageId, event) {
+            event.stopPropagation();
+            
+            // Скрываем предыдущее активное меню
+            if (activeMessageId) {
+                const prevActive = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
+                if (prevActive) {
+                    prevActive.classList.remove('visible');
+                }
+            }
+            
+            // Показываем новое меню
+            const actions = document.querySelector(`.message-actions[data-message-id="${messageId}"]`);
+            if (actions) {
+                actions.classList.add('visible');
+                activeMessageId = messageId;
+            }
+        }
+
+        function hideMessageActions() {
+            if (activeMessageId) {
+                const actions = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
+                if (actions) {
+                    actions.classList.remove('visible');
+                }
+                activeMessageId = null;
             }
         }
 
@@ -2223,11 +2392,9 @@
             input.value = '';
             input.style.height = 'auto';
             
-            // На мобильных устройствах НЕ убираем фокус с клавиатуры
+            // На мобильных НЕ убираем фокус, на десктопе убираем
             if (window.innerWidth > 768) {
                 input.blur();
-            } else {
-                input.focus();
             }
             
             renderMessages(true);
@@ -2498,6 +2665,14 @@
                 if (!animate) messageDiv.style.animation = 'none';
                 messageDiv.setAttribute('data-id', msg.id);
                 
+                // Добавляем обработчик клика для показа действий на мобильных
+                if (window.innerWidth <= 768) {
+                    messageDiv.querySelector('.message-bubble')?.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        showMessageActions(msg.id, e);
+                    });
+                }
+                
                 let content = '';
                 let statusHtml = '';
                 
@@ -2535,9 +2710,9 @@
                 let actions = '';
                 if (msg.sender == currentUser.id || (currentUser && currentUser.isAdmin)) {
                     actions = `
-                        <div class="message-actions">
-                            ${msg.sender == currentUser.id ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
-                            <button class="message-action-btn" onclick="deleteMessage('${msg.id}', event)">🗑️</button>
+                        <div class="message-actions" data-message-id="${msg.id}">
+                            ${msg.sender == currentUser.id ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️ Редактировать</button>` : ''}
+                            <button class="message-action-btn delete" onclick="deleteMessage('${msg.id}', event)">🗑️ Удалить</button>
                         </div>
                     `;
                 }
@@ -2690,7 +2865,7 @@
                     if (currentUser && currentUser.isAdmin && currentUser.name === ADMIN_USERNAME && currentTab === 'public') {
                         const deleteBtn = document.createElement('button');
                         deleteBtn.className = 'delete-chat-btn';
-                        deleteBtn.textContent = 'Удалить';
+                        deleteBtn.textContent = 'Удалить чат';
                         deleteBtn.onclick = (e) => {
                             e.stopPropagation();
                             deleteChat(item.id, e);
@@ -2984,6 +3159,7 @@
                 }
             }
             
+            hideMessageActions();
             renderMessages(true);
             updateChatsList();
         }
@@ -2999,6 +3175,7 @@
                 messageToEdit = msg;
                 document.getElementById('editMessageText').value = msg.text || '';
                 document.getElementById('editMessageModal').classList.add('active');
+                hideMessageActions();
             } else {
                 alert('Вы можете редактировать только свои сообщения');
             }
@@ -3313,6 +3490,7 @@
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeMediaViewer();
+                hideMessageActions();
                 if (document.activeElement === document.getElementById('messageInput')) {
                     document.getElementById('messageInput').blur();
                 }
