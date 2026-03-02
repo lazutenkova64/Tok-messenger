@@ -46,7 +46,6 @@
             --status-delivered: #8e8e93;
             --status-read: #007aff;
             --tester-badge: #34c759;
-            --trash-color: #ff3b30;
         }
 
         body {
@@ -746,16 +745,11 @@
             border-top: 1px solid var(--border-light);
             display: flex;
             gap: 8px;
-            align-items: flex-end;
+            align-items: center;
             min-height: 70px;
             position: sticky;
             bottom: 0;
             z-index: 15;
-            transition: all 0.2s ease;
-        }
-
-        .message-input-container.recording-mode {
-            background-color: rgba(255, 59, 48, 0.1);
         }
 
         .emoji-toggle-btn {
@@ -766,7 +760,7 @@
             cursor: pointer;
             padding: 10px;
             border-radius: 50%;
-            transition: all 0.2s;
+            transition: background-color 0.2s;
             flex-shrink: 0;
             -webkit-tap-highlight-color: transparent;
             width: 48px;
@@ -778,10 +772,6 @@
 
         .emoji-toggle-btn:active {
             background-color: var(--bg-hover);
-        }
-
-        .emoji-toggle-btn.hidden {
-            display: none;
         }
 
         .mic-btn {
@@ -803,9 +793,9 @@
         }
 
         .mic-btn.recording {
-            color: var(--dnd-red);
-            animation: pulse 1s infinite;
-            transform: scale(1.1);
+            color: white;
+            background-color: var(--dnd-red);
+            animation: pulse-recording 1s infinite;
         }
 
         .mic-btn:disabled {
@@ -813,45 +803,10 @@
             pointer-events: none;
         }
 
-        .mic-btn.hidden {
-            display: none;
-        }
-
-        .trash-area {
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 60px;
-            border-radius: 30px;
-            background-color: var(--dnd-red);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: white;
-            z-index: 20;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-            box-shadow: var(--shadow);
-        }
-
-        .trash-area.visible {
-            display: flex;
-            opacity: 1;
-        }
-
-        .trash-area.active {
-            transform: translateX(-50%) scale(1.2);
-            background-color: #d63026;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        @keyframes pulse-recording {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         .input-wrapper {
@@ -881,10 +836,6 @@
             color: var(--text-hint);
         }
 
-        .message-input.hidden {
-            display: none;
-        }
-
         .send-btn {
             background-color: var(--accent-blue);
             border: none;
@@ -910,10 +861,6 @@
         .send-btn.disabled {
             opacity: 0.5;
             pointer-events: none;
-        }
-
-        .send-btn.hidden {
-            display: none;
         }
 
         /* Эмодзи пикер */
@@ -1397,10 +1344,6 @@
             .modal-input {
                 padding: 16px;
             }
-            
-            .trash-area {
-                bottom: 90px;
-            }
         }
 
         /* Адаптация для очень маленьких экранов */
@@ -1540,11 +1483,9 @@
 
             <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
 
-            <div class="trash-area" id="trashArea">🗑️</div>
-
             <div class="message-input-container" id="messageInputContainer">
-                <button class="emoji-toggle-btn" id="emojiBtn" onclick="toggleEmojiPicker()">😊</button>
-                <button class="mic-btn" id="micBtn">🎤</button>
+                <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
+                <button class="mic-btn" id="micBtn" onmousedown="startRecording()" onmouseup="stopRecording()" onmouseleave="cancelRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()" ontouchcancel="cancelRecording()">🎤</button>
                 <div class="input-wrapper">
                     <div class="emoji-picker" id="emojiPicker" style="display: none;"></div>
                     <textarea 
@@ -1555,6 +1496,7 @@
                         onkeydown="handleKeyPress(event)"
                         onfocus="handleInputFocus()"
                         oninput="handleTextInput()"
+                        onblur="handleInputBlur()"
                     ></textarea>
                 </div>
                 <button class="send-btn" onclick="sendMessage()" id="sendBtn">➤</button>
@@ -1691,8 +1633,6 @@
         let isRecording = false;
         let recordingTimeout;
         let mediaStream = null;
-        let recordingStartX = 0;
-        let isSwipingToTrash = false;
         let recordingStartTime = 0;
         
         // Для управления аудиоплеерами
@@ -1743,7 +1683,6 @@
                 messages = {};
             }
             
-            setupMicrophoneHandlers();
             populateEmojiPicker();
             
             // Проверяем сессию и показываем нужный экран
@@ -1764,6 +1703,13 @@
             
             // Запускаем обновление статусов каждые 2 секунды
             startStatusUpdates();
+            
+            // Добавляем обработчик для возврата фокуса
+            document.addEventListener('touchstart', function(e) {
+                if (!e.target.closest('.message-input-container') && !e.target.closest('.chat-header')) {
+                    // Не делаем ничего, просто позволяем взаимодействие
+                }
+            });
         }
 
         // ========== Обновление статусов в реальном времени ==========
@@ -1774,7 +1720,20 @@
                     updateChatsList();
                 }
                 updateChatStatus();
+                updateProfileStatus();
             }, 2000);
+        }
+
+        // ========== Обновление статуса профиля ==========
+        function updateProfileStatus() {
+            if (!currentUser) return;
+            
+            const statusDisplay = document.getElementById('profileStatusDisplay');
+            if (currentUser.dnd) {
+                statusDisplay.innerHTML = 'не беспокоить <span class="dnd-badge">DND</span>';
+            } else {
+                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
+            }
         }
 
         // ========== Обновление видимости кнопки назад ==========
@@ -1864,7 +1823,7 @@
                         lastSeen: Date.now()
                     });
                 }
-            }, 3000); // Обновляем каждые 3 секунды
+            }, 3000);
         }
 
         // ========== Форматирование времени последнего визита ==========
@@ -1884,32 +1843,32 @@
             if (seconds < 60) return 'только что';
             if (minutes < 60) {
                 if (minutes === 1) return '1 минуту назад';
-                if (minutes < 5) return `${minutes} минуты назад`;
+                if (minutes >= 2 && minutes <= 4) return `${minutes} минуты назад`;
                 return `${minutes} минут назад`;
             }
             if (hours < 24) {
                 if (hours === 1) return '1 час назад';
-                if (hours < 5) return `${hours} часа назад`;
+                if (hours >= 2 && hours <= 4) return `${hours} часа назад`;
                 return `${hours} часов назад`;
             }
             if (days < 7) {
                 if (days === 1) return 'вчера';
-                if (days < 5) return `${days} дня назад`;
+                if (days >= 2 && days <= 4) return `${days} дня назад`;
                 return `${days} дней назад`;
             }
             if (days < 30) {
                 const weeks = Math.floor(days / 7);
                 if (weeks === 1) return '1 неделю назад';
-                if (weeks < 5) return `${weeks} недели назад`;
+                if (weeks >= 2 && weeks <= 4) return `${weeks} недели назад`;
                 return `${weeks} недель назад`;
             }
             if (months < 12) {
                 if (months === 1) return '1 месяц назад';
-                if (months < 5) return `${months} месяца назад`;
+                if (months >= 2 && months <= 4) return `${months} месяца назад`;
                 return `${months} месяцев назад`;
             }
             if (years === 1) return '1 год назад';
-            if (years < 5) return `${years} года назад`;
+            if (years >= 2 && years <= 4) return `${years} года назад`;
             return `${years} лет назад`;
         }
 
@@ -2348,7 +2307,6 @@
                 if (data && data.length > 0) {
                     if (!messages[chatId]) messages[chatId] = [];
                     
-                    // Обновляем статусы для существующих сообщений
                     data.forEach(msg => {
                         const existingMsg = messages[chatId].find(m => m.id === msg.id);
                         if (!existingMsg) {
@@ -2468,12 +2426,7 @@
                 nameSpan.appendChild(badge);
             }
             
-            const statusDisplay = document.getElementById('profileStatusDisplay');
-            if (currentUser.dnd) {
-                statusDisplay.innerHTML = 'не беспокоить <span class="dnd-badge">DND</span>';
-            } else {
-                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
-            }
+            updateProfileStatus();
             
             document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
             document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
@@ -2486,14 +2439,15 @@
             document.addEventListener('touchstart', function(e) {
                 if (window.innerWidth <= 768) {
                     const messageInput = document.getElementById('messageInput');
-                    const emojiPicker = document.getElementById('emojiPicker');
-                    const emojiBtn = document.querySelector('.emoji-toggle-btn');
                     const sidebar = document.getElementById('sidebar');
                     const backButton = document.getElementById('backButton');
                     
-                    if (!sidebar.contains(e.target) && !backButton.contains(e.target) && 
-                        !messageInput.contains(e.target) && !emojiPicker.contains(e.target) && 
-                        !emojiBtn.contains(e.target)) {
+                    // Не закрываем sidebar при клике на поле ввода или кнопку назад
+                    if (e.target.closest('.message-input') || e.target.closest('.back-button')) {
+                        return;
+                    }
+                    
+                    if (!sidebar.contains(e.target) && !backButton.contains(e.target)) {
                         sidebar.classList.remove('active');
                     }
                 }
@@ -2504,20 +2458,17 @@
             // Ничего не делаем, просто оставляем фокус
         }
 
+        function handleInputBlur() {
+            // Не скрываем элементы интерфейса при потере фокуса
+        }
+
         function handleTextInput() {
             const input = document.getElementById('messageInput');
             const hasText = input.value.trim().length > 0;
             const micBtn = document.getElementById('micBtn');
             const sendBtn = document.getElementById('sendBtn');
-            const emojiBtn = document.getElementById('emojiBtn');
             
-            if (hasText) {
-                micBtn.classList.add('hidden');
-                sendBtn.classList.remove('hidden');
-            } else {
-                micBtn.classList.remove('hidden');
-                sendBtn.classList.add('hidden');
-            }
+            // Управление видимостью кнопок не требуется, обе всегда видны
         }
 
         function handleMessagesContainerClick(event) {
@@ -2544,7 +2495,6 @@
                 actions.classList.add('visible');
                 activeMessageId = messageId;
                 
-                // Автоматически скрываем через 5 секунд
                 setTimeout(() => {
                     if (activeMessageId === messageId) {
                         hideMessageActions();
@@ -2564,47 +2514,10 @@
         }
 
         // ========== Голосовые сообщения ==========
-        function setupMicrophoneHandlers() {
-            const micBtn = document.getElementById('micBtn');
-            const trashArea = document.getElementById('trashArea');
-            
-            // Обработчики для мыши (ПК)
-            micBtn.addEventListener('mousedown', startRecording);
-            micBtn.addEventListener('mouseup', stopRecording);
-            micBtn.addEventListener('mouseleave', stopRecording);
-            
-            // Обработчики для тач-устройств
-            micBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                startRecording(e);
-            });
-            
-            micBtn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                stopRecording(e);
-            });
-            
-            micBtn.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                cancelRecording();
-            });
-            
-            micBtn.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                handleRecordingSwipe(e);
-            });
-            
-            micBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-            });
-        }
-
-        function startRecording(e) {
+        function startRecording() {
             const messageInput = document.getElementById('messageInput');
             
-            // Проверяем, есть ли текст в поле ввода
             if (messageInput.value.trim().length > 0) {
-                alert('Сначала отправьте или удалите написанное сообщение');
                 return;
             }
             
@@ -2619,25 +2532,8 @@
                 return;
             }
             
-            // Запоминаем начальную позицию для свайпа
-            if (e.touches) {
-                recordingStartX = e.touches[0].clientX;
-            }
-            
             recordingStartTime = Date.now();
-            isSwipingToTrash = false;
             
-            // Показываем корзину
-            const trashArea = document.getElementById('trashArea');
-            trashArea.classList.add('visible');
-            
-            // Добавляем класс записи к контейнеру ввода
-            document.getElementById('messageInputContainer').classList.add('recording-mode');
-            
-            startRecordingAudio();
-        }
-
-        function startRecordingAudio() {
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaStream = stream;
@@ -2657,14 +2553,11 @@
                             mediaStream = null;
                         }
                         
-                        // Отправляем только если не было свайпа к корзине
-                        if (!isSwipingToTrash && audioBlob.size > 0 && duration > 1) {
+                        if (audioBlob.size > 0 && duration > 1) {
                             sendAudioMessage(audioBlob, duration);
                         }
                         
-                        // Скрываем корзину
-                        document.getElementById('trashArea').classList.remove('visible');
-                        document.getElementById('messageInputContainer').classList.remove('recording-mode');
+                        document.getElementById('micBtn').classList.remove('recording');
                     };
 
                     mediaRecorder.start();
@@ -2681,47 +2574,22 @@
                 });
         }
 
-        function handleRecordingSwipe(e) {
-            if (!isRecording || !e.touches) return;
-            
-            const currentX = e.touches[0].clientX;
-            const swipeDistance = recordingStartX - currentX;
-            
-            const trashArea = document.getElementById('trashArea');
-            
-            // Если свайп влево больше 100px
-            if (swipeDistance > 100) {
-                isSwipingToTrash = true;
-                trashArea.classList.add('active');
-            } else {
-                isSwipingToTrash = false;
-                trashArea.classList.remove('active');
-            }
-        }
-
-        function stopRecording(e) {
+        function stopRecording() {
             if (!isRecording) return;
             
             if (mediaRecorder && isRecording) {
                 mediaRecorder.stop();
                 isRecording = false;
-                document.getElementById('micBtn').classList.remove('recording');
                 
                 if (recordingTimeout) {
                     clearTimeout(recordingTimeout);
                     recordingTimeout = null;
                 }
-                
-                // Скрываем корзину
-                document.getElementById('trashArea').classList.remove('visible', 'active');
-                document.getElementById('messageInputContainer').classList.remove('recording-mode');
             }
         }
 
         function cancelRecording() {
             if (!isRecording) return;
-            
-            isSwipingToTrash = true; // Помечаем как отмену
             
             if (mediaRecorder && isRecording) {
                 mediaRecorder.stop();
@@ -2737,10 +2605,6 @@
                     mediaStream.getTracks().forEach(track => track.stop());
                     mediaStream = null;
                 }
-                
-                // Скрываем корзину
-                document.getElementById('trashArea').classList.remove('visible', 'active');
-                document.getElementById('messageInputContainer').classList.remove('recording-mode');
             }
         }
 
@@ -2829,7 +2693,6 @@
                 startPresenceUpdates();
                 checkUrlForChat();
                 
-                // Если нет чатов, создаем чат с самим собой
                 if (myChats.length === 0) {
                     const selfChat = {
                         id: `self-${currentUser.id}`,
@@ -2933,7 +2796,6 @@
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 }
                 
-                // Создаем чат с самим собой
                 const selfChat = {
                     id: `self-${currentUser.id}`,
                     name: 'Избранное',
@@ -3078,7 +2940,6 @@
             const messageId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
             const timestamp = Date.now();
             
-            // Устанавливаем начальный статус
             messageStatuses[messageId] = { status: 'pending', sentAt: timestamp };
             
             const message = {
@@ -3092,10 +2953,8 @@
                 timestamp: timestamp
             };
             
-            // Сохраняем в БД
             saveMessageToDatabase(message);
             
-            // Добавляем в локальные сообщения
             if (!messages[currentChat.id]) messages[currentChat.id] = [];
             messages[currentChat.id].push({ ...message, type: 'out' });
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -3104,13 +2963,11 @@
             
             updateChatLastMessageTime(currentChat.id, timestamp);
             
-            // Отправляем через Ably
             if (ably && !currentChat.isSelf) {
                 const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
                 chatChannel.publish('message', message);
             }
             
-            // Обновляем статус на "отправлено" через небольшую задержку
             setTimeout(() => {
                 if (messageStatuses[messageId]) {
                     messageStatuses[messageId].status = 'sent';
@@ -3121,15 +2978,9 @@
                 }
             }, 300);
             
-            // Очищаем поле ввода, но НЕ убираем фокус
             input.value = '';
             input.style.height = 'auto';
-            
-            // Возвращаем фокус на поле ввода
             input.focus();
-            
-            // Обновляем видимость кнопок
-            handleTextInput();
             
             renderMessages();
             updateChatsList();
@@ -3315,7 +3166,6 @@
             const oldScrollTop = container.scrollTop;
             const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
             
-            // Сохраняем текущие сообщения для сравнения
             const currentMessages = container.innerHTML;
             let newMessages = '';
             
@@ -3389,7 +3239,6 @@
                 newMessages = fragment.join('');
             }
             
-            // Обновляем только если изменилось
             if (currentMessages !== newMessages) {
                 container.innerHTML = newMessages;
             }
@@ -3444,7 +3293,6 @@
                 );
             }
             
-            // Сохраняем текущий HTML для сравнения
             const currentHTML = list.innerHTML;
             let newHTML = '';
             
@@ -3464,7 +3312,6 @@
                 newHTML = fragment.join('');
             }
             
-            // Обновляем только если изменилось
             if (currentHTML !== newHTML) {
                 list.innerHTML = newHTML;
             }
@@ -3589,7 +3436,6 @@
                 document.getElementById('sidebar').classList.remove('active');
             }
             
-            // Возвращаем фокус на поле ввода
             setTimeout(() => {
                 document.getElementById('messageInput').focus();
             }, 100);
@@ -4093,7 +3939,6 @@
             input.selectionStart = input.selectionEnd = start + emoji.length;
             input.style.height = 'auto';
             input.style.height = input.scrollHeight + 'px';
-            handleTextInput();
         }
 
         function handleKeyPress(e) {
@@ -4166,9 +4011,6 @@
             if (e.key === 'Escape') {
                 closeMediaViewer();
                 hideMessageActions();
-                if (document.activeElement === document.getElementById('messageInput')) {
-                    document.getElementById('messageInput').blur();
-                }
             }
         });
 
@@ -4183,7 +4025,6 @@
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
-            handleTextInput();
         });
 
         // Запуск инициализации при загрузке страницы
