@@ -1442,6 +1442,7 @@
         // Data structures
         let myChats = [];
         let publicChats = [];
+        let allUsers = []; // Все пользователи из БД
         let onlineUsers = {};
         let currentChat = null;
         let messages = {};
@@ -1516,6 +1517,27 @@
             checkSavedSession();
             setupMobileKeyboardHandlers();
             loadPublicChats();
+            loadAllUsers();
+        }
+
+        async function loadAllUsers() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .order('username');
+                
+                if (error) throw error;
+                
+                // Исключаем пользователя 'test' из списка
+                allUsers = (data || []).filter(user => user.username !== 'test');
+                
+                if (currentTab === 'users') {
+                    updateChatsList();
+                }
+            } catch (err) {
+                console.error('Error loading users:', err);
+            }
         }
 
         async function loadPublicChats() {
@@ -1528,6 +1550,19 @@
                 if (error) throw error;
                 
                 publicChats = data || [];
+                // Преобразуем строку members обратно в массив, если она есть
+                publicChats.forEach(chat => {
+                    if (chat.members && typeof chat.members === 'string') {
+                        try {
+                            chat.members = JSON.parse(chat.members);
+                        } catch (e) {
+                            chat.members = [];
+                        }
+                    } else if (!chat.members) {
+                        chat.members = [];
+                    }
+                });
+                
                 localStorage.setItem('publicChats', JSON.stringify(publicChats));
                 if (currentTab === 'public') updateChatsList();
             } catch (err) {
@@ -2108,6 +2143,9 @@
                 
                 updateProfileUI();
                 
+                // Загружаем пользователей после входа
+                await loadAllUsers();
+                
                 initAbly();
                 startHeartbeat();
                 checkUrlForChat();
@@ -2195,6 +2233,9 @@
                 
                 updateProfileUI();
                 
+                // Загружаем пользователей после регистрации
+                await loadAllUsers();
+                
                 initAbly();
                 startHeartbeat();
                 
@@ -2265,6 +2306,7 @@
             currentChat = null;
             myChats = [];
             onlineUsers = {};
+            allUsers = [];
             
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginModal').classList.add('active');
@@ -2687,7 +2729,20 @@
             } else if (currentTab === 'public') {
                 items = publicChats;
             } else if (currentTab === 'users') {
-                items = Object.values(onlineUsers);
+                // Объединяем онлайн пользователей со всеми пользователями из БД
+                const allUsersList = allUsers.map(user => {
+                    const onlineUser = onlineUsers[user.id.toString()];
+                    return {
+                        id: user.id,
+                        name: user.username,
+                        avatar: user.avatar || '👤',
+                        bio: user.bio || '',
+                        online: !!onlineUser,
+                        isAdmin: user.username === ADMIN_USERNAME,
+                        dnd: onlineUser ? onlineUser.dnd : (user.dnd || false)
+                    };
+                });
+                items = allUsersList;
             }
             
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
@@ -2827,6 +2882,7 @@
         function joinChat(chat) {
             if (!chat) return;
             
+            // Проверяем пароль для защищенных чатов
             if (chat.password && (!chat.members || !chat.members.includes(currentUser.id))) {
                 pendingChatToJoin = chat;
                 document.getElementById('joinChatTitle').textContent = `Введите пароль для "${chat.name}"`;
@@ -2834,8 +2890,14 @@
                 return;
             }
             
+            // Добавляем пользователя в список участников, если его там нет
             if (!chat.members) chat.members = [];
-            if (!chat.members.includes(currentUser.id)) chat.members.push(currentUser.id);
+            if (!chat.members.includes(currentUser.id)) {
+                chat.members.push(currentUser.id);
+                
+                // Обновляем в базе данных
+                updateChatMembers(chat.id, chat.members);
+            }
             
             if (!myChats.find(c => c.id === chat.id)) {
                 myChats.push(chat);
@@ -2884,18 +2946,37 @@
             if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('active');
         }
 
+        async function updateChatMembers(chatId, members) {
+            try {
+                const { error } = await supabaseClient
+                    .from('chats')
+                    .update({ members: JSON.stringify(members) })
+                    .eq('id', chatId);
+                
+                if (error) throw error;
+            } catch (err) {
+                console.error('Error updating chat members:', err);
+            }
+        }
+
         function createPrivateChat(user) {
+            // Создаем уникальный ID для личного чата
             const chatId = [currentUser.id, user.id].sort().join('-');
             let privateChat = myChats.find(c => c.id === chatId);
+            
             if (!privateChat) {
                 privateChat = {
                     id: chatId,
                     name: user.name,
                     isPrivate: true,
-                    user: user,
                     members: [currentUser.id, user.id]
                 };
+                
+                // Сохраняем в локальное хранилище
+                myChats.push(privateChat);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
             }
+            
             joinChat(privateChat);
         }
 
@@ -2911,6 +2992,16 @@
             localStorage.setItem('publicChats', JSON.stringify(publicChats));
             myChats = myChats.filter(c => c.id !== chatId);
             localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+            
+            // Удаляем из базы данных
+            supabaseClient
+                .from('chats')
+                .delete()
+                .eq('id', chatId)
+                .then(({ error }) => {
+                    if (error) console.error('Error deleting chat from DB:', error);
+                });
+            
             if (messages[chatId]) {
                 delete messages[chatId];
                 saveMessagesDebounced();
@@ -2933,7 +3024,10 @@
             const password = document.getElementById('joinPasswordInput').value;
             if (pendingChatToJoin && password === pendingChatToJoin.password) {
                 if (!pendingChatToJoin.members) pendingChatToJoin.members = [];
-                pendingChatToJoin.members.push(currentUser.id);
+                if (!pendingChatToJoin.members.includes(currentUser.id)) {
+                    pendingChatToJoin.members.push(currentUser.id);
+                    updateChatMembers(pendingChatToJoin.id, pendingChatToJoin.members);
+                }
                 joinChat(pendingChatToJoin);
                 closeJoinChatModal();
             } else {
@@ -2945,6 +3039,7 @@
             const name = document.getElementById('chatNameInput').value.trim();
             const password = document.getElementById('chatPasswordInput').value.trim();
             const description = document.getElementById('chatDescriptionInput').value.trim();
+            
             if (!name) {
                 alert('Введите название чата');
                 return;
@@ -2957,31 +3052,51 @@
                 password: password || null,
                 created_by: currentUser.id,
                 created_by_name: currentUser.name,
-                members: [currentUser.id],
+                members: JSON.stringify([currentUser.id]), // Сохраняем как JSON строку
                 type: 'public',
                 created_at: new Date().toISOString()
             };
             
             try {
-                const { error } = await supabaseClient
+                console.log('Создаем чат:', newChat);
+                
+                const { data, error } = await supabaseClient
                     .from('chats')
-                    .insert([newChat]);
+                    .insert([newChat])
+                    .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Ошибка Supabase:', error);
+                    throw error;
+                }
                 
-                publicChats.push(newChat);
+                console.log('Чат создан успешно:', data);
+                
+                // Преобразуем для локального использования
+                const createdChat = {
+                    ...newChat,
+                    members: [currentUser.id] // Преобразуем обратно в массив
+                };
+                
+                publicChats.push(createdChat);
                 localStorage.setItem('publicChats', JSON.stringify(publicChats));
                 
                 if (ably) {
                     const globalChatsChannel = ably.channels.get('global-chats');
-                    globalChatsChannel.publish('new-chat', newChat);
+                    globalChatsChannel.publish('new-chat', createdChat);
                 }
                 
-                joinChat(newChat);
+                joinChat(createdChat);
                 closeCreateChatModal();
+                
+                // Очищаем поля ввода
+                document.getElementById('chatNameInput').value = '';
+                document.getElementById('chatPasswordInput').value = '';
+                document.getElementById('chatDescriptionInput').value = '';
+                
             } catch (err) {
                 console.error('Error creating chat:', err);
-                alert('Ошибка при создании чата');
+                alert('Ошибка при создании чата: ' + err.message);
             }
         }
 
@@ -3123,6 +3238,10 @@
                 
                 updateProfileUI();
                 closeProfileModal();
+                
+                // Обновляем список пользователей
+                await loadAllUsers();
+                
             } catch (err) {
                 console.error('Error updating profile:', err);
                 alert('Ошибка при сохранении профиля');
@@ -3213,6 +3332,14 @@
             document.getElementById('tabPublic').className = tab === 'public' ? 'tab active' : 'tab';
             document.getElementById('tabUsers').className = tab === 'users' ? 'tab active' : 'tab';
             document.getElementById('searchInput').value = '';
+            
+            if (tab === 'users') {
+                // Обновляем список пользователей при переключении на вкладку
+                loadAllUsers();
+            } else if (tab === 'public') {
+                loadPublicChats();
+            }
+            
             updateChatsList();
         }
 
