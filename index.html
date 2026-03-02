@@ -1941,14 +1941,20 @@
             }
             
             try {
+                // Ищем пользователя в таблице users
                 const { data, error } = await supabaseClient
                     .from('users')
                     .select('*')
                     .eq('username', username)
-                    .eq('password', password)
                     .single();
                 
                 if (error || !data) {
+                    alert('Неверное имя пользователя или пароль');
+                    return;
+                }
+                
+                // Проверяем пароль
+                if (data.password !== password) {
                     alert('Неверное имя пользователя или пароль');
                     return;
                 }
@@ -2014,6 +2020,7 @@
             }
             
             try {
+                // Проверяем, не занято ли имя пользователя
                 const { data: existingUser } = await supabaseClient
                     .from('users')
                     .select('username')
@@ -2025,6 +2032,7 @@
                     return;
                 }
                 
+                // Создаем нового пользователя
                 const newUser = {
                     username: username,
                     password: password,
