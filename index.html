@@ -7,8 +7,6 @@
     <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* Все стили остаются без изменений - я их не менял для краткости, 
-           но в вашем коде они должны остаться такими же как были */
         * {
             margin: 0;
             padding: 0;
@@ -1553,7 +1551,6 @@
                 }
                 
                 publicChats = (data || []).map(chat => {
-                    // Парсим members если это строка
                     let members = [];
                     if (chat.members) {
                         if (typeof chat.members === 'string') {
@@ -1580,12 +1577,67 @@
             }
         }
 
+        // ========== Загрузка истории сообщений ==========
+        async function loadChatHistory(chatId) {
+            try {
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                
+                let query = supabaseClient
+                    .from('messages')
+                    .select('*')
+                    .eq('chat_id', chatId)
+                    .order('timestamp', { ascending: true });
+                
+                // Для обычных пользователей - только за 30 дней
+                if (currentUser.name !== ADMIN_USERNAME) {
+                    query = query.gte('timestamp', thirtyDaysAgo);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    console.error('Error loading chat history:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    if (!messages[chatId]) messages[chatId] = [];
+                    
+                    data.forEach(msg => {
+                        const exists = messages[chatId].some(m => m.id === msg.id);
+                        if (!exists) {
+                            messages[chatId].push({
+                                ...msg,
+                                type: msg.sender_id == currentUser.id ? 'out' : 'in'
+                            });
+                        }
+                    });
+                    
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    saveMessagesDebounced();
+                    
+                    if (currentChat && currentChat.id === chatId) {
+                        renderMessages(true);
+                    }
+                }
+            } catch (err) {
+                console.error('Error loading chat history:', err);
+            }
+        }
+
         function setupMobileKeyboardHandlers() {
             document.addEventListener('touchstart', function(e) {
                 if (window.innerWidth <= 768) {
                     const messageInput = document.getElementById('messageInput');
                     const emojiPicker = document.getElementById('emojiPicker');
                     const emojiBtn = document.querySelector('.emoji-toggle-btn');
+                    const sidebar = document.getElementById('sidebar');
+                    const backButton = document.querySelector('.back-button');
+                    
+                    // Если клик вне сайдбара и не по кнопке назад - закрываем сайдбар
+                    if (!sidebar.contains(e.target) && !backButton.contains(e.target)) {
+                        sidebar.classList.remove('active');
+                    }
                     
                     if (!messageInput.contains(e.target) && 
                         !emojiPicker.contains(e.target) && 
@@ -1930,6 +1982,10 @@
                 if (!msg) return;
                 
                 if (deletedMessages[chat.id] && deletedMessages[chat.id].includes(msg.id)) return;
+                
+                // Сохраняем в базу данных
+                saveMessageToDatabase(msg);
+                
                 if (!messages[chat.id]) messages[chat.id] = [];
                 
                 const exists = messages[chat.id].some(m => m.id === msg.id);
@@ -2028,7 +2084,10 @@
                 }
             });
             
-            chatChannel.history({ limit: 200 }, (err, resultPage) => {
+            // Загружаем историю из базы данных
+            loadChatHistory(chat.id);
+            
+            chatChannel.history({ limit: 50 }, (err, resultPage) => {
                 if (resultPage && resultPage.items.length > 0) {
                     if (!messages[chat.id]) messages[chat.id] = [];
                     resultPage.items.forEach(item => {
@@ -2052,6 +2111,35 @@
                     }
                 }
             });
+        }
+
+        async function saveMessageToDatabase(message) {
+            try {
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .insert([{
+                        id: message.id,
+                        chat_id: message.chatId,
+                        sender_id: message.sender,
+                        sender_name: message.senderName,
+                        text: message.text || null,
+                        audio: message.audio || null,
+                        duration: message.duration || null,
+                        media: message.media || null,
+                        time: message.time,
+                        timestamp: message.timestamp,
+                        is_admin: message.isAdmin || false,
+                        edited: message.edited || false
+                    }])
+                    .onConflict('id')
+                    .ignore();
+                
+                if (error) {
+                    console.error('Error saving message to database:', error);
+                }
+            } catch (err) {
+                console.error('Error saving message to database:', err);
+            }
         }
 
         function sendDeliveryReceipt(chatId, messageId) {
@@ -2374,6 +2462,9 @@
                 status: 'sent'
             };
             
+            // Сохраняем в базу данных
+            saveMessageToDatabase(message);
+            
             if (!messages[currentChat.id]) messages[currentChat.id] = [];
             messages[currentChat.id].push({ ...message, type: 'out' });
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -2389,6 +2480,14 @@
             
             input.value = '';
             input.style.height = 'auto';
+            
+            // На мобильных устройствах НЕ убираем фокус с клавиатуры
+            if (window.innerWidth > 768) {
+                input.blur();
+            } else {
+                input.focus(); // Возвращаем фокус на мобильных
+            }
+            
             renderMessages(true);
             updateChatsList();
         }
@@ -2429,6 +2528,9 @@
                     timestamp: timestamp,
                     status: 'pending'
                 };
+
+                // Сохраняем в базу данных
+                saveMessageToDatabase(message);
 
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
                 messages[currentChat.id].push({ ...message, type: 'out' });
@@ -2941,6 +3043,9 @@
             
             document.getElementById('chatStatus').textContent = chat.description || 'Чат';
             
+            // Загружаем историю сообщений
+            loadChatHistory(chat.id);
+            
             if (!messages[chat.id]) messages[chat.id] = [];
             messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             
@@ -2950,7 +3055,9 @@
             renderMessages(true);
             updateChatsList();
             
-            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('active');
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('active');
+            }
         }
 
         async function updateChatMembers(chatId, members) {
@@ -3399,7 +3506,8 @@
         }
 
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
         }
 
         function updateUrlWithChat(chat) {
