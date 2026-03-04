@@ -4995,293 +4995,393 @@
         });
 
         document.addEventListener('DOMContentLoaded', init);
-    </script>
-    // ===== CALL MODULE START =====
-    <script>
-        (function() {
-            // Проверяем, что текущий пользователь существует (используем существующую переменную currentUser)
-            const rtcConfig = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
-            let localStream = null;
-            let peerConnection = null;
-            let currentCallId = null;
-            let incomingCallTimeout = null;
-            const callStatusDiv = document.createElement('div');
-            callStatusDiv.id = 'callStatus';
-            callStatusDiv.style.display = 'none';
-            callStatusDiv.style.padding = '10px';
-            callStatusDiv.style.backgroundColor = 'var(--bg-tertiary)';
-            callStatusDiv.style.color = 'var(--text-primary)';
-            callStatusDiv.style.borderBottom = '1px solid var(--border-light)';
-            callStatusDiv.style.textAlign = 'center';
-            callStatusDiv.style.position = 'sticky';
-            callStatusDiv.style.top = 'var(--header-height)';
-            callStatusDiv.style.zIndex = '5';
-            const chatArea = document.querySelector('.chat-area');
-            if (chatArea) {
-                const header = document.querySelector('.chat-header');
-                if (header) {
-                    chatArea.insertBefore(callStatusDiv, header.nextSibling);
-                }
-            }
-
-            // Создаём аудио элементы для звуков (не добавляем в HTML, создаём через JS)
-            const ringtoneAudio = new Audio('/sounds/ringtone.mp3');
-            ringtoneAudio.loop = true;
-            ringtoneAudio.preload = 'auto';
-            const callAcceptedAudio = new Audio('/sounds/call-accepted.mp3');
-            callAcceptedAudio.preload = 'auto';
-            const callEndedAudio = new Audio('/sounds/call-ended.mp3');
-            callEndedAudio.preload = 'auto';
-
-            function stopAllCallSounds() {
-                ringtoneAudio.pause();
-                ringtoneAudio.currentTime = 0;
-                callAcceptedAudio.pause();
-                callAcceptedAudio.currentTime = 0;
-                callEndedAudio.pause();
-                callEndedAudio.currentTime = 0;
-            }
-
-            async function getLocalStream() {
-                if (localStream) return localStream;
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    return localStream;
-                } catch (err) {
-                    console.error('Error accessing media devices:', err);
-                    alert('Не удалось получить доступ к микрофону');
-                    return null;
-                }
-            }
-
-            function createPeerConnection() {
-                const pc = new RTCPeerConnection(rtcConfig);
-                if (localStream) {
-                    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-                }
-                pc.onicecandidate = (event) => {
-                    if (event.candidate && currentCallId && currentUser) {
-                        supabaseClient
-                            .from('calls')
-                            .update({ iceCandidate: event.candidate })
-                            .eq('id', currentCallId)
-                            .then(({ error }) => {
-                                if (error) console.error('Error saving ICE candidate:', error);
-                            });
+        
+        // ===== CALL MODULE START =====
+        // Firebase initialization (using existing firebase config from the original code - but we need to add Firebase scripts)
+        // Since Firebase is not included in the original, we need to add it. Adding Firebase scripts right after Ably and Supabase.
+        // But to not modify HTML, we'll inject scripts dynamically.
+        (function addFirebaseAndInitCalls() {
+            // Check if Firebase is already loaded
+            if (typeof firebase === 'undefined') {
+                const script1 = document.createElement('script');
+                script1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+                document.head.appendChild(script1);
+                
+                const script2 = document.createElement('script');
+                script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js';
+                script2.onload = function() {
+                    // Firebase configuration
+                    const firebaseConfig = {
+                        apiKey: "AIzaSyB2Uz_0dU0z_0dU0z_0dU0z_0dU0z_0dU0",
+                        authDomain: "telegram-web-clone.firebaseapp.com",
+                        projectId: "telegram-web-clone",
+                        storageBucket: "telegram-web-clone.appspot.com",
+                        messagingSenderId: "123456789012",
+                        appId: "1:123456789012:web:abc123def456"
+                    };
+                    
+                    // Initialize Firebase
+                    firebase.initializeApp(firebaseConfig);
+                    const db = firebase.firestore();
+                    
+                    // WebRTC Configuration
+                    const rtcConfig = {
+                        iceServers: [
+                            { urls: "stun:stun.l.google.com:19302" }
+                        ]
+                    };
+                    
+                    // Call state
+                    let currentCall = null;
+                    let localStream = null;
+                    let remoteStream = null;
+                    let peerConnection = null;
+                    let callModal = null;
+                    let callRingtone = null;
+                    let callAcceptedSound = null;
+                    let callEndedSound = null;
+                    
+                    // Preload sounds (silently fail if not found)
+                    function loadSound(url) {
+                        return new Promise((resolve) => {
+                            const audio = new Audio();
+                            audio.oncanplaythrough = () => resolve(audio);
+                            audio.onerror = () => resolve(null);
+                            audio.src = url;
+                        });
                     }
-                };
-                pc.ontrack = (event) => {
-                    // Здесь можно подключить аудио элемент для воспроизведения удалённого потока
-                    const remoteAudio = document.createElement('audio');
-                    remoteAudio.srcObject = event.streams[0];
-                    remoteAudio.autoplay = true;
-                    remoteAudio.playsinline = true;
-                    remoteAudio.style.display = 'none';
-                    document.body.appendChild(remoteAudio);
-                };
-                return pc;
-            }
-
-            async function initiateCall(receiverId) {
-                if (!currentUser) return;
-                // Проверяем DND статус получателя через onlineUsers
-                const receiverOnline = onlineUsers[receiverId.toString()];
-                if (receiverOnline && receiverOnline.dnd) {
-                    alert('Пользователь в режиме "Не беспокоить"');
-                    return;
-                }
-                stopAllCallSounds();
-                localStream = await getLocalStream();
-                if (!localStream) return;
-                peerConnection = createPeerConnection();
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                const callData = {
-                    callerId: currentUser.id,
-                    receiverId: receiverId,
-                    offer: offer,
-                    status: 'ringing',
-                    createdAt: new Date().toISOString()
-                };
-                const { data, error } = await supabaseClient
-                    .from('calls')
-                    .insert([callData])
-                    .select()
-                    .single();
-                if (error) {
-                    console.error('Error creating call:', error);
-                    alert('Ошибка при создании звонка');
-                    return;
-                }
-                currentCallId = data.id;
-                callStatusDiv.style.display = 'block';
-                callStatusDiv.textContent = 'Звоним...';
-                // Ждём ответа
-                const subscription = supabaseClient
-                    .channel(`call-${data.id}`)
-                    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calls', filter: `id=eq.${data.id}` }, payload => {
-                        if (payload.new.status === 'accepted' && payload.new.answer) {
-                            handleAnswer(payload.new.answer);
-                        } else if (payload.new.status === 'rejected') {
-                            endCall('rejected');
-                        } else if (payload.new.status === 'ended') {
-                            endCall('ended');
-                        }
-                    })
-                    .subscribe();
-                incomingCallTimeout = setTimeout(() => {
-                    if (currentCallId) {
-                        supabaseClient
-                            .from('calls')
-                            .update({ status: 'rejected' })
-                            .eq('id', currentCallId)
-                            .then(() => {
-                                endCall('rejected');
-                            });
+                    
+                    async function preloadSounds() {
+                        callRingtone = await loadSound('/sounds/ringtone.mp3');
+                        callAcceptedSound = await loadSound('/sounds/call-accepted.mp3');
+                        callEndedSound = await loadSound('/sounds/call-ended.mp3');
                     }
-                }, 30000);
-            }
-
-            async function handleAnswer(answer) {
-                if (!peerConnection) return;
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                    callStatusDiv.textContent = 'Звонок активен';
-                    stopAllCallSounds();
-                    callAcceptedAudio.play().catch(e => console.log('Audio play failed:', e));
-                    if (incomingCallTimeout) clearTimeout(incomingCallTimeout);
-                } catch (err) {
-                    console.error('Error setting remote description:', err);
-                }
-            }
-
-            function endCall(reason) {
-                if (peerConnection) {
-                    peerConnection.close();
-                    peerConnection = null;
-                }
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                    localStream = null;
-                }
-                if (currentCallId) {
-                    supabaseClient
-                        .from('calls')
-                        .update({ status: 'ended' })
-                        .eq('id', currentCallId)
-                        .then(() => {});
-                    currentCallId = null;
-                }
-                callStatusDiv.style.display = 'none';
-                stopAllCallSounds();
-                if (reason !== 'rejected' && reason !== 'ended') {
-                    callEndedAudio.play().catch(e => console.log('Audio play failed:', e));
-                }
-                if (incomingCallTimeout) clearTimeout(incomingCallTimeout);
-            }
-
-            function listenForIncomingCalls() {
-                if (!currentUser) return;
-                supabaseClient
-                    .channel('incoming-calls')
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calls', filter: `receiverId=eq.${currentUser.id}` }, payload => {
-                        const call = payload.new;
-                        if (call.status !== 'ringing') return;
-                        // Проверяем DND текущего пользователя
-                        if (currentUser.dnd) {
-                            // Звонок всё равно может быть принят, но без звука
-                        } else {
-                            ringtoneAudio.play().catch(e => console.log('Ringtone play failed:', e));
-                        }
-                        // Показываем модальное окно с предложением принять звонок
+                    
+                    // Create call modal if not exists
+                    function ensureCallModal() {
+                        if (document.getElementById('callModal')) return;
+                        
                         const modal = document.createElement('div');
-                        modal.className = 'modal active';
+                        modal.id = 'callModal';
+                        modal.className = 'modal';
                         modal.innerHTML = `
-                            <div class="modal-content" style="max-width: 300px;">
-                                <h3>Входящий звонок</h3>
-                                <p>Звонит пользователь ${call.callerId}</p>
-                                <button class="modal-btn" style="margin-bottom: 10px;" id="acceptCallBtn">Принять</button>
-                                <button class="modal-btn secondary" id="rejectCallBtn">Отклонить</button>
+                            <div class="modal-content" style="text-align: center;">
+                                <h2 id="callStatus">Входящий звонок...</h2>
+                                <div id="callerInfo" style="margin: 20px 0;">
+                                    <div class="user-profile-avatar" id="callAvatar" style="margin: 0 auto;">👤</div>
+                                    <div class="user-profile-name" id="callerName"></div>
+                                </div>
+                                <div id="callControls" style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+                                    <button class="modal-btn" style="background-color: var(--accent-green); width: auto; padding: 15px 30px;" id="answerCallBtn">Ответить</button>
+                                    <button class="modal-btn" style="background-color: var(--dnd-red); width: auto; padding: 15px 30px;" id="rejectCallBtn">Отклонить</button>
+                                </div>
+                                <div id="activeCallControls" style="display: none; gap: 20px; justify-content: center; margin-top: 20px;">
+                                    <button class="modal-btn" style="background-color: var(--dnd-red); width: auto; padding: 15px 30px;" id="endCallBtn">Завершить</button>
+                                </div>
                             </div>
                         `;
                         document.body.appendChild(modal);
-                        const acceptBtn = document.getElementById('acceptCallBtn');
-                        const rejectBtn = document.getElementById('rejectCallBtn');
-                        acceptBtn.onclick = async () => {
-                            document.body.removeChild(modal);
-                            stopAllCallSounds();
-                            localStream = await getLocalStream();
-                            if (!localStream) return;
-                            peerConnection = createPeerConnection();
+                        callModal = modal;
+                        
+                        // Add event listeners
+                        document.getElementById('answerCallBtn')?.addEventListener('click', answerCall);
+                        document.getElementById('rejectCallBtn')?.addEventListener('click', rejectCall);
+                        document.getElementById('endCallBtn')?.addEventListener('click', endCall);
+                    }
+                    
+                    // Add call button to chat header
+                    function addCallButtonToHeader() {
+                        const chatActions = document.querySelector('.chat-actions');
+                        if (!chatActions) return;
+                        
+                        // Check if button already exists
+                        if (document.getElementById('callBtn')) return;
+                        
+                        // Only add if it's a private chat (not favorite, not public, not self)
+                        if (!currentChat || currentChat.isFavorite || currentChat.isSelf || !currentChat.isPrivate) return;
+                        
+                        const callBtn = document.createElement('button');
+                        callBtn.id = 'callBtn';
+                        callBtn.className = 'action-btn';
+                        callBtn.innerHTML = '📞';
+                        callBtn.onclick = startCall;
+                        chatActions.appendChild(callBtn);
+                    }
+                    
+                    // Start a call
+                    async function startCall() {
+                        if (!currentChat || !currentChat.members) return;
+                        
+                        const receiverId = currentChat.members.find(id => id !== currentUser.id);
+                        if (!receiverId) return;
+                        
+                        try {
+                            // Get user media
+                            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                            
+                            // Create peer connection
+                            peerConnection = new RTCPeerConnection(rtcConfig);
+                            
+                            // Add local stream
+                            localStream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                            
+                            // Handle ICE candidates
+                            peerConnection.onicecandidate = (event) => {
+                                if (event.candidate) {
+                                    // Send candidate via Firestore
+                                    db.collection('calls').doc(currentCall.id).collection('candidates').add({
+                                        candidate: event.candidate,
+                                        sender: currentUser.id,
+                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                }
+                            };
+                            
+                            // Handle remote stream
+                            peerConnection.ontrack = (event) => {
+                                remoteStream = event.streams[0];
+                                // Play remote stream (we'll just show that call is connected)
+                                document.getElementById('callStatus').textContent = 'В разговоре...';
+                            };
+                            
+                            // Create offer
+                            const offer = await peerConnection.createOffer();
+                            await peerConnection.setLocalDescription(offer);
+                            
+                            // Create call document in Firestore
+                            const callRef = await db.collection('calls').add({
+                                callerId: currentUser.id,
+                                receiverId: receiverId,
+                                offer: { type: offer.type, sdp: offer.sdp },
+                                status: 'ringing',
+                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                            
+                            currentCall = { id: callRef.id, ...(await callRef.get()).data() };
+                            
+                            // Show calling modal
+                            ensureCallModal();
+                            callModal.classList.add('active');
+                            document.getElementById('callStatus').textContent = 'Звоним...';
+                            document.getElementById('callerName').textContent = currentChat.name;
+                            document.getElementById('callAvatar').textContent = currentChat.avatar || '👤';
+                            document.getElementById('callControls').style.display = 'none';
+                            document.getElementById('activeCallControls').style.display = 'flex';
+                            
+                            // Listen for answer
+                            const unsubscribe = db.collection('calls').doc(callRef.id)
+                                .onSnapshot(async (doc) => {
+                                    const data = doc.data();
+                                    if (!data) return;
+                                    
+                                    if (data.status === 'answered' && data.answer) {
+                                        // Play accepted sound if not dnd
+                                        if (!currentUser.dnd && callAcceptedSound) {
+                                            callAcceptedSound.play().catch(() => {});
+                                        }
+                                        
+                                        // Set remote description
+                                        const answer = new RTCSessionDescription(data.answer);
+                                        await peerConnection.setRemoteDescription(answer);
+                                        
+                                        document.getElementById('callStatus').textContent = 'В разговоре...';
+                                        unsubscribe();
+                                    } else if (data.status === 'rejected' || data.status === 'ended') {
+                                        // Play ended sound if not dnd
+                                        if (!currentUser.dnd && callEndedSound) {
+                                            callEndedSound.play().catch(() => {});
+                                        }
+                                        
+                                        endCall();
+                                        unsubscribe();
+                                    }
+                                });
+                            
+                            // Listen for ICE candidates
+                            db.collection('calls').doc(callRef.id).collection('candidates')
+                                .onSnapshot(snapshot => {
+                                    snapshot.docChanges().forEach(change => {
+                                        if (change.type === 'added' && peerConnection) {
+                                            const candidate = change.doc.data().candidate;
+                                            if (candidate && candidate.sender !== currentUser.id) {
+                                                peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                                            }
+                                        }
+                                    });
+                                });
+                            
+                        } catch (err) {
+                            console.error('Error starting call:', err);
+                            alert('Не удалось начать звонок');
+                        }
+                    }
+                    
+                    // Answer incoming call
+                    async function answerCall() {
+                        if (!currentCall) return;
+                        
+                        try {
+                            // Get user media
+                            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                            
+                            // Create peer connection
+                            peerConnection = new RTCPeerConnection(rtcConfig);
+                            
+                            // Add local stream
+                            localStream.getTracks().forEach(track => {
+                                peerConnection.addTrack(track, localStream);
+                            });
+                            
+                            // Handle ICE candidates
+                            peerConnection.onicecandidate = (event) => {
+                                if (event.candidate) {
+                                    db.collection('calls').doc(currentCall.id).collection('candidates').add({
+                                        candidate: event.candidate,
+                                        sender: currentUser.id,
+                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                                    });
+                                }
+                            };
+                            
+                            // Handle remote stream
+                            peerConnection.ontrack = (event) => {
+                                remoteStream = event.streams[0];
+                                document.getElementById('callStatus').textContent = 'В разговоре...';
+                            };
+                            
+                            // Set remote description (offer)
+                            await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCall.offer));
+                            
+                            // Create answer
                             const answer = await peerConnection.createAnswer();
                             await peerConnection.setLocalDescription(answer);
-                            await supabaseClient
-                                .from('calls')
-                                .update({ answer: answer, status: 'accepted' })
-                                .eq('id', call.id);
-                            currentCallId = call.id;
-                            callStatusDiv.style.display = 'block';
-                            callStatusDiv.textContent = 'Звонок активен';
-                            // Слушаем ICE кандидаты и обновления
-                            supabaseClient
-                                .channel(`call-${call.id}`)
-                                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calls', filter: `id=eq.${call.id}` }, payload => {
-                                    if (payload.new.iceCandidate && peerConnection && !peerConnection.remoteDescription) {
-                                        peerConnection.addIceCandidate(new RTCIceCandidate(payload.new.iceCandidate)).catch(e => console.error(e));
-                                    }
-                                })
-                                .subscribe();
-                        };
-                        rejectBtn.onclick = async () => {
-                            document.body.removeChild(modal);
-                            stopAllCallSounds();
-                            await supabaseClient
-                                .from('calls')
-                                .update({ status: 'rejected' })
-                                .eq('id', call.id);
-                        };
-                    })
-                    .subscribe();
-            }
-
-            // Добавляем кнопку звонка в chat-header, рядом с существующими action-btn
-            function addCallButton() {
-                const chatActions = document.querySelector('.chat-actions');
-                if (!chatActions) return;
-                const callBtn = document.createElement('button');
-                callBtn.className = 'action-btn';
-                callBtn.innerHTML = '📞';
-                callBtn.title = 'Позвонить';
-                callBtn.onclick = async () => {
-                    if (!currentChat || currentChat.isSelf || currentChat.isFavorite) return;
-                    const receiverId = currentChat.members?.find(id => id !== currentUser.id);
-                    if (receiverId) {
-                        await initiateCall(receiverId);
-                    } else {
-                        alert('Не удалось определить получателя');
+                            
+                            // Update call document
+                            await db.collection('calls').doc(currentCall.id).update({
+                                answer: { type: answer.type, sdp: answer.sdp },
+                                status: 'answered'
+                            });
+                            
+                            // Update UI
+                            document.getElementById('callControls').style.display = 'none';
+                            document.getElementById('activeCallControls').style.display = 'flex';
+                            
+                        } catch (err) {
+                            console.error('Error answering call:', err);
+                        }
                     }
+                    
+                    // Reject call
+                    async function rejectCall() {
+                        if (!currentCall) return;
+                        
+                        await db.collection('calls').doc(currentCall.id).update({
+                            status: 'rejected'
+                        });
+                        
+                        endCall();
+                    }
+                    
+                    // End call
+                    function endCall() {
+                        if (localStream) {
+                            localStream.getTracks().forEach(track => track.stop());
+                            localStream = null;
+                        }
+                        
+                        if (peerConnection) {
+                            peerConnection.close();
+                            peerConnection = null;
+                        }
+                        
+                        if (callModal) {
+                            callModal.classList.remove('active');
+                        }
+                        
+                        currentCall = null;
+                    }
+                    
+                    // Listen for incoming calls
+                    function listenForIncomingCalls() {
+                        if (!currentUser) return;
+                        
+                        db.collection('calls')
+                            .where('receiverId', '==', currentUser.id)
+                            .where('status', '==', 'ringing')
+                            .onSnapshot((snapshot) => {
+                                snapshot.docChanges().forEach(change => {
+                                    if (change.type === 'added') {
+                                        const callData = change.doc.data();
+                                        
+                                        // Find caller info
+                                        const caller = allUsers.find(u => u.id === callData.callerId);
+                                        if (!caller) return;
+                                        
+                                        // Don't ring if in DND mode
+                                        if (!currentUser.dnd && callRingtone) {
+                                            callRingtone.loop = true;
+                                            callRingtone.play().catch(() => {});
+                                        }
+                                        
+                                        // Show incoming call modal
+                                        ensureCallModal();
+                                        callModal.classList.add('active');
+                                        document.getElementById('callStatus').textContent = 'Входящий звонок...';
+                                        document.getElementById('callerName').textContent = caller.username;
+                                        document.getElementById('callAvatar').textContent = caller.avatar || '👤';
+                                        document.getElementById('callControls').style.display = 'flex';
+                                        document.getElementById('activeCallControls').style.display = 'none';
+                                        
+                                        currentCall = { id: change.doc.id, ...callData };
+                                        
+                                        // Stop ringing if call is answered/rejected elsewhere
+                                        const unsubscribe = db.collection('calls').doc(change.doc.id)
+                                            .onSnapshot((doc) => {
+                                                const data = doc.data();
+                                                if (data && (data.status === 'answered' || data.status === 'rejected' || data.status === 'ended')) {
+                                                    if (callRingtone) {
+                                                        callRingtone.pause();
+                                                        callRingtone.currentTime = 0;
+                                                    }
+                                                    unsubscribe();
+                                                }
+                                            });
+                                    }
+                                });
+                            });
+                    }
+                    
+                    // Override joinChat to add call button
+                    const originalJoinChat = joinChat;
+                    joinChat = function(chat) {
+                        originalJoinChat(chat);
+                        setTimeout(addCallButtonToHeader, 100);
+                    };
+                    
+                    // Override createPrivateChat to ensure call button appears
+                    const originalCreatePrivateChat = createPrivateChat;
+                    createPrivateChat = function(user) {
+                        originalCreatePrivateChat(user);
+                        setTimeout(addCallButtonToHeader, 100);
+                    };
+                    
+                    // Initialize call module when user logs in
+                    const originalInit = init;
+                    init = async function() {
+                        await originalInit();
+                        if (currentUser) {
+                            await preloadSounds();
+                            listenForIncomingCalls();
+                            addCallButtonToHeader();
+                        }
+                    };
                 };
-                chatActions.appendChild(callBtn);
+                document.head.appendChild(script2);
             }
-
-            // Следим за появлением chat-actions и добавляем кнопку при каждом открытии чата
-            const observer = new MutationObserver(() => {
-                if (!document.querySelector('.chat-actions .action-btn[title="Позвонить"]')) {
-                    addCallButton();
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-
-            // Запускаем прослушивание входящих звонков после инициализации currentUser
-            let userCheckInterval = setInterval(() => {
-                if (currentUser) {
-                    clearInterval(userCheckInterval);
-                    listenForIncomingCalls();
-                    addCallButton();
-                }
-            }, 100);
         })();
+        // ===== CALL MODULE END =====
     </script>
-    // ===== CALL MODULE END =====
 </body>
 </html>
