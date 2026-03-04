@@ -2323,34 +2323,237 @@
             return uuidRegex.test(uuid);
         }
 
+        function isFavoriteChatId(id) {
+            return id && id.startsWith('favorite-');
+        }
+
         function checkUrlForChat() {
             try {
                 let hash = window.location.hash.substring(1);
                 
                 if (!hash) return;
                 
+                if (isFavoriteChatId(hash)) {
+                    const favChat = myChats.find(c => c.id === hash);
+                    if (favChat) {
+                        setTimeout(() => joinChat(favChat), 500);
+                        return;
+                    }
+                }
+                
                 const cleanId = getCleanChatId(hash);
                 
                 if (!cleanId) return;
                 
-                let chat = null;
+                if (!isValidUUID(cleanId)) return;
                 
-                if (isValidUUID(cleanId)) {
-                    chat = myChats.find(c => c.id === cleanId) || publicChats.find(c => c.id === cleanId);
-                } else {
-                    chat = myChats.find(c => c.id === hash);
-                    
-                    if (!chat && hash.startsWith('favorite-')) {
-                        const favId = hash;
-                        chat = myChats.find(c => c.id === favId);
-                    }
-                }
+                const chat = myChats.find(c => c.id === cleanId) || publicChats.find(c => c.id === cleanId);
                 
                 if (chat) {
                     setTimeout(() => joinChat(chat), 500);
                 }
             } catch (err) {
                 console.error('Error in checkUrlForChat:', err);
+            }
+        }
+
+        async function loadChatHistory(chatId) {
+            if (!chatId) return;
+            
+            try {
+                if (isFavoriteChatId(chatId)) {
+                    if (!messages[chatId]) messages[chatId] = [];
+                    return;
+                }
+                
+                if (!isValidUUID(chatId)) return;
+                
+                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+                
+                let query = supabaseClient
+                    .from('messages')
+                    .select('*')
+                    .eq('chat_id', chatId)
+                    .order('timestamp', { ascending: true });
+                
+                if (currentUser.name !== ADMIN_USERNAME) {
+                    query = query.gte('timestamp', thirtyDaysAgo);
+                }
+                
+                const { data, error } = await query;
+                
+                if (error) {
+                    console.error('Ошибка загрузки истории:', error);
+                    return;
+                }
+                
+                if (data && data.length > 0) {
+                    if (!messages[chatId]) messages[chatId] = [];
+                    
+                    data.forEach(msg => {
+                        const existingMsg = messages[chatId].find(m => m.id === msg.id);
+                        if (!existingMsg) {
+                            messages[chatId].push({
+                                id: msg.id,
+                                chatId: msg.chat_id,
+                                sender: msg.sender_id,
+                                senderName: msg.sender_name,
+                                text: msg.text,
+                                audio: msg.audio,
+                                duration: msg.duration,
+                                media: msg.media,
+                                time: msg.time,
+                                timestamp: msg.timestamp,
+                                isAdmin: msg.is_admin || false,
+                                edited: msg.edited || false,
+                                type: msg.sender_id == currentUser.id ? 'out' : 'in'
+                            });
+                            
+                            if (msg.sender_id == currentUser.id) {
+                                messageStatuses[msg.id] = {
+                                    status: 'sent',
+                                    deliveredAt: null,
+                                    readAt: null
+                                };
+                            }
+                        }
+                    });
+                    
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    
+                    if (currentChat && currentChat.id === chatId) {
+                        renderMessages();
+                    }
+                }
+            } catch (err) {
+                console.error('Ошибка при загрузке истории:', err);
+            }
+        }
+
+        function subscribeToChat(chat) {
+            if (!ably || !chat) return;
+            
+            const chatId = chat.id;
+            
+            if (isFavoriteChatId(chatId)) return;
+            
+            const chatChannel = ably.channels.get(`chat-${chatId}`);
+            chatChannel.unsubscribe();
+            
+            chatChannel.subscribe('message', async (msg) => {
+                if (!msg || !msg.data) return;
+                const message = msg.data;
+                
+                if (!messages[chatId]) messages[chatId] = [];
+                
+                const exists = messages[chatId].some(m => m.id === message.id);
+                if (!exists) {
+                    messages[chatId].push({
+                        ...message,
+                        type: message.sender == currentUser.id ? 'out' : 'in'
+                    });
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    
+                    if (message.sender != currentUser.id) {
+                        chatChannel.publish('delivery_receipt', { 
+                            messageId: message.id, 
+                            receiver: currentUser.id,
+                            timestamp: Date.now() 
+                        });
+                        
+                        if (currentChat?.id !== chatId) {
+                            unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
+                        }
+                    }
+                    
+                    if (currentChat && currentChat.id === chatId) {
+                        renderMessages();
+                        unreadCounts[chatId] = 0;
+                        markMessagesAsRead(chatId);
+                    }
+                    
+                    updateChatsList();
+                }
+            });
+            
+            chatChannel.subscribe('delivery_receipt', (data) => {
+                const { messageId } = data.data;
+                
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'delivered';
+                    messageStatuses[messageId].deliveredAt = Date.now();
+                }
+                
+                if (currentChat && currentChat.id === chatId) {
+                    renderMessages();
+                }
+            });
+            
+            chatChannel.subscribe('read_receipt', (data) => {
+                const { messageId } = data.data;
+                
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'read';
+                    messageStatuses[messageId].readAt = Date.now();
+                }
+                
+                if (currentChat && currentChat.id === chatId) {
+                    renderMessages();
+                }
+            });
+            
+            chatChannel.subscribe('delete', (data) => {
+                const { messageId } = data.data;
+                
+                if (messages[chatId]) {
+                    messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
+                    if (currentChat?.id === chatId) renderMessages();
+                    updateChatsList();
+                }
+            });
+            
+            chatChannel.subscribe('edit', (data) => {
+                const { messageId, newText } = data.data;
+                
+                if (messages[chatId]) {
+                    const msgIndex = messages[chatId].findIndex(m => m.id === messageId);
+                    if (msgIndex !== -1) {
+                        messages[chatId][msgIndex].text = newText;
+                        messages[chatId][msgIndex].edited = true;
+                        if (currentChat?.id === chatId) renderMessages();
+                    }
+                }
+            });
+            
+            loadChatHistory(chatId);
+        }
+
+        async function saveMessageToDatabase(message) {
+            if (!message || isFavoriteChatId(message.chatId)) return;
+            
+            try {
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .insert([{
+                        id: message.id,
+                        chat_id: message.chatId,
+                        sender_id: message.sender,
+                        sender_name: message.senderName,
+                        text: message.text || null,
+                        audio: message.audio || null,
+                        duration: message.duration || null,
+                        media: message.media || null,
+                        time: message.time,
+                        timestamp: message.timestamp,
+                        is_admin: message.isAdmin || false,
+                        edited: message.edited || false
+                    }]);
+                
+                if (error) {
+                    console.error('❌ Ошибка сохранения в БД:', error);
+                }
+            } catch (err) {
+                console.error('❌ Критическая ошибка при сохранении:', err);
             }
         }
 
@@ -2391,7 +2594,12 @@
                         if (myChats.length === 1 && myChats[0].isFavorite) {
                             joinChat(myChats[0]);
                         } else if (!currentChat && myChats.length > 0) {
-                            joinChat(myChats[0]);
+                            const nonFavoriteChat = myChats.find(c => !c.isFavorite);
+                            if (nonFavoriteChat) {
+                                joinChat(nonFavoriteChat);
+                            } else {
+                                joinChat(myChats[0]);
+                            }
                         }
                         
                         updateBackButtonVisibility();
@@ -2429,7 +2637,12 @@
                     if (myChats.length === 1 && myChats[0].isFavorite) {
                         joinChat(myChats[0]);
                     } else if (!currentChat && myChats.length > 0) {
-                        joinChat(myChats[0]);
+                        const nonFavoriteChat = myChats.find(c => !c.isFavorite);
+                        if (nonFavoriteChat) {
+                            joinChat(nonFavoriteChat);
+                        } else {
+                            joinChat(myChats[0]);
+                        }
                     }
                     
                     updateBackButtonVisibility();
@@ -2446,6 +2659,71 @@
                 
             } catch (err) {
                 console.error('Init error:', err);
+            }
+        }
+
+        async function loadAllMessages() {
+            if (!currentUser) return;
+            
+            try {
+                const { data, error } = await supabaseClient
+                    .from('messages')
+                    .select('*')
+                    .order('timestamp', { ascending: true });
+                
+                if (error) {
+                    console.error('Error loading messages:', error);
+                    return;
+                }
+                
+                messages = {};
+                
+                if (data && data.length > 0) {
+                    data.forEach(msg => {
+                        const chatId = msg.chat_id;
+                        if (!isValidUUID(chatId)) return;
+                        
+                        if (!messages[chatId]) messages[chatId] = [];
+                        
+                        messages[chatId].push({
+                            id: msg.id,
+                            chatId: msg.chat_id,
+                            sender: msg.sender_id,
+                            senderName: msg.sender_name,
+                            text: msg.text,
+                            audio: msg.audio,
+                            duration: msg.duration,
+                            media: msg.media,
+                            time: msg.time,
+                            timestamp: msg.timestamp,
+                            isAdmin: msg.is_admin || false,
+                            edited: msg.edited || false,
+                            type: msg.sender_id == currentUser.id ? 'out' : 'in'
+                        });
+                        
+                        if (msg.sender_id == currentUser.id) {
+                            messageStatuses[msg.id] = {
+                                status: 'sent',
+                                deliveredAt: null,
+                                readAt: null
+                            };
+                        }
+                    });
+                    
+                    Object.keys(messages).forEach(chatId => {
+                        if (isValidUUID(chatId)) {
+                            messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                        }
+                    });
+                }
+                
+                const favChatId = `favorite-${currentUser.id}`;
+                if (!messages[favChatId]) {
+                    messages[favChatId] = [];
+                }
+                
+            } catch (err) {
+                console.error('Error loading all messages:', err);
             }
         }
 
@@ -2536,61 +2814,6 @@
             }
         }
 
-        async function loadAllMessages() {
-            if (!currentUser) return;
-            
-            try {
-                const { data, error } = await supabaseClient
-                    .from('messages')
-                    .select('*')
-                    .order('timestamp', { ascending: true });
-                
-                if (error) {
-                    console.error('Error loading messages:', error);
-                    return;
-                }
-                
-                messages = {};
-                
-                if (data && data.length > 0) {
-                    data.forEach(msg => {
-                        const chatId = msg.chat_id;
-                        if (!messages[chatId]) messages[chatId] = [];
-                        
-                        messages[chatId].push({
-                            id: msg.id,
-                            chatId: msg.chat_id,
-                            sender: msg.sender_id,
-                            senderName: msg.sender_name,
-                            text: msg.text,
-                            audio: msg.audio,
-                            duration: msg.duration,
-                            media: msg.media,
-                            time: msg.time,
-                            timestamp: msg.timestamp,
-                            isAdmin: msg.is_admin || false,
-                            edited: msg.edited || false,
-                            type: msg.sender_id == currentUser.id ? 'out' : 'in'
-                        });
-                        
-                        if (msg.sender_id == currentUser.id) {
-                            messageStatuses[msg.id] = {
-                                status: 'sent',
-                                deliveredAt: null,
-                                readAt: null
-                            };
-                        }
-                    });
-                    
-                    Object.keys(messages).forEach(chatId => {
-                        messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    });
-                }
-            } catch (err) {
-                console.error('Error loading all messages:', err);
-            }
-        }
-
         async function loadAllUsers() {
             try {
                 const { data, error } = await supabaseClient
@@ -2640,7 +2863,7 @@
                         ...chat,
                         members: members
                     };
-                });
+                }).filter(chat => isValidUUID(chat.id));
                 
                 if (currentTab === 'public') updateChatsList();
             } catch (err) {
@@ -2759,7 +2982,7 @@
                 const globalChatsChannel = ably.channels.get('global-chats');
                 globalChatsChannel.subscribe('new-chat', (message) => {
                     const newChat = message.data;
-                    if (!publicChats.find(c => c.id === newChat.id)) {
+                    if (newChat && isValidUUID(newChat.id) && !publicChats.find(c => c.id === newChat.id)) {
                         publicChats.unshift(newChat);
                         if (currentTab === 'public') updateChatsList();
                     }
@@ -2787,7 +3010,7 @@
 
                 adminChannel.subscribe('delete-message', (message) => {
                     const { chatId, messageId } = message.data;
-                    if (messages[chatId]) {
+                    if (messages[chatId] && isValidUUID(chatId)) {
                         messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
                         if (currentChat && currentChat.id === chatId) renderMessages();
                         updateChatsList();
@@ -2875,166 +3098,8 @@
             return 'давно';
         }
 
-        function subscribeToChat(chat) {
-            if (!ably || !chat) return;
-            
-            const chatChannel = ably.channels.get(`chat-${chat.id}`);
-            chatChannel.unsubscribe();
-            
-            chatChannel.subscribe('message', async (msg) => {
-                if (!msg || !msg.data) return;
-                const message = msg.data;
-                
-                if (!messages[chat.id]) messages[chat.id] = [];
-                
-                const exists = messages[chat.id].some(m => m.id === message.id);
-                if (!exists) {
-                    messages[chat.id].push({
-                        ...message,
-                        type: message.sender == currentUser.id ? 'out' : 'in'
-                    });
-                    messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
-                    if (message.sender != currentUser.id) {
-                        chatChannel.publish('delivery_receipt', { 
-                            messageId: message.id, 
-                            receiver: currentUser.id,
-                            timestamp: Date.now() 
-                        });
-                        
-                        if (currentChat?.id !== chat.id) {
-                            unreadCounts[chat.id] = (unreadCounts[chat.id] || 0) + 1;
-                        }
-                    }
-                    
-                    if (currentChat && currentChat.id === chat.id) {
-                        renderMessages();
-                        unreadCounts[chat.id] = 0;
-                        markMessagesAsRead(chat.id);
-                    }
-                    
-                    updateChatsList();
-                }
-            });
-            
-            chatChannel.subscribe('delivery_receipt', (data) => {
-                const { messageId } = data.data;
-                
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'delivered';
-                    messageStatuses[messageId].deliveredAt = Date.now();
-                }
-                
-                if (currentChat && currentChat.id === chat.id) {
-                    renderMessages();
-                }
-            });
-            
-            chatChannel.subscribe('read_receipt', (data) => {
-                const { messageId } = data.data;
-                
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'read';
-                    messageStatuses[messageId].readAt = Date.now();
-                }
-                
-                if (currentChat && currentChat.id === chat.id) {
-                    renderMessages();
-                }
-            });
-            
-            chatChannel.subscribe('delete', (data) => {
-                const { messageId } = data.data;
-                
-                if (messages[chat.id]) {
-                    messages[chat.id] = messages[chat.id].filter(m => m.id !== messageId);
-                    if (currentChat?.id === chat.id) renderMessages();
-                    updateChatsList();
-                }
-            });
-            
-            chatChannel.subscribe('edit', (data) => {
-                const { messageId, newText } = data.data;
-                
-                if (messages[chat.id]) {
-                    const msgIndex = messages[chat.id].findIndex(m => m.id === messageId);
-                    if (msgIndex !== -1) {
-                        messages[chat.id][msgIndex].text = newText;
-                        messages[chat.id][msgIndex].edited = true;
-                        if (currentChat?.id === chat.id) renderMessages();
-                    }
-                }
-            });
-            
-            loadChatHistory(chat.id);
-        }
-
-        async function loadChatHistory(chatId) {
-            try {
-                const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-                
-                let query = supabaseClient
-                    .from('messages')
-                    .select('*')
-                    .eq('chat_id', chatId)
-                    .order('timestamp', { ascending: true });
-                
-                if (currentUser.name !== ADMIN_USERNAME) {
-                    query = query.gte('timestamp', thirtyDaysAgo);
-                }
-                
-                const { data, error } = await query;
-                
-                if (error) {
-                    console.error('Ошибка загрузки истории:', error);
-                    return;
-                }
-                
-                if (data && data.length > 0) {
-                    if (!messages[chatId]) messages[chatId] = [];
-                    
-                    data.forEach(msg => {
-                        const existingMsg = messages[chatId].find(m => m.id === msg.id);
-                        if (!existingMsg) {
-                            messages[chatId].push({
-                                id: msg.id,
-                                chatId: msg.chat_id,
-                                sender: msg.sender_id,
-                                senderName: msg.sender_name,
-                                text: msg.text,
-                                audio: msg.audio,
-                                duration: msg.duration,
-                                media: msg.media,
-                                time: msg.time,
-                                timestamp: msg.timestamp,
-                                isAdmin: msg.is_admin || false,
-                                edited: msg.edited || false,
-                                type: msg.sender_id == currentUser.id ? 'out' : 'in'
-                            });
-                            
-                            if (msg.sender_id == currentUser.id) {
-                                messageStatuses[msg.id] = {
-                                    status: 'sent',
-                                    deliveredAt: null,
-                                    readAt: null
-                                };
-                            }
-                        }
-                    });
-                    
-                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
-                    if (currentChat && currentChat.id === chatId) {
-                        renderMessages();
-                    }
-                }
-            } catch (err) {
-                console.error('Ошибка при загрузке истории:', err);
-            }
-        }
-
         function markMessagesAsRead(chatId) {
-            if (!ably || !messages[chatId]) return;
+            if (!ably || !messages[chatId] || isFavoriteChatId(chatId)) return;
             
             messages[chatId].forEach(msg => {
                 if (msg.sender != currentUser.id && 
@@ -3331,35 +3396,6 @@
             }
         }
 
-        async function saveMessageToDatabase(message) {
-            try {
-                const { error } = await supabaseClient
-                    .from('messages')
-                    .insert([{
-                        id: message.id,
-                        chat_id: message.chatId,
-                        sender_id: message.sender,
-                        sender_name: message.senderName,
-                        text: message.text || null,
-                        audio: message.audio || null,
-                        duration: message.duration || null,
-                        media: message.media || null,
-                        time: message.time,
-                        timestamp: message.timestamp,
-                        is_admin: message.isAdmin || false,
-                        edited: message.edited || false
-                    }]);
-                
-                if (error) {
-                    console.error('❌ Ошибка сохранения в БД:', error);
-                } else {
-                    console.log('✅ Сообщение сохранено в БД:', message.id);
-                }
-            } catch (err) {
-                console.error('❌ Критическая ошибка при сохранении:', err);
-            }
-        }
-
         function handleMessagesContainerClick(event) {
             if (activeMessageId) {
                 const activeMessage = document.querySelector(`.message[data-id="${activeMessageId}"]`);
@@ -3569,7 +3605,7 @@
             if (!myChats.find(c => c.id === currentChat.id) && !currentChat.isSelf && !currentChat.isFavorite) {
                 myChats.push(currentChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(currentChat);
+                if (ably && !isFavoriteChatId(currentChat.id)) subscribeToChat(currentChat);
             }
             
             const now = new Date();
@@ -3588,9 +3624,11 @@
                 timestamp: timestamp
             };
             
-            await saveMessageToDatabase(message);
+            if (!isFavoriteChatId(currentChat.id)) {
+                await saveMessageToDatabase(message);
+            }
             
-            if (ably && !currentChat.isSelf && !currentChat.isFavorite) {
+            if (ably && !currentChat.isSelf && !currentChat.isFavorite && !isFavoriteChatId(currentChat.id)) {
                 const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
                 chatChannel.publish('message', message);
             }
@@ -3603,14 +3641,16 @@
             
             updateChatLastMessageTime(currentChat.id, timestamp);
             
-            setTimeout(() => {
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'delivered';
-                    if (currentChat && currentChat.id === currentChat.id) {
-                        renderMessages();
+            if (!isFavoriteChatId(currentChat.id)) {
+                setTimeout(() => {
+                    if (messageStatuses[messageId]) {
+                        messageStatuses[messageId].status = 'delivered';
+                        if (currentChat && currentChat.id === currentChat.id) {
+                            renderMessages();
+                        }
                     }
-                }
-            }, 1000);
+                }, 1000);
+            }
             
             input.value = '';
             input.style.height = 'auto';
@@ -3639,7 +3679,7 @@
             if (!myChats.find(c => c.id === currentChat.id) && !currentChat.isSelf && !currentChat.isFavorite) {
                 myChats.push(currentChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(currentChat);
+                if (ably && !isFavoriteChatId(currentChat.id)) subscribeToChat(currentChat);
             }
 
             const now = new Date();
@@ -3664,9 +3704,11 @@
                     timestamp: timestamp
                 };
 
-                await saveMessageToDatabase(message);
+                if (!isFavoriteChatId(currentChat.id)) {
+                    await saveMessageToDatabase(message);
+                }
                 
-                if (ably && !currentChat.isSelf && !currentChat.isFavorite) {
+                if (ably && !currentChat.isSelf && !currentChat.isFavorite && !isFavoriteChatId(currentChat.id)) {
                     const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
                     chatChannel.publish('message', message);
                 }
@@ -3679,12 +3721,14 @@
 
                 updateChatLastMessageTime(currentChat.id, timestamp);
 
-                setTimeout(() => {
-                    if (messageStatuses[messageId]) {
-                        messageStatuses[messageId].status = 'delivered';
-                        renderMessages();
-                    }
-                }, 1000);
+                if (!isFavoriteChatId(currentChat.id)) {
+                    setTimeout(() => {
+                        if (messageStatuses[messageId]) {
+                            messageStatuses[messageId].status = 'delivered';
+                            renderMessages();
+                        }
+                    }, 1000);
+                }
 
                 renderMessages();
                 updateChatsList();
@@ -3925,7 +3969,7 @@
                 });
             }
             
-            if (currentChat && !currentChat.isSelf && !currentChat.isFavorite) {
+            if (currentChat && !currentChat.isSelf && !currentChat.isFavorite && !isFavoriteChatId(currentChat.id)) {
                 markMessagesAsRead(currentChat.id);
             }
         }
@@ -4076,7 +4120,7 @@
             if (!myChats.find(c => c.id === chat.id) && !chat.isSelf && !chat.isFavorite) {
                 myChats.push(chat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(chat);
+                if (ably && !isFavoriteChatId(chat.id)) subscribeToChat(chat);
             }
             
             currentChat = chat;
@@ -4099,7 +4143,7 @@
             document.getElementById('chatStatus').textContent = chat.description || (chat.isFavorite ? 'Сохраненные сообщения' : 'Чат');
             document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
             
-            if (!chat.isSelf && !chat.isFavorite) {
+            if (!chat.isSelf && !chat.isFavorite && !isFavoriteChatId(chat.id)) {
                 loadChatHistory(chat.id);
             }
             
@@ -4125,6 +4169,8 @@
         }
 
         async function updateChatMembers(chatId, members) {
+            if (!isValidUUID(chatId)) return;
+            
             try {
                 await supabaseClient
                     .from('chats')
@@ -4150,7 +4196,7 @@
                 
                 myChats.push(privateChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                if (ably) subscribeToChat(privateChat);
+                if (ably && isValidUUID(chatId)) subscribeToChat(privateChat);
             }
             
             joinChat(privateChat);
@@ -4168,18 +4214,20 @@
             myChats = myChats.filter(c => c.id !== chatId);
             localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
             
-            supabaseClient
-                .from('chats')
-                .delete()
-                .eq('id', chatId)
-                .then(({ error }) => {
-                    if (error) console.error('Error deleting chat from DB:', error);
-                });
+            if (isValidUUID(chatId)) {
+                supabaseClient
+                    .from('chats')
+                    .delete()
+                    .eq('id', chatId)
+                    .then(({ error }) => {
+                        if (error) console.error('Error deleting chat from DB:', error);
+                    });
+            }
             
             if (messages[chatId]) {
                 delete messages[chatId];
             }
-            if (ably) {
+            if (ably && isValidUUID(chatId)) {
                 const adminChannel = ably.channels.get('admin-actions');
                 adminChannel.publish('delete-chat', { chatId, deletedBy: currentUser.id });
             }
@@ -4255,7 +4303,7 @@
                 
                 publicChats.unshift(createdChat);
                 
-                if (ably) {
+                if (ably && isValidUUID(createdChat.id)) {
                     const globalChatsChannel = ably.channels.get('global-chats');
                     globalChatsChannel.publish('new-chat', createdChat);
                 }
@@ -4299,15 +4347,17 @@
             
             messages[currentChat.id] = messages[currentChat.id].filter(m => m.id !== messageId);
             
-            supabaseClient
-                .from('messages')
-                .delete()
-                .eq('id', messageId)
-                .then(({ error }) => {
-                    if (error) console.error('Error deleting message from DB:', error);
-                });
+            if (!isFavoriteChatId(currentChat.id)) {
+                supabaseClient
+                    .from('messages')
+                    .delete()
+                    .eq('id', messageId)
+                    .then(({ error }) => {
+                        if (error) console.error('Error deleting message from DB:', error);
+                    });
+            }
             
-            if (ably && !currentChat.isSelf && !currentChat.isFavorite) {
+            if (ably && !currentChat.isSelf && !currentChat.isFavorite && !isFavoriteChatId(currentChat.id)) {
                 const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
                 chatChannel.publish('delete', { messageId, senderId: currentUser.id, timestamp: Date.now() });
                 
@@ -4364,15 +4414,17 @@
                 messages[currentChat.id][msgIndex].text = newText;
                 messages[currentChat.id][msgIndex].edited = true;
                 
-                supabaseClient
-                    .from('messages')
-                    .update({ text: newText, edited: true })
-                    .eq('id', messageToEdit.id)
-                    .then(({ error }) => {
-                        if (error) console.error('Error updating message in DB:', error);
-                    });
+                if (!isFavoriteChatId(currentChat.id)) {
+                    supabaseClient
+                        .from('messages')
+                        .update({ text: newText, edited: true })
+                        .eq('id', messageToEdit.id)
+                        .then(({ error }) => {
+                            if (error) console.error('Error updating message in DB:', error);
+                        });
+                }
                 
-                if (ably && !currentChat.isSelf && !currentChat.isFavorite) {
+                if (ably && !currentChat.isSelf && !currentChat.isFavorite && !isFavoriteChatId(currentChat.id)) {
                     const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
                     chatChannel.publish('edit', { 
                         messageId: messageToEdit.id, 
@@ -4989,22 +5041,19 @@
                     return;
                 }
                 
-                const cleanId = getCleanChatId(hash);
-                
-                if (!cleanId) return;
-                
-                let chat = null;
-                
-                if (isValidUUID(cleanId)) {
-                    chat = myChats.find(c => c.id === cleanId) || publicChats.find(c => c.id === cleanId);
-                } else {
-                    chat = myChats.find(c => c.id === hash);
-                    
-                    if (!chat && hash.startsWith('favorite-')) {
-                        const favId = hash;
-                        chat = myChats.find(c => c.id === favId);
+                if (isFavoriteChatId(hash)) {
+                    const favChat = myChats.find(c => c.id === hash);
+                    if (favChat) {
+                        joinChat(favChat);
+                        return;
                     }
                 }
+                
+                const cleanId = getCleanChatId(hash);
+                
+                if (!cleanId || !isValidUUID(cleanId)) return;
+                
+                const chat = myChats.find(c => c.id === cleanId) || publicChats.find(c => c.id === cleanId);
                 
                 if (chat) joinChat(chat);
             } catch (err) {
