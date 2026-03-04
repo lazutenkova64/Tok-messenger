@@ -2557,10 +2557,7 @@
             }
         }
 
-        async function init() {
-            if (isInitialized) return;
-            isInitialized = true;
-
+        async function initializeApp() {
             try {
                 applyTheme(currentTheme);
                 populateEmojiPicker();
@@ -5118,7 +5115,7 @@
             }, 3000);
         }
 
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', initializeApp);
     </script>
 </body>
 </html>
