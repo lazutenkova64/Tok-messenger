@@ -2411,7 +2411,7 @@
                     .single();
                 
                 if (error && error.code === 'PGRST116') {
-                    // Профиль не найден - создаем новый в таблице profiles
+                    // Профиль не найден - создаем
                     const defaultUsername = user.email.split('@')[0];
                     const { data: newProfile, error: insertError } = await supabaseClient
                         .from('profiles')
@@ -2426,10 +2426,7 @@
                         .select()
                         .single();
                     
-                    if (insertError) {
-                        console.error('Error creating profile:', insertError);
-                        throw insertError;
-                    }
+                    if (insertError) throw insertError;
                     
                     currentUser = {
                         id: newProfile.id,
@@ -2442,7 +2439,6 @@
                         dnd: newProfile.dnd || false
                     };
                 } else if (error) {
-                    console.error('Error loading profile:', error);
                     throw error;
                 } else {
                     currentUser = {
@@ -4818,14 +4814,8 @@
                     async (payload) => {
                         const callData = payload.new;
                         
-                        // Загружаем информацию о звонящем из profiles
-                        const { data: caller, error } = await supabaseClient
-                            .from('profiles')
-                            .select('*')
-                            .eq('id', callData.caller_id)
-                            .single();
-                        
-                        if (error || !caller) return;
+                        const caller = allUsers.find(u => u.id === callData.caller_id);
+                        if (!caller) return;
                         
                         if (currentUser.dnd) return;
                         
