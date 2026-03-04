@@ -54,7 +54,6 @@
             --pattern-overlay: none;
         }
 
-        /* Тема 1: Классический темный */
         [data-theme="classic-dark"] {
             --bg-color: #0a0a0a;
             --bg-secondary: #141414;
@@ -68,7 +67,6 @@
             --pattern-overlay: none;
         }
 
-        /* Тема 2: Неоновый город */
         [data-theme="neon-city"] {
             --bg-color: #0b0e1a;
             --bg-secondary: #141a2a;
@@ -88,7 +86,6 @@
                                radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.1) 0%, transparent 30%);
         }
 
-        /* Тема 3: Киберпанк */
         [data-theme="cyberpunk"] {
             --bg-color: #0f0c1a;
             --bg-secondary: #1a1530;
@@ -108,7 +105,6 @@
                                linear-gradient(135deg, rgba(255, 0, 102, 0.05) 0%, transparent 50%);
         }
 
-        /* Тема 4: Ледяная пещера */
         [data-theme="ice-cave"] {
             --bg-color: #0e1a1f;
             --bg-secondary: #162a33;
@@ -128,7 +124,6 @@
                                radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.05) 0%, transparent 30%);
         }
 
-        /* Тема 5: Вулканическая */
         [data-theme="volcanic"] {
             --bg-color: #1a0f0a;
             --bg-secondary: #2a1a12;
@@ -148,7 +143,6 @@
                                radial-gradient(circle at 50% 30%, rgba(255, 107, 74, 0.1) 0%, transparent 40%);
         }
 
-        /* Тема 6: Мятная свежесть */
         [data-theme="mint-fresh"] {
             --bg-color: #0a1a14;
             --bg-secondary: #122a20;
@@ -167,7 +161,6 @@
             --pattern-overlay: repeating-linear-gradient(30deg, rgba(152, 255, 152, 0.05) 0px, rgba(152, 255, 152, 0.05) 3px, transparent 3px, transparent 12px);
         }
 
-        /* Тема 7: Фиолетовый туман */
         [data-theme="purple-haze"] {
             --bg-color: #140a1a;
             --bg-secondary: #22122a;
@@ -187,7 +180,6 @@
                                radial-gradient(circle at 70% 20%, rgba(155, 89, 182, 0.1) 0%, transparent 30%);
         }
 
-        /* Тема 8: Золотой век */
         [data-theme="golden-age"] {
             --bg-color: #1a1510;
             --bg-secondary: #2a221a;
@@ -208,7 +200,6 @@
             background-size: 40px 40px;
         }
 
-        /* Тема 9: Космическая бездна */
         [data-theme="cosmic-abyss"] {
             --bg-color: #0a0a14;
             --bg-secondary: #121224;
@@ -229,7 +220,6 @@
             background-size: 60px 60px;
         }
 
-        /* Тема 10: Морская глубина */
         [data-theme="ocean-deep"] {
             --bg-color: #0a141f;
             --bg-secondary: #122232;
@@ -451,6 +441,18 @@
         }
 
         .admin-badge {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            color: #000;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 700;
+            margin-left: 6px;
+            display: inline-block;
+            box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+        }
+
+        .creator-badge {
             background: linear-gradient(135deg, #ffd700, #ffb347);
             color: #000;
             font-size: 10px;
@@ -1019,7 +1021,7 @@
             border-top: 1px solid var(--border-light);
             display: flex !important;
             gap: 8px;
-            align-items: center;
+            align-items: flex-end;
             min-height: var(--input-height);
             flex-shrink: 0;
             z-index: 10;
@@ -1028,6 +1030,7 @@
             width: 100%;
             visibility: visible !important;
             opacity: 1 !important;
+            position: relative;
         }
 
         .emoji-toggle-btn {
@@ -1098,6 +1101,7 @@
             flex-direction: column;
             gap: 8px;
             min-width: 0;
+            position: relative;
         }
 
         .message-input {
@@ -1164,6 +1168,12 @@
             overflow-y: auto;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
         }
 
         @keyframes slideDown {
@@ -1843,6 +1853,46 @@
             color: var(--text-primary);
         }
 
+        .call-controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .call-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .call-btn.accept {
+            background-color: var(--accent-green);
+            color: white;
+        }
+
+        .call-btn.reject {
+            background-color: var(--dnd-red);
+            color: white;
+        }
+
+        .call-btn:active {
+            transform: scale(0.95);
+        }
+
+        .call-status {
+            font-size: 18px;
+            margin: 20px 0;
+            color: var(--text-primary);
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -2006,7 +2056,7 @@
 
             <div class="search-bar">
                 <input type="text" id="searchInput" placeholder="Поиск" oninput="handleSearch()">
-                <button class="create-chat-btn" onclick="openCreateChatModal()">+</button>
+                <button class="create-chat-btn" id="createChatBtn" onclick="openCreateChatModal()" style="display: none;">+</button>
             </div>
 
             <div class="chats-list" id="chatsList"></div>
@@ -2044,6 +2094,7 @@
                         rows="1"
                         onkeydown="handleKeyPress(event)"
                         oninput="handleTextInput()"
+                        onfocus="scrollToBottomOnMobile()"
                     ></textarea>
                 </div>
                 <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
@@ -2125,12 +2176,28 @@
         </div>
     </div>
 
+    <div class="modal" id="callModal">
+        <div class="modal-content" style="text-align: center;">
+            <h2 id="callStatus">Входящий звонок...</h2>
+            <div id="callerInfo" style="margin: 20px 0;">
+                <div class="user-profile-avatar" id="callAvatar" style="margin: 0 auto;">👤</div>
+                <div class="user-profile-name" id="callerName"></div>
+            </div>
+            <div id="incomingCallControls" class="call-controls">
+                <button class="call-btn accept" id="answerCallBtn">📞</button>
+                <button class="call-btn reject" id="rejectCallBtn">❌</button>
+            </div>
+            <div id="outgoingCallControls" class="call-controls" style="display: none;">
+                <button class="call-btn reject" id="endCallBtn">❌</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
         const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
         const ADMIN_USERNAME = "K1lame";
-        const VIP_USERNAMES = ["K1lame", "VIP_User", "Premium"];
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: { persistSession: true, autoRefreshToken: true }
@@ -2168,12 +2235,10 @@
         let audioElements = {};
         let audioUpdateInterval = null;
 
-        let saveMessagesTimeout;
         let heartbeatInterval;
         let reconnectTimeout;
         let presenceUpdateInterval;
         let statusUpdateInterval;
-        let syncInterval;
 
         let loginAttempts = 0;
         let lastLoginAttemptTime = 0;
@@ -2183,7 +2248,16 @@
         let isInitialized = false;
         let currentTheme = localStorage.getItem('theme') || 'classic-dark';
         let pendingMessages = {};
-        let messageQueue = {}; // Очередь сообщений для офлайн пользователей
+        let messageQueue = {};
+
+        // Call state
+        let currentCall = null;
+        let localStream = null;
+        let peerConnection = null;
+        let callRingtone = null;
+        let callAcceptedSound = null;
+        let callEndedSound = null;
+        let callModal = null;
 
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
@@ -2268,11 +2342,13 @@
             try {
                 applyTheme(currentTheme);
                 
-                // Проверяем сессию перед загрузкой приложения
+                callModal = document.getElementById('callModal');
+                
+                await preloadSounds();
+
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 
                 if (session?.user) {
-                    // Загружаем данные пользователя из таблицы users
                     const { data: userData } = await supabaseClient
                         .from('users')
                         .select('*')
@@ -2286,7 +2362,7 @@
                             avatar: userData.avatar || '👤',
                             bio: userData.bio || '',
                             isAdmin: userData.username === ADMIN_USERNAME,
-                            isVip: VIP_USERNAMES.includes(userData.username),
+                            isVip: false,
                             dnd: userData.dnd || false
                         };
                         
@@ -2315,19 +2391,20 @@
                         
                         sendPendingMessages();
                         processMessageQueue();
+                        
+                        listenForIncomingCalls();
                     } else {
-                        // Нет данных в таблице users - показываем логин
                         document.getElementById('loginModal').classList.add('active');
                         document.getElementById('appContainer').style.display = 'none';
                     }
                 } else {
-                    // Нет сессии - показываем логин
                     document.getElementById('loginModal').classList.add('active');
                     document.getElementById('appContainer').style.display = 'none';
                 }
                 
                 setupMobileHandlers();
                 updateBackButtonVisibility();
+                updateCreateChatButtonVisibility();
                 
                 window.addEventListener('beforeunload', handleBeforeUnload);
                 setInterval(forceShowInput, 1000);
@@ -2419,7 +2496,6 @@
                         messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     });
                     
-                    // Обновляем счетчики непрочитанных
                     updateUnreadCounts();
                 }
             } catch (err) {
@@ -2428,14 +2504,12 @@
         }
 
         function updateUnreadCounts() {
-            if (!currentUser || !currentChat) return;
+            if (!currentUser) return;
             
             Object.keys(messages).forEach(chatId => {
-                if (chatId === currentChat.id) {
-                    // Текущий чат - все прочитано
+                if (currentChat && chatId === currentChat.id) {
                     unreadCounts[chatId] = 0;
                 } else {
-                    // Подсчитываем непрочитанные
                     let count = 0;
                     messages[chatId]?.forEach(msg => {
                         if (msg.sender !== currentUser.id && 
@@ -2448,24 +2522,6 @@
             });
             
             updateChatsList();
-        }
-
-        function loadFromStorage() {
-            try {
-                // Убираем загрузку сообщений из localStorage
-                unreadCounts = JSON.parse(localStorage.getItem('unreadCounts')) || {};
-                messageStatuses = JSON.parse(localStorage.getItem('messageStatuses')) || {};
-                deletedMessages = JSON.parse(localStorage.getItem('deletedMessages')) || {};
-                pendingMessages = JSON.parse(localStorage.getItem('pendingMessages')) || {};
-                messageQueue = JSON.parse(localStorage.getItem('messageQueue')) || {};
-            } catch (e) {
-                console.error('Error loading from storage:', e);
-                unreadCounts = {};
-                messageStatuses = {};
-                deletedMessages = {};
-                pendingMessages = {};
-                messageQueue = {};
-            }
         }
 
         async function handleBeforeUnload() {
@@ -2489,25 +2545,6 @@
             }
         }
 
-        function startPresenceUpdates() {
-            if (presenceUpdateInterval) clearInterval(presenceUpdateInterval);
-            
-            presenceUpdateInterval = setInterval(() => {
-                if (ably && ably.connection.state === 'connected' && currentUser) {
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.update({ 
-                        name: currentUser.name, 
-                        avatar: currentUser.avatar || '👤',
-                        bio: currentUser.bio || '',
-                        isAdmin: currentUser.isAdmin || false,
-                        isVip: currentUser.isVip || false,
-                        dnd: currentUser.dnd || false,
-                        lastSeen: Date.now()
-                    });
-                }
-            }, 3000);
-        }
-
         function formatLastSeen(timestamp) {
             if (!timestamp) return 'давно';
             
@@ -2519,11 +2556,12 @@
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
             
+            if (days > 30) return 'давно';
             if (seconds < 60) return 'только что';
             if (minutes < 60) {
-                if (minutes === 1) return '1 минуту назад';
-                if (minutes >= 2 && minutes <= 4) return `${minutes} минуты назад`;
-                return `${minutes} минут назад`;
+                if (minutes === 1) return '1 мин назад';
+                if (minutes >= 2 && minutes <= 4) return `${minutes} мин назад`;
+                return `${minutes} мин назад`;
             }
             if (hours < 24) {
                 if (hours === 1) return '1 час назад';
@@ -2625,8 +2663,7 @@
                     name: currentUser.name, 
                     avatar: currentUser.avatar || '👤',
                     bio: currentUser.bio || '',
-                    isAdmin: currentUser.isAdmin,
-                    isVip: currentUser.isVip,
+                    isAdmin: currentUser.isAdmin || false,
                     dnd: currentUser.dnd || false,
                     lastSeen: Date.now()
                 });
@@ -2640,7 +2677,6 @@
                             bio: member.data.bio || '',
                             online: true,
                             isAdmin: member.data.isAdmin || false,
-                            isVip: member.data.isVip || false,
                             dnd: member.data.dnd || false,
                             lastSeen: Date.now()
                         };
@@ -2662,7 +2698,6 @@
                             avatar: member.data.avatar,
                             bio: member.data.bio,
                             isAdmin: member.data.isAdmin,
-                            isVip: member.data.isVip,
                             online: true,
                             dnd: member.data.dnd,
                             lastSeen: Date.now()
@@ -2696,7 +2731,6 @@
                                     bio: member.data.bio || '',
                                     online: true,
                                     isAdmin: member.data.isAdmin || false,
-                                    isVip: member.data.isVip || false,
                                     dnd: member.data.dnd || false,
                                     lastSeen: Date.now()
                                 };
@@ -2727,7 +2761,6 @@
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                     if (messages[chatId]) {
                         delete messages[chatId];
-                        // Убираем сохранение в localStorage
                     }
                     if (currentChat && currentChat.id === chatId) {
                         currentChat = null;
@@ -2750,6 +2783,53 @@
                         messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
                         if (currentChat && currentChat.id === chatId) renderMessages();
                         updateChatsList();
+                    }
+                });
+
+                // Call signaling via Ably
+                const callsChannel = ably.channels.get('calls');
+                callsChannel.subscribe('offer', async (message) => {
+                    const { offer, callerId, callerName, callerAvatar } = message.data;
+                    if (callerId === currentUser.id) return;
+                    
+                    currentCall = {
+                        id: message.id,
+                        callerId,
+                        callerName,
+                        callerAvatar,
+                        offer
+                    };
+                    
+                    showIncomingCallModal(callerName, callerAvatar);
+                    
+                    if (!currentUser.dnd && callRingtone) {
+                        callRingtone.loop = true;
+                        callRingtone.play().catch(() => {});
+                    }
+                });
+
+                callsChannel.subscribe('answer', async (message) => {
+                    const { answer, callId } = message.data;
+                    if (currentCall && currentCall.id === callId && peerConnection) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                        document.getElementById('callStatus').textContent = 'В разговоре...';
+                        if (callAcceptedSound) {
+                            callAcceptedSound.play().catch(() => {});
+                        }
+                    }
+                });
+
+                callsChannel.subscribe('ice-candidate', (message) => {
+                    const { candidate, callId } = message.data;
+                    if (currentCall && currentCall.id === callId && peerConnection) {
+                        peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                    }
+                });
+
+                callsChannel.subscribe('end', (message) => {
+                    const { callId } = message.data;
+                    if (currentCall && currentCall.id === callId) {
+                        endCall();
                     }
                 });
 
@@ -2792,12 +2872,13 @@
             
             if (userOnline && userOnline.online) {
                 if (userOnline.dnd) {
-                    statusElement.innerHTML = '<span class="dnd-indicator"></span> не беспокоит';
+                    statusElement.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
                 } else {
                     statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
                 }
             } else {
-                const lastSeen = userOnline?.lastSeen;
+                const user = allUsers.find(u => u.id === chatMemberId);
+                const lastSeen = user?.last_seen ? new Date(user.last_seen).getTime() : null;
                 if (lastSeen) {
                     statusElement.innerHTML = `был(а) ${formatLastSeen(lastSeen)}`;
                 } else {
@@ -2838,6 +2919,8 @@
                         if (currentChat?.id !== chat.id) {
                             unreadCounts[chat.id] = (unreadCounts[chat.id] || 0) + 1;
                         }
+                        
+                        updateChatLastMessageTime(chat.id, msg.timestamp);
                     }
                     
                     if (currentChat && currentChat.id === chat.id) {
@@ -3148,11 +3231,11 @@
 
         function updateChatLastMessageTime(chatId, timestamp) {
             const chat = myChats.find(c => c.id === chatId);
-            if (chat) {
+            if (chat && !chat.isFavorite) {
                 chat.lastMessageTime = timestamp || Date.now();
                 myChats.sort((a, b) => {
-                    if (a.pinned && !b.pinned) return -1;
-                    if (!a.pinned && b.pinned) return 1;
+                    if (a.isFavorite) return -1;
+                    if (b.isFavorite) return 1;
                     return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
                 });
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
@@ -3169,7 +3252,6 @@
                         avatar: currentUser.avatar || '👤',
                         bio: currentUser.bio || '',
                         isAdmin: currentUser.isAdmin || false,
-                        isVip: currentUser.isVip || false,
                         dnd: currentUser.dnd || false,
                         lastSeen: Date.now()
                     });
@@ -3188,21 +3270,16 @@
             
             if (currentUser.isAdmin) {
                 const badge = document.createElement('span');
-                badge.className = 'admin-badge';
-                badge.textContent = 'ADMIN';
-                nameSpan.appendChild(badge);
-            } else if (currentUser.isVip) {
-                const badge = document.createElement('span');
-                badge.className = 'vip-badge';
-                badge.textContent = 'VIP';
+                badge.className = 'creator-badge';
+                badge.textContent = 'Создатель';
                 nameSpan.appendChild(badge);
             }
             
             const statusDisplay = document.getElementById('profileStatusDisplay');
             if (currentUser.dnd) {
-                statusDisplay.innerHTML = 'не беспокоить <span class="dnd-badge">DND</span>';
+                statusDisplay.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
             } else {
-                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
+                statusDisplay.innerHTML = '<span class="online-indicator"></span> в сети';
             }
             
             document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
@@ -3284,7 +3361,6 @@
                 .then(stream => {
                     mediaStream = stream;
                     
-                    // Определяем поддерживаемый MIME тип
                     let mimeType = 'audio/webm';
                     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                         mimeType = 'audio/webm;codecs=opus';
@@ -3406,13 +3482,19 @@
                     return;
                 }
                 
+                if (remember) {
+                    await supabaseClient.auth.signInWithPassword({
+                        email: `${username}@telegram.local`,
+                        password: password
+                    });
+                }
+                
                 currentUser = {
                     id: data.id,
                     name: data.username,
                     avatar: data.avatar || '👤',
                     bio: data.bio || '',
                     isAdmin: data.username === ADMIN_USERNAME,
-                    isVip: VIP_USERNAMES.includes(data.username),
                     dnd: data.dnd || false
                 };
                 
@@ -3448,8 +3530,11 @@
                 
                 updateBackButtonVisibility();
                 forceShowInput();
+                updateCreateChatButtonVisibility();
                 
                 populateThemeGrid();
+                
+                listenForIncomingCalls();
                 
             } catch (err) {
                 console.error('Login error:', err);
@@ -3522,13 +3607,19 @@
                     return;
                 }
                 
+                if (remember) {
+                    await supabaseClient.auth.signUp({
+                        email: `${username}@telegram.local`,
+                        password: password
+                    });
+                }
+                
                 currentUser = {
                     id: data.id,
                     name: data.username,
                     avatar: data.avatar || '👤',
                     bio: data.bio || '',
                     isAdmin: data.username === ADMIN_USERNAME,
-                    isVip: VIP_USERNAMES.includes(data.username),
                     dnd: data.dnd || false
                 };
                 
@@ -3567,6 +3658,7 @@
                 joinChat(favChat);
                 updateBackButtonVisibility();
                 forceShowInput();
+                updateCreateChatButtonVisibility();
                 
                 alert('Регистрация успешна!');
                 
@@ -3586,6 +3678,16 @@
                 mediaStream = null;
             }
             
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
             Object.values(audioElements).forEach(audio => {
                 if (audio) {
                     audio.pause();
@@ -3602,6 +3704,7 @@
             }
             
             await updateUserLastSeen();
+            await supabaseClient.auth.signOut();
             
             if (heartbeatInterval) {
                 clearInterval(heartbeatInterval);
@@ -3652,6 +3755,7 @@
             document.getElementById('loginModal').classList.add('active');
             updateUrlWithChat(null);
             updateBackButtonVisibility();
+            updateCreateChatButtonVisibility();
             
             document.getElementById('loginUsername').value = '';
             document.getElementById('loginPassword').value = '';
@@ -3840,7 +3944,6 @@
             if (!audioElements[messageId]) {
                 audioElements[messageId] = new Audio(audioSrc);
                 
-                // Используем только ontimeupdate для обновления прогресса
                 audioElements[messageId].ontimeupdate = () => updateAudioProgress(messageId);
                 
                 audioElements[messageId].onended = () => {
@@ -4020,7 +4123,7 @@
                     fragment.push(`
                         <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)">
                             ${actions}
-                            ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>` : ''}
+                            ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="creator-badge">Создатель</span>' : ''}</div>` : ''}
                             ${content}
                             <div class="message-footer">
                                 <span class="message-time">${msg.time}</span>
@@ -4044,6 +4147,7 @@
             
             if (currentChat && !currentChat.isSelf && !currentChat.isFavorite) {
                 markMessagesAsRead(currentChat.id);
+                updateUnreadCounts();
             }
         }
 
@@ -4055,12 +4159,11 @@
             
             if (currentTab === 'chats') {
                 items = [...myChats].sort((a, b) => {
-                    if (a.pinned && !b.pinned) return -1;
-                    if (!a.pinned && b.pinned) return 1;
+                    if (a.isFavorite) return -1;
+                    if (b.isFavorite) return 1;
                     return (b.lastMessageTime || 0) - (a.lastMessageTime || 0);
                 });
             } else if (currentTab === 'public') {
-                // Стабильная сортировка публичных чатов по created_at (новые сверху)
                 items = [...publicChats].sort((a, b) => {
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
@@ -4078,9 +4181,8 @@
                         bio: user.bio || '',
                         online: onlineUser ? onlineUser.online : false,
                         isAdmin: user.username === ADMIN_USERNAME,
-                        isVip: VIP_USERNAMES.includes(user.username),
                         dnd: onlineUser ? onlineUser.dnd : (user.dnd || false),
-                        lastSeen: onlineUser ? onlineUser.lastSeen : null
+                        lastSeen: onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null)
                     };
                 }).filter(Boolean);
                 
@@ -4114,7 +4216,6 @@
                 newHTML = fragment.join('');
             }
             
-            // Сравниваем с текущим HTML чтобы избежать лишних перерисовок
             if (list.innerHTML !== newHTML) {
                 list.innerHTML = newHTML;
             }
@@ -4130,12 +4231,11 @@
                     <div class="chat-details">
                         <div class="chat-name">
                             ${user.name}
-                            ${user.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
-                            ${user.isVip ? '<span class="vip-badge">VIP</span>' : ''}
+                            ${user.isAdmin ? '<span class="creator-badge">Создатель</span>' : ''}
                             <div class="status-container">
                                 <span class="status-dot ${statusClass}"></span>
                                 ${!user.online && lastSeenText ? `<span class="last-seen">${lastSeenText}</span>` : ''}
-                                ${user.dnd && user.online ? '<span class="dnd-badge">DND</span>' : ''}
+                                ${user.dnd && user.online ? '<span class="dnd-badge">Не беспокоить</span>' : ''}
                             </div>
                         </div>
                         <div class="chat-last-message">${user.bio || 'Нет информации'}</div>
@@ -4235,6 +4335,7 @@
             renderMessages();
             updateChatsList();
             updateChatStatus();
+            updateCallButton();
             
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('active');
@@ -4244,6 +4345,25 @@
                 document.getElementById('messageInput').focus();
                 forceShowInput();
             }, 100);
+        }
+
+        function updateCallButton() {
+            const chatActions = document.querySelector('.chat-actions');
+            if (!chatActions) return;
+            
+            const existingCallBtn = document.getElementById('callBtn');
+            if (existingCallBtn) {
+                existingCallBtn.remove();
+            }
+            
+            if (currentChat && !currentChat.isFavorite && !currentChat.isSelf && currentChat.isPrivate) {
+                const callBtn = document.createElement('button');
+                callBtn.id = 'callBtn';
+                callBtn.className = 'action-btn';
+                callBtn.innerHTML = '📞';
+                callBtn.onclick = startCall;
+                chatActions.appendChild(callBtn);
+            }
         }
 
         async function updateChatMembers(chatId, members) {
@@ -4509,7 +4629,7 @@
             const onlineUser = onlineUsers[userId.toString()];
             const isOnline = onlineUser ? onlineUser.online : false;
             const dnd = onlineUser ? onlineUser.dnd : user.dnd;
-            const lastSeen = onlineUser ? onlineUser.lastSeen : null;
+            const lastSeen = onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null);
             
             let statusText = '';
             if (isOnline) {
@@ -4595,7 +4715,6 @@
                         avatar: currentUser.avatar,
                         bio: currentUser.bio,
                         isAdmin: currentUser.isAdmin,
-                        isVip: currentUser.isVip,
                         dnd: dnd,
                         lastSeen: Date.now()
                     });
@@ -4653,7 +4772,6 @@
                             avatar: selectedAvatar,
                             bio: currentUser.bio,
                             isAdmin: currentUser.isAdmin,
-                            isVip: currentUser.isVip,
                             dnd: currentUser.dnd,
                             lastSeen: Date.now()
                         });
@@ -4703,6 +4821,14 @@
             }
             
             updateChatsList();
+            updateCreateChatButtonVisibility();
+        }
+
+        function updateCreateChatButtonVisibility() {
+            const createBtn = document.getElementById('createChatBtn');
+            if (createBtn) {
+                createBtn.style.display = currentTab === 'public' ? 'flex' : 'none';
+            }
         }
 
         function handleSearch() {
@@ -4833,15 +4959,19 @@
             window.addEventListener('resize', setVH);
             window.addEventListener('orientationchange', setVH);
             
-            const messageInput = document.getElementById('messageInput');
-            messageInput.addEventListener('focus', () => {
-                setTimeout(() => {
-                    document.getElementById('messagesContainer').scrollTop = 
-                        document.getElementById('messagesContainer').scrollHeight;
-                }, 300);
-            });
-            
             forceShowInput();
+        }
+
+        function scrollToBottomOnMobile() {
+            setTimeout(() => {
+                const container = document.getElementById('messagesContainer');
+                if (container) {
+                    container.scrollTo({
+                        top: container.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                }
+            }, 300);
         }
 
         function forceShowInput() {
@@ -4901,6 +5031,9 @@
             if (e.key === 'Escape') {
                 closeMediaViewer();
                 hideMessageActions();
+                if (callModal && callModal.classList.contains('active')) {
+                    endCall();
+                }
             }
         });
 
@@ -4918,343 +5051,259 @@
         });
 
         document.addEventListener('DOMContentLoaded', init);
-        
-        // ===== CALL MODULE START =====
-        (function addFirebaseAndInitCalls() {
-            if (typeof firebase === 'undefined') {
-                const script1 = document.createElement('script');
-                script1.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
-                document.head.appendChild(script1);
+
+        // ===== CALL MODULE =====
+        async function preloadSounds() {
+            return new Promise((resolve) => {
+                callRingtone = new Audio();
+                callRingtone.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+                callRingtone.loop = true;
                 
-                const script2 = document.createElement('script');
-                script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js';
-                script2.onload = function() {
-                    const firebaseConfig = {
-                        apiKey: "AIzaSyB2Uz_0dU0z_0dU0z_0dU0z_0dU0z_0dU0",
-                        authDomain: "telegram-web-clone.firebaseapp.com",
-                        projectId: "telegram-web-clone",
-                        storageBucket: "telegram-web-clone.appspot.com",
-                        messagingSenderId: "123456789012",
-                        appId: "1:123456789012:web:abc123def456"
-                    };
-                    
-                    firebase.initializeApp(firebaseConfig);
-                    const db = firebase.firestore();
-                    
-                    const rtcConfig = {
-                        iceServers: [
-                            { urls: "stun:stun.l.google.com:19302" }
-                        ]
-                    };
-                    
-                    let currentCall = null;
-                    let localStream = null;
-                    let remoteStream = null;
-                    let peerConnection = null;
-                    let callModal = null;
-                    let callRingtone = null;
-                    let callAcceptedSound = null;
-                    let callEndedSound = null;
-                    
-                    function loadSound(url) {
-                        return new Promise((resolve) => {
-                            const audio = new Audio();
-                            audio.oncanplaythrough = () => resolve(audio);
-                            audio.onerror = () => resolve(null);
-                            audio.src = url;
+                callAcceptedSound = new Audio();
+                callAcceptedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+                
+                callEndedSound = new Audio();
+                callEndedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+                
+                setTimeout(resolve, 100);
+            });
+        }
+
+        async function startCall() {
+            if (!currentChat || !currentChat.members) return;
+            
+            const receiverId = currentChat.members.find(id => id !== currentUser.id);
+            if (!receiverId) return;
+            
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                peerConnection = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
+                const callId = Date.now().toString() + Math.random().toString(36).substr(2, 5);
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && ably) {
+                        const callsChannel = ably.channels.get('calls');
+                        callsChannel.publish('ice-candidate', {
+                            callId,
+                            candidate: event.candidate,
+                            targetId: receiverId,
+                            senderId: currentUser.id
                         });
                     }
-                    
-                    async function preloadSounds() {
-                        callRingtone = await loadSound('/sounds/ringtone.mp3');
-                        callAcceptedSound = await loadSound('/sounds/call-accepted.mp3');
-                        callEndedSound = await loadSound('/sounds/call-ended.mp3');
-                    }
-                    
-                    function ensureCallModal() {
-                        if (document.getElementById('callModal')) return;
-                        
-                        const modal = document.createElement('div');
-                        modal.id = 'callModal';
-                        modal.className = 'modal';
-                        modal.innerHTML = `
-                            <div class="modal-content" style="text-align: center;">
-                                <h2 id="callStatus">Входящий звонок...</h2>
-                                <div id="callerInfo" style="margin: 20px 0;">
-                                    <div class="user-profile-avatar" id="callAvatar" style="margin: 0 auto;">👤</div>
-                                    <div class="user-profile-name" id="callerName"></div>
-                                </div>
-                                <div id="callControls" style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
-                                    <button class="modal-btn" style="background-color: var(--accent-green); width: auto; padding: 15px 30px;" id="answerCallBtn">Ответить</button>
-                                    <button class="modal-btn" style="background-color: var(--dnd-red); width: auto; padding: 15px 30px;" id="rejectCallBtn">Отклонить</button>
-                                </div>
-                                <div id="activeCallControls" style="display: none; gap: 20px; justify-content: center; margin-top: 20px;">
-                                    <button class="modal-btn" style="background-color: var(--dnd-red); width: auto; padding: 15px 30px;" id="endCallBtn">Завершить</button>
-                                </div>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-                        callModal = modal;
-                        
-                        document.getElementById('answerCallBtn')?.addEventListener('click', answerCall);
-                        document.getElementById('rejectCallBtn')?.addEventListener('click', rejectCall);
-                        document.getElementById('endCallBtn')?.addEventListener('click', endCall);
-                    }
-                    
-                    function addCallButtonToHeader() {
-                        const chatActions = document.querySelector('.chat-actions');
-                        if (!chatActions) return;
-                        
-                        if (document.getElementById('callBtn')) return;
-                        
-                        if (!currentChat || currentChat.isFavorite || currentChat.isSelf || !currentChat.isPrivate) return;
-                        
-                        const callBtn = document.createElement('button');
-                        callBtn.id = 'callBtn';
-                        callBtn.className = 'action-btn';
-                        callBtn.innerHTML = '📞';
-                        callBtn.onclick = startCall;
-                        chatActions.appendChild(callBtn);
-                    }
-                    
-                    async function startCall() {
-                        if (!currentChat || !currentChat.members) return;
-                        
-                        const receiverId = currentChat.members.find(id => id !== currentUser.id);
-                        if (!receiverId) return;
-                        
-                        try {
-                            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                            
-                            peerConnection = new RTCPeerConnection(rtcConfig);
-                            
-                            localStream.getTracks().forEach(track => {
-                                peerConnection.addTrack(track, localStream);
-                            });
-                            
-                            peerConnection.onicecandidate = (event) => {
-                                if (event.candidate) {
-                                    db.collection('calls').doc(currentCall.id).collection('candidates').add({
-                                        candidate: event.candidate,
-                                        sender: currentUser.id,
-                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                                    });
-                                }
-                            };
-                            
-                            peerConnection.ontrack = (event) => {
-                                remoteStream = event.streams[0];
-                                document.getElementById('callStatus').textContent = 'В разговоре...';
-                            };
-                            
-                            const offer = await peerConnection.createOffer();
-                            await peerConnection.setLocalDescription(offer);
-                            
-                            const callRef = await db.collection('calls').add({
-                                callerId: currentUser.id,
-                                receiverId: receiverId,
-                                offer: { type: offer.type, sdp: offer.sdp },
-                                status: 'ringing',
-                                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-                            });
-                            
-                            currentCall = { id: callRef.id, ...(await callRef.get()).data() };
-                            
-                            ensureCallModal();
-                            callModal.classList.add('active');
-                            document.getElementById('callStatus').textContent = 'Звоним...';
-                            document.getElementById('callerName').textContent = currentChat.name;
-                            document.getElementById('callAvatar').textContent = currentChat.avatar || '👤';
-                            document.getElementById('callControls').style.display = 'none';
-                            document.getElementById('activeCallControls').style.display = 'flex';
-                            
-                            const unsubscribe = db.collection('calls').doc(callRef.id)
-                                .onSnapshot(async (doc) => {
-                                    const data = doc.data();
-                                    if (!data) return;
-                                    
-                                    if (data.status === 'answered' && data.answer) {
-                                        if (!currentUser.dnd && callAcceptedSound) {
-                                            callAcceptedSound.play().catch(() => {});
-                                        }
-                                        
-                                        const answer = new RTCSessionDescription(data.answer);
-                                        await peerConnection.setRemoteDescription(answer);
-                                        
-                                        document.getElementById('callStatus').textContent = 'В разговоре...';
-                                        unsubscribe();
-                                    } else if (data.status === 'rejected' || data.status === 'ended') {
-                                        if (!currentUser.dnd && callEndedSound) {
-                                            callEndedSound.play().catch(() => {});
-                                        }
-                                        
-                                        endCall();
-                                        unsubscribe();
-                                    }
-                                });
-                            
-                            db.collection('calls').doc(callRef.id).collection('candidates')
-                                .onSnapshot(snapshot => {
-                                    snapshot.docChanges().forEach(change => {
-                                        if (change.type === 'added' && peerConnection) {
-                                            const candidate = change.doc.data().candidate;
-                                            if (candidate && candidate.sender !== currentUser.id) {
-                                                peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                                            }
-                                        }
-                                    });
-                                });
-                            
-                        } catch (err) {
-                            console.error('Error starting call:', err);
-                            alert('Не удалось начать звонок');
-                        }
-                    }
-                    
-                    async function answerCall() {
-                        if (!currentCall) return;
-                        
-                        try {
-                            localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                            
-                            peerConnection = new RTCPeerConnection(rtcConfig);
-                            
-                            localStream.getTracks().forEach(track => {
-                                peerConnection.addTrack(track, localStream);
-                            });
-                            
-                            peerConnection.onicecandidate = (event) => {
-                                if (event.candidate) {
-                                    db.collection('calls').doc(currentCall.id).collection('candidates').add({
-                                        candidate: event.candidate,
-                                        sender: currentUser.id,
-                                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                                    });
-                                }
-                            };
-                            
-                            peerConnection.ontrack = (event) => {
-                                remoteStream = event.streams[0];
-                                document.getElementById('callStatus').textContent = 'В разговоре...';
-                            };
-                            
-                            await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCall.offer));
-                            
-                            const answer = await peerConnection.createAnswer();
-                            await peerConnection.setLocalDescription(answer);
-                            
-                            await db.collection('calls').doc(currentCall.id).update({
-                                answer: { type: answer.type, sdp: answer.sdp },
-                                status: 'answered'
-                            });
-                            
-                            document.getElementById('callControls').style.display = 'none';
-                            document.getElementById('activeCallControls').style.display = 'flex';
-                            
-                        } catch (err) {
-                            console.error('Error answering call:', err);
-                        }
-                    }
-                    
-                    async function rejectCall() {
-                        if (!currentCall) return;
-                        
-                        await db.collection('calls').doc(currentCall.id).update({
-                            status: 'rejected'
-                        });
-                        
-                        endCall();
-                    }
-                    
-                    function endCall() {
-                        if (localStream) {
-                            localStream.getTracks().forEach(track => track.stop());
-                            localStream = null;
-                        }
-                        
-                        if (peerConnection) {
-                            peerConnection.close();
-                            peerConnection = null;
-                        }
-                        
-                        if (callModal) {
-                            callModal.classList.remove('active');
-                        }
-                        
-                        currentCall = null;
-                    }
-                    
-                    function listenForIncomingCalls() {
-                        if (!currentUser) return;
-                        
-                        db.collection('calls')
-                            .where('receiverId', '==', currentUser.id)
-                            .where('status', '==', 'ringing')
-                            .onSnapshot((snapshot) => {
-                                snapshot.docChanges().forEach(change => {
-                                    if (change.type === 'added') {
-                                        const callData = change.doc.data();
-                                        
-                                        const caller = allUsers.find(u => u.id === callData.callerId);
-                                        if (!caller) return;
-                                        
-                                        if (!currentUser.dnd && callRingtone) {
-                                            callRingtone.loop = true;
-                                            callRingtone.play().catch(() => {});
-                                        }
-                                        
-                                        ensureCallModal();
-                                        callModal.classList.add('active');
-                                        document.getElementById('callStatus').textContent = 'Входящий звонок...';
-                                        document.getElementById('callerName').textContent = caller.username;
-                                        document.getElementById('callAvatar').textContent = caller.avatar || '👤';
-                                        document.getElementById('callControls').style.display = 'flex';
-                                        document.getElementById('activeCallControls').style.display = 'none';
-                                        
-                                        currentCall = { id: change.doc.id, ...callData };
-                                        
-                                        const unsubscribe = db.collection('calls').doc(change.doc.id)
-                                            .onSnapshot((doc) => {
-                                                const data = doc.data();
-                                                if (data && (data.status === 'answered' || data.status === 'rejected' || data.status === 'ended')) {
-                                                    if (callRingtone) {
-                                                        callRingtone.pause();
-                                                        callRingtone.currentTime = 0;
-                                                    }
-                                                    unsubscribe();
-                                                }
-                                            });
-                                    }
-                                });
-                            });
-                    }
-                    
-                    const originalJoinChat = joinChat;
-                    joinChat = function(chat) {
-                        originalJoinChat(chat);
-                        setTimeout(addCallButtonToHeader, 100);
-                    };
-                    
-                    const originalCreatePrivateChat = createPrivateChat;
-                    createPrivateChat = function(user) {
-                        originalCreatePrivateChat(user);
-                        setTimeout(addCallButtonToHeader, 100);
-                    };
-                    
-                    const originalInit = init;
-                    init = async function() {
-                        await originalInit();
-                        if (currentUser) {
-                            await preloadSounds();
-                            listenForIncomingCalls();
-                            addCallButtonToHeader();
-                        }
-                    };
                 };
-                document.head.appendChild(script2);
+                
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                currentCall = {
+                    id: callId,
+                    receiverId,
+                    callerId: currentUser.id
+                };
+                
+                if (ably) {
+                    const callsChannel = ably.channels.get('calls');
+                    callsChannel.publish('offer', {
+                        callId,
+                        offer,
+                        callerId: currentUser.id,
+                        callerName: currentUser.name,
+                        callerAvatar: currentUser.avatar,
+                        targetId: receiverId
+                    });
+                }
+                
+                showOutgoingCallModal();
+                
+            } catch (err) {
+                console.error('Error starting call:', err);
+                alert('Не удалось начать звонок');
             }
-        })();
-        // ===== CALL MODULE END =====
+        }
+
+        function showIncomingCallModal(callerName, callerAvatar) {
+            if (!callModal) return;
+            
+            document.getElementById('callStatus').textContent = 'Входящий звонок...';
+            document.getElementById('callerName').textContent = callerName;
+            document.getElementById('callAvatar').textContent = callerAvatar || '👤';
+            document.getElementById('incomingCallControls').style.display = 'flex';
+            document.getElementById('outgoingCallControls').style.display = 'none';
+            
+            document.getElementById('answerCallBtn').onclick = answerCall;
+            document.getElementById('rejectCallBtn').onclick = rejectCall;
+            
+            callModal.classList.add('active');
+        }
+
+        function showOutgoingCallModal() {
+            if (!callModal) return;
+            
+            document.getElementById('callStatus').textContent = 'Звоним...';
+            document.getElementById('callerName').textContent = currentChat.name;
+            document.getElementById('callAvatar').textContent = currentChat.avatar || '👤';
+            document.getElementById('incomingCallControls').style.display = 'none';
+            document.getElementById('outgoingCallControls').style.display = 'flex';
+            
+            document.getElementById('endCallBtn').onclick = endCall;
+            
+            callModal.classList.add('active');
+        }
+
+        async function answerCall() {
+            if (!currentCall || !peerConnection) return;
+            
+            try {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCall.offer));
+                
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                if (ably) {
+                    const callsChannel = ably.channels.get('calls');
+                    callsChannel.publish('answer', {
+                        callId: currentCall.id,
+                        answer,
+                        targetId: currentCall.callerId,
+                        senderId: currentUser.id
+                    });
+                }
+                
+                document.getElementById('callStatus').textContent = 'В разговоре...';
+                
+                if (callRingtone) {
+                    callRingtone.pause();
+                    callRingtone.currentTime = 0;
+                }
+                
+                if (callAcceptedSound) {
+                    callAcceptedSound.play().catch(() => {});
+                }
+                
+            } catch (err) {
+                console.error('Error answering call:', err);
+            }
+        }
+
+        async function rejectCall() {
+            if (currentCall && ably) {
+                const callsChannel = ably.channels.get('calls');
+                callsChannel.publish('end', {
+                    callId: currentCall.id,
+                    targetId: currentCall.callerId,
+                    senderId: currentUser.id
+                });
+            }
+            
+            endCall();
+        }
+
+        function endCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (callModal) {
+                callModal.classList.remove('active');
+            }
+            
+            if (callRingtone) {
+                callRingtone.pause();
+                callRingtone.currentTime = 0;
+            }
+            
+            if (callEndedSound) {
+                callEndedSound.play().catch(() => {});
+            }
+            
+            currentCall = null;
+        }
+
+        function listenForIncomingCalls() {
+            if (!ably || !currentUser) return;
+            
+            const callsChannel = ably.channels.get('calls');
+            
+            callsChannel.subscribe('offer', async (message) => {
+                const { offer, callerId, callerName, callerAvatar, callId, targetId } = message.data;
+                if (targetId !== currentUser.id) return;
+                
+                currentCall = {
+                    id: callId,
+                    callerId,
+                    callerName,
+                    callerAvatar,
+                    offer
+                };
+                
+                showIncomingCallModal(callerName, callerAvatar);
+                
+                if (!currentUser.dnd && callRingtone) {
+                    callRingtone.loop = true;
+                    callRingtone.play().catch(() => {});
+                }
+                
+                peerConnection = new RTCPeerConnection({
+                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+                });
+                
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && ably) {
+                        callsChannel.publish('ice-candidate', {
+                            callId,
+                            candidate: event.candidate,
+                            targetId: callerId,
+                            senderId: currentUser.id
+                        });
+                    }
+                };
+                
+                peerConnection.ontrack = (event) => {
+                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                };
+            });
+
+            callsChannel.subscribe('answer', async (message) => {
+                const { answer, callId, targetId } = message.data;
+                if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
+                
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                document.getElementById('callStatus').textContent = 'В разговоре...';
+                
+                if (callAcceptedSound) {
+                    callAcceptedSound.play().catch(() => {});
+                }
+            });
+
+            callsChannel.subscribe('ice-candidate', (message) => {
+                const { candidate, callId, targetId } = message.data;
+                if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
+                
+                peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            });
+
+            callsChannel.subscribe('end', (message) => {
+                const { callId, targetId } = message.data;
+                if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
+                
+                endCall();
+            });
+        }
+        // ===== END CALL MODULE =====
     </script>
 </body>
 </html>
