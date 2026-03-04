@@ -2667,13 +2667,9 @@ function showLogin() {
                     }
                     
                     updateBackButtonVisibility();
-                    updateCreateChatButtonVisibility();
-                } else {
-                    document.getElementById('loginModal').classList.add('active');
-                    document.getElementById('appContainer').style.display = 'none';
-                }
-                
-                setupMobileHandlers();
+                    updateCreateChatButtonVisibility();                
+                    
+                    setupMobileHandlers();
                 
                 window.addEventListener('beforeunload', handleBeforeUnload);
                 setInterval(forceShowInput, 1000);
