@@ -3443,6 +3443,11 @@
                     if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
                     pendingMessages[currentUser.id].push({ ...dbMessage, tempId });
                     localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
+                    
+                    // Показываем предупреждение о необходимости настроить RLS
+                    if (error.code === '42501') {
+                        alert('Ошибка прав доступа к таблице messages. Убедитесь, что в Supabase настроены политики RLS для вставки сообщений.');
+                    }
                 } else {
                     // Сообщение успешно сохранено, заменяем локальный id на реальный
                     const realId = data[0].id;
@@ -3463,7 +3468,11 @@
                             if (err) {
                                 console.error('Failed to publish message to Ably', err);
                                 // Сохраняем в очередь для повторной отправки
-                                addToMessageQueue(receiverId, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                const otherUserId = currentChat.name.split('_').find(name => name !== currentUser.name);
+                                const otherUser = allUsers.find(u => u.username === otherUserId);
+                                if (otherUser) {
+                                    addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                }
                             }
                         });
                     }
@@ -3537,6 +3546,10 @@
                         if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
                         pendingMessages[currentUser.id].push({ ...dbMessage, tempId });
                         localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
+                        
+                        if (error.code === '42501') {
+                            alert('Ошибка прав доступа к таблице messages. Убедитесь, что в Supabase настроены политики RLS для вставки аудиосообщений.');
+                        }
                     } else {
                         const realId = data[0].id;
                         const msgIndex = messages[currentChat.id].findIndex(m => m.id === tempId);
@@ -3552,7 +3565,11 @@
                             chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
                                 if (err) {
                                     console.error('Failed to publish audio message to Ably', err);
-                                    addToMessageQueue(receiverId, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                    const otherUserId = currentChat.name.split('_').find(name => name !== currentUser.name);
+                                    const otherUser = allUsers.find(u => u.username === otherUserId);
+                                    if (otherUser) {
+                                        addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                    }
                                 }
                             });
                         }
@@ -4511,10 +4528,12 @@
             const receiverId = otherUser.id;
             
             try {
+                // Получаем доступ к микрофону для звонящего
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 
                 peerConnection = new RTCPeerConnection(getIceServers());
                 
+                // Добавляем локальный поток в peer connection
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
@@ -4536,6 +4555,7 @@
                 peerConnection.ontrack = (event) => {
                     console.log('Received remote track');
                     const remoteStream = event.streams[0];
+                    // Создаём аудио элемент для воспроизведения удалённого потока
                     const audioElement = document.createElement('audio');
                     audioElement.srcObject = remoteStream;
                     audioElement.autoplay = true;
@@ -4583,7 +4603,7 @@
                 if (ably) {
                     const callsChannel = ably.channels.get('calls');
                     // Убедимся, что канал прикреплён с повторными попытками
-                    function attachAndPublish(retries = 3) {
+                    function attachAndPublish(retries = 5) {
                         callsChannel.attach((err) => {
                             if (!err) {
                                 callsChannel.publish('offer', {
@@ -4671,6 +4691,7 @@
             try {
                 // Получаем доступ к микрофону для ответившего
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                // Добавляем локальный поток в peer connection
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
@@ -4830,7 +4851,7 @@
                     audioElement.play().catch(e => console.warn('Auto-play failed:', e));
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
-                    // Таймер запустится после ответа, сейчас не запускаем
+                    // Таймер запустится после ответа
                 };
                 
                 currentCall = {
@@ -5376,6 +5397,28 @@
         status text,
         created_at timestamp with time zone DEFAULT now()
     );
+
+    -- Необходимые политики RLS для таблицы messages:
+    -- 1. Для вставки сообщений: разрешить аутентифицированным пользователям вставлять строки, где sender_id = auth.uid()
+    CREATE POLICY "Users can insert their own messages" ON public.messages
+        FOR INSERT WITH CHECK (auth.uid() = sender_id);
+    -- 2. Для чтения сообщений: разрешить чтение, если пользователь участвует в чате (упрощённо: любой аутентифицированный может читать)
+    CREATE POLICY "Users can read messages" ON public.messages
+        FOR SELECT USING (auth.role() = 'authenticated');
+    -- 3. Для обновления: только свои сообщения
+    CREATE POLICY "Users can update own messages" ON public.messages
+        FOR UPDATE USING (auth.uid() = sender_id);
+    -- 4. Для удаления: свои или админ
+    CREATE POLICY "Users can delete own messages" ON public.messages
+        FOR DELETE USING (auth.uid() = sender_id);
+
+    -- Политики для таблицы calls:
+    CREATE POLICY "Users can insert calls" ON public.calls
+        FOR INSERT WITH CHECK (auth.uid() = caller_id);
+    CREATE POLICY "Users can read calls" ON public.calls
+        FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
+    CREATE POLICY "Users can update calls" ON public.calls
+        FOR UPDATE USING (auth.uid() = caller_id OR auth.uid() = receiver_id);
     -->
 </body>
 </html>
