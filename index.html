@@ -2305,6 +2305,9 @@
         // Флаг инициализации для ускорения загрузки
         let loadingComplete = false;
 
+        // Флаг для отслеживания переподключения Ably
+        let ablyReconnectTimer = null;
+
         // Эмодзи
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
@@ -2595,6 +2598,11 @@
                         
                         populateThemeGrid();
                         
+                        // Запрашиваем разрешение на уведомления
+                        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                            Notification.requestPermission();
+                        }
+                        
                         // Если нет чатов, показываем пустой список
                         if (myChats.length === 0) {
                             updateChatsList();
@@ -2694,6 +2702,10 @@
                     populateThemeGrid();
                     
                     listenForIncomingCalls();
+                    
+                    if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                        Notification.requestPermission();
+                    }
                 }
                 
             } catch (err) {
@@ -2955,7 +2967,7 @@
                                 sender: msg.sender_id,
                                 senderName: sender.username,
                                 text: msg.text,
-                                audio: msg.audio,          // если есть поле audio в БД
+                                audio: msg.audio,
                                 duration: msg.duration,
                                 media: msg.media,
                                 time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
@@ -3056,11 +3068,12 @@
             if (!chat || chat.is_public) return; // публичные чаты не используют Ably для сообщений
 
             const chatChannel = ably.channels.get(`chat-${chatId}`);
+            
             // Отписываемся от всех предыдущих подписок, чтобы не дублировать
             chatChannel.unsubscribe();
             
             // Функция для прикрепления с повторными попытками
-            function attachWithRetry(retries = 10, delay = 200) {
+            function attachWithRetry(retries = 15, delay = 300) {
                 chatChannel.attach((err) => {
                     if (err) {
                         console.error(`Failed to attach to chat channel ${chatId}, retries left: ${retries}`, err);
@@ -3075,11 +3088,15 @@
                 });
             }
             
-            attachWithRetry(10, 200);
+            attachWithRetry(15, 300);
 
+            // Подписка на сообщения
             chatChannel.subscribe('message', (message) => {
                 const msg = message.data;
                 if (!msg) return;
+                
+                // Игнорируем свои сообщения (они уже добавлены локально)
+                if (msg.sender_id === currentUser.id) return;
                 
                 if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
                 
@@ -3101,21 +3118,21 @@
                         timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
                         isAdmin: sender.username === ADMIN_USERNAME,
                         edited: msg.edited || false,
-                        type: msg.sender_id == currentUser.id ? 'out' : 'in'
+                        type: 'in'
                     };
                     
                     messages[chatId].push(newMsg);
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
-                    if (msg.sender_id != currentUser.id) {
-                        chatChannel.publish('delivery_receipt', { 
-                            messageId: msg.id, 
-                            receiver: currentUser.id
-                        });
-                        
-                        if (currentChat?.id !== chatId) {
-                            unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                        }
+                    // Отправляем подтверждение о доставке
+                    chatChannel.publish('delivery_receipt', { 
+                        messageId: msg.id, 
+                        receiver: currentUser.id
+                    });
+                    
+                    // Увеличиваем счетчик непрочитанных, если не в текущем чате
+                    if (currentChat?.id !== chatId) {
+                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
                         
                         // Показываем уведомление о новом сообщении
                         if (Notification.permission === 'granted') {
@@ -3129,6 +3146,8 @@
                     if (currentChat && currentChat.id === chatId) {
                         renderMessages();
                         unreadCounts[chatId] = 0;
+                        // Отмечаем как прочитанные
+                        markMessagesAsRead(chatId);
                     }
                     
                     updateChatsList();
@@ -3550,7 +3569,6 @@
                 sender_id: currentUser.id,
                 text: text,
                 created_at: now.toISOString()
-                // audio и другие поля не включаем, если они есть в БД - можно добавить, но для текста они не нужны
             };
             
             try {
@@ -3585,15 +3603,23 @@
                     // Публикуем в Ably для приватных чатов
                     if (ably && !currentChat.is_public) {
                         const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                        // Пытаемся опубликовать, если канал не прикреплен - он прикрепится автоматически
-                        chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
+                        // Пытаемся опубликовать
+                        chatChannel.publish('message', { 
+                            ...dbMessage, 
+                            id: realId, 
+                            sender_name: currentUser.name 
+                        }, (err) => {
                             if (err) {
                                 console.error('Failed to publish message to Ably', err);
                                 // Сохраняем в очередь для повторной отправки
                                 const otherUserId = currentChat.name.split('_').find(name => name !== currentUser.name);
                                 const otherUser = allUsers.find(u => u.username === otherUserId);
                                 if (otherUser) {
-                                    addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                    addToMessageQueue(otherUser.id, { 
+                                        ...dbMessage, 
+                                        id: realId, 
+                                        sender_name: currentUser.name 
+                                    });
                                 }
                             }
                         });
@@ -3648,7 +3674,6 @@
                 updateChatsList();
                 forceShowInput();
 
-                // Для аудио нужно поле audio в таблице messages
                 const dbMessage = {
                     chat_id: currentChat.id,
                     sender_id: currentUser.id,
@@ -3684,13 +3709,21 @@
                         
                         if (ably && !currentChat.is_public) {
                             const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                            chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
+                            chatChannel.publish('message', { 
+                                ...dbMessage, 
+                                id: realId, 
+                                sender_name: currentUser.name 
+                            }, (err) => {
                                 if (err) {
                                     console.error('Failed to publish audio message to Ably', err);
                                     const otherUserId = currentChat.name.split('_').find(name => name !== currentUser.name);
                                     const otherUser = allUsers.find(u => u.username === otherUserId);
                                     if (otherUser) {
-                                        addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
+                                        addToMessageQueue(otherUser.id, { 
+                                            ...dbMessage, 
+                                            id: realId, 
+                                            sender_name: currentUser.name 
+                                        });
                                     }
                                 }
                             });
@@ -4033,15 +4066,21 @@
                 key: ABLY_API_KEY,
                 clientId: currentUser.id.toString(),
                 transports: ['web_socket'],
-                disconnectedRetryTimeout: 2000,
-                suspendedRetryTimeout: 3000,
-                realtimeRequestTimeout: 20000,
+                disconnectedRetryTimeout: 1000,
+                suspendedRetryTimeout: 2000,
+                realtimeRequestTimeout: 15000,
                 echoMessages: false,
-                idleTimeout: 30000
+                idleTimeout: 20000
             });
 
             ably.connection.on('connected', () => {
                 console.log('Connected to Ably');
+                
+                // Очищаем таймер переподключения
+                if (ablyReconnectTimer) {
+                    clearTimeout(ablyReconnectTimer);
+                    ablyReconnectTimer = null;
+                }
                 
                 const presenceChannel = ably.channels.get('presence');
                 presenceChannel.presence.enter({ 
@@ -4143,39 +4182,35 @@
                 });
 
                 // Подписываемся на все приватные чаты
-                subscribeToAllPrivateChats();
+                myChats.forEach(chat => {
+                    if (!chat.is_public) {
+                        subscribeToChatChannel(chat.id);
+                    }
+                });
             });
 
             ably.connection.on('disconnected', () => {
                 console.log('Ably disconnected, attempting to reconnect...');
-                setTimeout(() => {
+                // Планируем переподключение
+                if (ablyReconnectTimer) {
+                    clearTimeout(ablyReconnectTimer);
+                }
+                ablyReconnectTimer = setTimeout(() => {
                     if (currentUser && ably.connection.state !== 'connected') {
                         ably.connection.connect();
                     }
-                }, 2000);
+                }, 1000);
             });
 
             ably.connection.on('failed', () => {
                 console.log('Ably failed, reinitializing...');
-                setTimeout(() => {
-                    if (currentUser) initAbly();
-                }, 5000);
-            });
-        }
-
-        // Подписка на все приватные чаты
-        function subscribeToAllPrivateChats() {
-            let index = 0;
-            function subscribeNext() {
-                if (index >= myChats.length) return;
-                const chat = myChats[index];
-                if (!chat.is_public) {
-                    subscribeToChatChannel(chat.id);
+                if (ablyReconnectTimer) {
+                    clearTimeout(ablyReconnectTimer);
                 }
-                index++;
-                setTimeout(subscribeNext, 200);
-            }
-            subscribeNext();
+                ablyReconnectTimer = setTimeout(() => {
+                    if (currentUser) initAbly();
+                }, 3000);
+            });
         }
 
         function startHeartbeat() {
@@ -4194,7 +4229,7 @@
                         });
                     }
                 }
-            }, 25000);
+            }, 20000);
         }
 
         function startPresenceUpdates() {
@@ -4213,7 +4248,7 @@
                         });
                     }
                 }
-            }, 25000);
+            }, 20000);
         }
 
         function startStatusUpdates() {
@@ -4223,7 +4258,7 @@
                     updateChatsList();
                 }
                 updateChatStatus();
-            }, 3000);
+            }, 2000);
         }
 
         async function handleBeforeUnload() {
@@ -4484,6 +4519,7 @@
                     }, 60000);
                 })
                 .catch(err => {
+                    console.error('Microphone access error:', err);
                     alert('Не удалось получить доступ к микрофону');
                 });
         }
@@ -4503,12 +4539,48 @@
         }
 
         function toggleAudio(messageId, audioSrc) {
+            // Проверяем, существует ли уже аудио элемент
+            if (!audioElements[messageId]) {
+                try {
+                    audioElements[messageId] = new Audio(audioSrc);
+                    
+                    audioElements[messageId].ontimeupdate = () => updateAudioProgress(messageId);
+                    
+                    audioElements[messageId].onended = () => {
+                        updateAudioButton(messageId, false);
+                        updateAudioProgress(messageId);
+                    };
+                    
+                    audioElements[messageId].onpause = () => {
+                        updateAudioButton(messageId, false);
+                    };
+                    
+                    audioElements[messageId].onplay = () => {
+                        updateAudioButton(messageId, true);
+                    };
+                    
+                    audioElements[messageId].onerror = (e) => {
+                        console.error('Audio playback error:', e);
+                        alert('Ошибка воспроизведения аудио. Убедитесь, что формат поддерживается вашим браузером.');
+                    };
+                } catch (e) {
+                    console.error('Error creating audio element:', e);
+                    alert('Не удалось создать аудио элемент');
+                    return;
+                }
+            }
+            
+            const audio = audioElements[messageId];
+            
             if (activeAudioId === messageId && activeAudio) {
                 if (!activeAudio.paused) {
                     activeAudio.pause();
                     updateAudioButton(messageId, false);
                 } else {
-                    activeAudio.play().catch(e => console.error('Play failed:', e));
+                    activeAudio.play().catch(e => {
+                        console.error('Play failed:', e);
+                        alert('Не удалось воспроизвести аудио');
+                    });
                     updateAudioButton(messageId, true);
                 }
                 return;
@@ -4520,36 +4592,12 @@
                 updateAudioButton(activeAudioId, false);
             }
             
-            if (!audioElements[messageId]) {
-                audioElements[messageId] = new Audio(audioSrc);
-                
-                audioElements[messageId].ontimeupdate = () => updateAudioProgress(messageId);
-                
-                audioElements[messageId].onended = () => {
-                    updateAudioButton(messageId, false);
-                    updateAudioProgress(messageId);
-                };
-                
-                audioElements[messageId].onpause = () => {
-                    updateAudioButton(messageId, false);
-                };
-                
-                audioElements[messageId].onplay = () => {
-                    updateAudioButton(messageId, true);
-                };
-                
-                audioElements[messageId].onerror = (e) => {
-                    console.error('Audio playback error:', e);
-                    alert('Ошибка воспроизведения аудио. Убедитесь, что формат поддерживается вашим браузером.');
-                };
-            }
-            
-            activeAudio = audioElements[messageId];
+            activeAudio = audio;
             activeAudioId = messageId;
             
             activeAudio.play().catch(e => {
                 console.error('Audio play error:', e);
-                alert('Не удалось воспроизвести аудио. Возможно, формат не поддерживается.');
+                alert('Не удалось воспроизвести аудио');
             });
             updateAudioButton(messageId, true);
         }
@@ -4595,7 +4643,7 @@
             const progressBar = event.currentTarget;
             const rect = progressBar.getBoundingClientRect();
             const clickX = event.clientX - rect.left;
-            const percent = clickX / rect.width;
+            const percent = Math.max(0, Math.min(1, clickX / rect.width));
             audio.currentTime = percent * audio.duration;
             updateAudioProgress(messageId);
         }
@@ -4695,7 +4743,13 @@
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
                     document.body.appendChild(audioElement);
-                    audioElement.play().catch(e => console.warn('Auto-play failed:', e));
+                    
+                    // Важно: запускаем воспроизведение после взаимодействия с пользователем
+                    const playAudio = () => {
+                        audioElement.play().catch(e => console.warn('Play failed:', e));
+                        document.removeEventListener('click', playAudio);
+                    };
+                    document.addEventListener('click', playAudio, { once: true });
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
                     if (!callTimerInterval) {
@@ -4733,29 +4787,23 @@
                 
                 if (ably) {
                     const callsChannel = ably.channels.get('calls');
-                    function attachAndPublish(retries = 5) {
-                        callsChannel.attach((err) => {
-                            if (!err) {
-                                callsChannel.publish('offer', {
-                                    callId,
-                                    dbCallId,
-                                    offer,
-                                    callerId: currentUser.id,
-                                    callerName: currentUser.name,
-                                    callerAvatar: currentUser.avatar,
-                                    targetId: receiverId
-                                });
-                            } else {
-                                console.error('Failed to attach calls channel', err);
-                                if (retries > 0) {
-                                    setTimeout(() => attachAndPublish(retries - 1), 300);
-                                } else {
-                                    alert('Ошибка подключения канала звонков');
-                                }
-                            }
-                        });
-                    }
-                    attachAndPublish(5);
+                    // Убеждаемся, что канал прикреплен
+                    callsChannel.attach((err) => {
+                        if (!err) {
+                            callsChannel.publish('offer', {
+                                callId,
+                                dbCallId,
+                                offer,
+                                callerId: currentUser.id,
+                                callerName: currentUser.name,
+                                callerAvatar: currentUser.avatar,
+                                targetId: receiverId
+                            });
+                        } else {
+                            console.error('Failed to attach calls channel', err);
+                            alert('Ошибка подключения канала звонков');
+                        }
+                    });
                 }
                 
                 showOutgoingCallModal();
@@ -4864,6 +4912,7 @@
                 
             } catch (err) {
                 console.error('Error answering call:', err);
+                alert('Не удалось ответить на звонок');
             }
         }
 
@@ -4924,6 +4973,8 @@
             if (!localStream) return;
             
             const audioTracks = localStream.getAudioTracks();
+            if (audioTracks.length === 0) return;
+            
             const enabled = !audioTracks[0].enabled;
             audioTracks.forEach(track => {
                 track.enabled = enabled;
@@ -4956,6 +5007,19 @@
                 const { offer, callerId, callerName, callerAvatar, callId, dbCallId, targetId } = message.data;
                 if (targetId !== currentUser.id) return;
                 
+                // Если уже есть активный звонок, отклоняем новый
+                if (currentCall) {
+                    if (ably) {
+                        callsChannel.publish('end', {
+                            callId,
+                            targetId: callerId,
+                            senderId: currentUser.id,
+                            reason: 'busy'
+                        });
+                    }
+                    return;
+                }
+                
                 peerConnection = new RTCPeerConnection(getIceServers());
                 
                 peerConnection.onicecandidate = (event) => {
@@ -4978,7 +5042,13 @@
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
                     document.body.appendChild(audioElement);
-                    audioElement.play().catch(e => console.warn('Auto-play failed:', e));
+                    
+                    // Запускаем воспроизведение после взаимодействия
+                    const playAudio = () => {
+                        audioElement.play().catch(e => console.warn('Play failed:', e));
+                        document.removeEventListener('click', playAudio);
+                    };
+                    document.addEventListener('click', playAudio, { once: true });
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
                     if (!callTimerInterval) {
@@ -5007,12 +5077,16 @@
                 const { answer, callId, targetId } = message.data;
                 if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
                 
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                document.getElementById('callStatus').textContent = 'В разговоре';
-                startCallTimer();
-                
-                if (callAcceptedSound) {
-                    callAcceptedSound.play().catch(() => {});
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    document.getElementById('callStatus').textContent = 'В разговоре';
+                    startCallTimer();
+                    
+                    if (callAcceptedSound) {
+                        callAcceptedSound.play().catch(() => {});
+                    }
+                } catch (err) {
+                    console.error('Error setting remote description:', err);
                 }
             });
 
@@ -5020,7 +5094,9 @@
                 const { candidate, callId, targetId } = message.data;
                 if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
                 
-                peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(err => {
+                    console.error('Error adding ICE candidate:', err);
+                });
             });
 
             callsChannel.subscribe('end', (message) => {
@@ -5338,11 +5414,6 @@
             window.addEventListener('orientationchange', setVH);
             
             forceShowInput();
-            
-            // Запрашиваем разрешение на уведомления
-            if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-                Notification.requestPermission();
-            }
         }
 
         function scrollToBottomOnMobile() {
