@@ -2162,6 +2162,7 @@
             <div id="incomingCallControls" class="call-controls">
                 <button class="call-btn accept" id="answerCallBtn" onclick="answerCall()">📞</button>
                 <button class="call-btn reject" id="rejectCallBtn" onclick="rejectCall()">❌</button>
+                <button class="call-btn" id="incomingMuteBtn" onclick="toggleIncomingMute()">🎤</button>
             </div>
             <div id="outgoingCallControls" class="call-controls" style="display: none;">
                 <button class="call-btn reject" id="endCallBtn" onclick="endCall()">❌</button>
@@ -4422,6 +4423,19 @@
             }
         }
 
+        // Функция для добавления ICE серверов (несколько STUN для надежности)
+        function getIceServers() {
+            return {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'stun:stun3.l.google.com:19302' },
+                    { urls: 'stun:stun4.l.google.com:19302' }
+                ]
+            };
+        }
+
         async function startCall() {
             // Проверяем наличие таблицы calls перед звонком
             if (!callsTableExists) {
@@ -4446,9 +4460,7 @@
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 
-                peerConnection = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
+                peerConnection = new RTCPeerConnection(getIceServers());
                 
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
@@ -4476,7 +4488,10 @@
                     audioElement.autoplay = true;
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
+                    // Важно: на мобильных требуется, чтобы audio элемент был добавлен в DOM и воспроизведение началось после жеста пользователя
                     document.body.appendChild(audioElement);
+                    // Пытаемся воспроизвести (на мобильных может потребоваться дополнительный клик)
+                    audioElement.play().catch(e => console.warn('Auto-play failed:', e));
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
                     // Запускаем таймер, если ещё не запущен
@@ -4516,7 +4531,7 @@
                 
                 if (ably) {
                     const callsChannel = ably.channels.get('calls');
-                    // Убедимся, что канал прикреплён
+                    // Убедимся, что канал прикреплён с повторными попытками
                     callsChannel.attach((err) => {
                         if (!err) {
                             callsChannel.publish('offer', {
@@ -4530,7 +4545,24 @@
                             });
                         } else {
                             console.error('Failed to attach calls channel', err);
-                            alert('Ошибка подключения канала звонков');
+                            // Пробуем ещё раз через секунду
+                            setTimeout(() => {
+                                callsChannel.attach((err2) => {
+                                    if (!err2) {
+                                        callsChannel.publish('offer', {
+                                            callId,
+                                            dbCallId,
+                                            offer,
+                                            callerId: currentUser.id,
+                                            callerName: currentUser.name,
+                                            callerAvatar: currentUser.avatar,
+                                            targetId: receiverId
+                                        });
+                                    } else {
+                                        alert('Ошибка подключения канала звонков');
+                                    }
+                                });
+                            }, 1000);
                         }
                     });
                 }
@@ -4555,6 +4587,9 @@
             
             document.getElementById('answerCallBtn').onclick = answerCall;
             document.getElementById('rejectCallBtn').onclick = rejectCall;
+            document.getElementById('incomingMuteBtn').onclick = toggleIncomingMute;
+            document.getElementById('incomingMuteBtn').textContent = '🎤';
+            document.getElementById('incomingMuteBtn').classList.remove('muted');
             
             callModal.classList.add('active');
         }
@@ -4710,6 +4745,26 @@
             }
         }
 
+        function toggleIncomingMute() {
+            if (!localStream) return;
+            
+            const audioTracks = localStream.getAudioTracks();
+            const enabled = !audioTracks[0].enabled;
+            audioTracks.forEach(track => {
+                track.enabled = enabled;
+            });
+            
+            callMuted = !enabled;
+            const muteBtn = document.getElementById('incomingMuteBtn');
+            if (callMuted) {
+                muteBtn.textContent = '🔴';
+                muteBtn.classList.add('muted');
+            } else {
+                muteBtn.textContent = '🎤';
+                muteBtn.classList.remove('muted');
+            }
+        }
+
         function listenForIncomingCalls() {
             if (!ably || !currentUser) return;
             
@@ -4735,9 +4790,7 @@
                     callRingtone.play().catch(() => {});
                 }
                 
-                peerConnection = new RTCPeerConnection({
-                    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-                });
+                peerConnection = new RTCPeerConnection(getIceServers());
                 
                 peerConnection.onicecandidate = (event) => {
                     if (event.candidate && ably) {
@@ -4759,6 +4812,7 @@
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
                     document.body.appendChild(audioElement);
+                    audioElement.play().catch(e => console.warn('Auto-play failed:', e));
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
                     if (!callTimerInterval) {
