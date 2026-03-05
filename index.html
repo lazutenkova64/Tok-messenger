@@ -1056,6 +1056,11 @@
             box-shadow: 0 0 20px var(--dnd-red);
         }
 
+        .mic-btn.muted {
+            color: white;
+            background-color: var(--dnd-red);
+        }
+
         .mic-btn:disabled {
             opacity: 0.5;
             pointer-events: none;
@@ -1855,6 +1860,10 @@
             color: white;
         }
 
+        .call-btn.muted {
+            background-color: var(--dnd-red);
+        }
+
         .call-btn:active {
             transform: scale(0.95);
         }
@@ -1863,6 +1872,14 @@
             font-size: 18px;
             margin: 20px 0;
             color: var(--text-primary);
+        }
+
+        .call-timer {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 10px 0;
+            color: var(--accent-blue);
+            font-family: monospace;
         }
 
         @media (max-width: 768px) {
@@ -2137,6 +2154,7 @@
     <div class="modal" id="callModal">
         <div class="modal-content" style="text-align: center;">
             <h2 id="callStatus">Входящий звонок...</h2>
+            <div class="call-timer" id="callTimer"></div>
             <div id="callerInfo" style="margin: 20px 0;">
                 <div class="user-profile-avatar" id="callAvatar" style="margin: 0 auto;">👤</div>
                 <div class="user-profile-name" id="callerName"></div>
@@ -2147,7 +2165,7 @@
             </div>
             <div id="outgoingCallControls" class="call-controls" style="display: none;">
                 <button class="call-btn reject" id="endCallBtn" onclick="endCall()">❌</button>
-                <button class="call-btn" id="muteCallBtn" onclick="toggleMute()">🔇</button>
+                <button class="call-btn" id="muteCallBtn" onclick="toggleMute()">🎤</button>
             </div>
         </div>
     </div>
@@ -2203,7 +2221,6 @@
         let presenceUpdateInterval;
         let statusUpdateInterval;
 
-        // Убираем строгие лимиты на количество попыток регистрации
         let loginAttempts = 0;
         let lastLoginAttemptTime = 0;
         // const MAX_LOGIN_ATTEMPTS = 3; // больше не используем
@@ -2223,8 +2240,11 @@
         let callEndedSound = null;
         let callModal = null;
         let callMuted = false;
+        let callTimerInterval = null;
+        let callStartTime = null;
+        const CALL_DURATION_LIMIT = 30 * 60 * 1000; // 30 минут
 
-        // Флаг наличия таблицы calls (теперь считаем, что она существует, но проверим)
+        // Флаг наличия таблицы calls
         let callsTableExists = true;
 
         // Эмодзи
@@ -2350,6 +2370,13 @@
             const mins = Math.floor(seconds / 60);
             const secs = Math.floor(seconds % 60);
             return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function formatCallTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         // Генерация UUID для локальных объектов (совместимость)
@@ -2907,6 +2934,8 @@
             chatChannel.attach((err) => {
                 if (err) {
                     console.error('Failed to attach to chat channel', err);
+                    // Пробуем ещё раз через 2 секунды
+                    setTimeout(() => subscribeToChatChannel(chatId), 2000);
                     return;
                 }
                 console.log(`Attached to chat-${chatId}`);
@@ -4440,7 +4469,20 @@
                 };
                 
                 peerConnection.ontrack = (event) => {
-                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                    console.log('Received remote track');
+                    const remoteStream = event.streams[0];
+                    const audioElement = document.createElement('audio');
+                    audioElement.srcObject = remoteStream;
+                    audioElement.autoplay = true;
+                    audioElement.controls = false;
+                    audioElement.style.display = 'none';
+                    document.body.appendChild(audioElement);
+                    
+                    document.getElementById('callStatus').textContent = 'В разговоре';
+                    // Запускаем таймер, если ещё не запущен
+                    if (!callTimerInterval && callStartTime) {
+                        startCallTimer();
+                    }
                 };
                 
                 const offer = await peerConnection.createOffer();
@@ -4505,6 +4547,7 @@
             if (!callModal) return;
             
             document.getElementById('callStatus').textContent = 'Входящий звонок...';
+            document.getElementById('callTimer').textContent = '';
             document.getElementById('callerName').textContent = callerName;
             document.getElementById('callAvatar').textContent = callerAvatar || '👤';
             document.getElementById('incomingCallControls').style.display = 'flex';
@@ -4519,7 +4562,8 @@
         function showOutgoingCallModal() {
             if (!callModal) return;
             
-            document.getElementById('callStatus').textContent = 'Звоним...';
+            document.getElementById('callStatus').textContent = 'Соединение...';
+            document.getElementById('callTimer').textContent = '';
             document.getElementById('callerName').textContent = currentChat ? (currentChat.name.split('_').find(n => n !== currentUser.name) || currentChat.name) : '';
             document.getElementById('callAvatar').textContent = currentChat?.avatar || '👤';
             document.getElementById('incomingCallControls').style.display = 'none';
@@ -4527,8 +4571,25 @@
             
             document.getElementById('endCallBtn').onclick = endCall;
             document.getElementById('muteCallBtn').onclick = toggleMute;
+            document.getElementById('muteCallBtn').textContent = '🎤';
+            document.getElementById('muteCallBtn').classList.remove('muted');
             
             callModal.classList.add('active');
+        }
+
+        function startCallTimer() {
+            if (callTimerInterval) clearInterval(callTimerInterval);
+            callStartTime = Date.now();
+            callTimerInterval = setInterval(() => {
+                const elapsed = Date.now() - callStartTime;
+                if (elapsed >= CALL_DURATION_LIMIT) {
+                    // Превышен лимит 30 минут
+                    alert('Длительность звонка превысила 30 минут. Звонок завершён.');
+                    endCall();
+                    return;
+                }
+                document.getElementById('callTimer').textContent = formatCallTime(elapsed);
+            }, 1000);
         }
 
         async function answerCall() {
@@ -4558,7 +4619,8 @@
                     });
                 }
                 
-                document.getElementById('callStatus').textContent = 'В разговоре...';
+                document.getElementById('callStatus').textContent = 'В разговоре';
+                startCallTimer();
                 
                 if (callRingtone) {
                     callRingtone.pause();
@@ -4606,6 +4668,12 @@
                 peerConnection = null;
             }
             
+            if (callTimerInterval) {
+                clearInterval(callTimerInterval);
+                callTimerInterval = null;
+            }
+            callStartTime = null;
+            
             if (callModal) {
                 callModal.classList.remove('active');
             }
@@ -4626,12 +4694,20 @@
             if (!localStream) return;
             
             const audioTracks = localStream.getAudioTracks();
+            const enabled = !audioTracks[0].enabled;
             audioTracks.forEach(track => {
-                track.enabled = !track.enabled;
+                track.enabled = enabled;
             });
             
-            callMuted = !callMuted;
-            document.getElementById('muteCallBtn').style.opacity = callMuted ? '0.5' : '1';
+            callMuted = !enabled;
+            const muteBtn = document.getElementById('muteCallBtn');
+            if (callMuted) {
+                muteBtn.textContent = '🔴';
+                muteBtn.classList.add('muted');
+            } else {
+                muteBtn.textContent = '🎤';
+                muteBtn.classList.remove('muted');
+            }
         }
 
         function listenForIncomingCalls() {
@@ -4675,7 +4751,19 @@
                 };
                 
                 peerConnection.ontrack = (event) => {
-                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                    console.log('Received remote track (incoming)');
+                    const remoteStream = event.streams[0];
+                    const audioElement = document.createElement('audio');
+                    audioElement.srcObject = remoteStream;
+                    audioElement.autoplay = true;
+                    audioElement.controls = false;
+                    audioElement.style.display = 'none';
+                    document.body.appendChild(audioElement);
+                    
+                    document.getElementById('callStatus').textContent = 'В разговоре';
+                    if (!callTimerInterval) {
+                        startCallTimer();
+                    }
                 };
             });
 
@@ -4684,7 +4772,8 @@
                 if (targetId !== currentUser.id || !currentCall || currentCall.id !== callId) return;
                 
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                document.getElementById('callStatus').textContent = 'В разговоре...';
+                document.getElementById('callStatus').textContent = 'В разговоре';
+                startCallTimer();
                 
                 if (callAcceptedSound) {
                     callAcceptedSound.play().catch(() => {});
