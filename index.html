@@ -2195,7 +2195,7 @@
 
     <script>
         const SUPABASE_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scXdnZmVzZWR6cm5wd2Z3cXBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4Njg3NjksImV4cCI6MjA1NjQ0NDc2OX0.d1Xv7pC96a72KcSl8RLOiQn3RSSodNS6yCxH3RZ9Myw";
         const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
         const ADMIN_USERNAME = "K1lame";
 
@@ -2250,7 +2250,6 @@
         let pendingMessages = {};
         let messageQueue = {};
 
-        // Call state
         let currentCall = null;
         let localStream = null;
         let peerConnection = null;
@@ -2335,6 +2334,23 @@
             applyTheme(themeId);
         }
 
+        function startPresenceUpdates() {
+            if (presenceUpdateInterval) clearInterval(presenceUpdateInterval);
+            presenceUpdateInterval = setInterval(() => {
+                if (ably && ably.connection.state === 'connected' && currentUser) {
+                    const presenceChannel = ably.channels.get('presence');
+                    presenceChannel.presence.update({ 
+                        name: currentUser.name,
+                        avatar: currentUser.avatar || '👤',
+                        bio: currentUser.bio || '',
+                        isAdmin: currentUser.isAdmin || false,
+                        dnd: currentUser.dnd || false,
+                        lastSeen: Date.now()
+                    });
+                }
+            }, 30000);
+        }
+
         async function init() {
             if (isInitialized) return;
             isInitialized = true;
@@ -2349,11 +2365,15 @@
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 
                 if (session?.user) {
-                    const { data: userData } = await supabaseClient
+                    const { data: userData, error: userError } = await supabaseClient
                         .from('profiles')
                         .select('*')
                         .eq('id', session.user.id)
                         .single();
+                    
+                    if (userError) {
+                        console.warn('Не удалось загрузить профиль:', userError.message);
+                    }
                     
                     if (userData) {
                         currentUser = {
@@ -2786,7 +2806,6 @@
                     }
                 });
 
-                // Call signaling via Ably
                 const callsChannel = ably.channels.get('calls');
                 callsChannel.subscribe('offer', async (message) => {
                     const { offer, callerId, callerName, callerAvatar } = message.data;
@@ -3015,18 +3034,20 @@
                     .maybeSingle();
                 
                 if (checkError) {
-                    console.error('Ошибка при проверке существования сообщения:', checkError);
+                    console.warn('Ошибка при проверке существования сообщения:', checkError);
                 }
                 
                 if (existing) {
                     return;
                 }
                 
+                const chatIdForDb = message.chatId.startsWith('favorite-') ? 'favorite' : message.chatId;
+                
                 const { data, error } = await supabaseClient
                     .from('messages')
                     .insert([{
                         id: message.id,
-                        chat_id: message.chatId,
+                        chat_id: chatIdForDb,
                         sender_id: message.sender,
                         sender_name: message.senderName,
                         text: message.text || null,
@@ -3108,11 +3129,13 @@
             
             for (const message of pending) {
                 try {
+                    const chatIdForDb = message.chatId.startsWith('favorite-') ? 'favorite' : message.chatId;
+                    
                     const { error } = await supabaseClient
                         .from('messages')
                         .insert([{
                             id: message.id,
-                            chat_id: message.chatId,
+                            chat_id: chatIdForDb,
                             sender_id: message.sender,
                             sender_name: message.senderName,
                             text: message.text || null,
@@ -3483,57 +3506,60 @@
                     .eq('id', authData.user.id)
                     .single();
                 
-                if (userError || !userData) {
-                    alert('Ошибка загрузки профиля');
-                    return;
+                if (userError) {
+                    console.warn('Ошибка загрузки профиля:', userError.message);
                 }
                 
-                currentUser = {
-                    id: userData.id,
-                    name: userData.username,
-                    avatar: userData.avatar || '👤',
-                    bio: userData.bio || '',
-                    isAdmin: userData.username === ADMIN_USERNAME,
-                    dnd: userData.dnd || false
-                };
-                
-                if (remember) {
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                if (userData) {
+                    currentUser = {
+                        id: userData.id,
+                        name: userData.username,
+                        avatar: userData.avatar || '👤',
+                        bio: userData.bio || '',
+                        isAdmin: userData.username === ADMIN_USERNAME,
+                        dnd: userData.dnd || false
+                    };
+                    
+                    if (remember) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    }
+                    
+                    myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
+                    
+                    document.getElementById('loginModal').classList.remove('active');
+                    document.getElementById('appContainer').style.display = 'flex';
+                    
+                    updateProfileUI();
+                    
+                    await Promise.all([
+                        loadAllUsers(),
+                        loadPublicChats(),
+                        loadAllMessages()
+                    ]);
+                    
+                    ensureFavoriteChat();
+                    initAbly();
+                    startHeartbeat();
+                    startPresenceUpdates();
+                    startStatusUpdates();
+                    checkUrlForChat();
+                    
+                    if (myChats.length === 1 && myChats[0].isFavorite) {
+                        joinChat(myChats[0]);
+                    } else if (!currentChat) {
+                        joinChat(myChats[0]);
+                    }
+                    
+                    updateBackButtonVisibility();
+                    forceShowInput();
+                    updateCreateChatButtonVisibility();
+                    
+                    populateThemeGrid();
+                    
+                    listenForIncomingCalls();
+                } else {
+                    alert('Ошибка: профиль пользователя не найден');
                 }
-                
-                myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
-                
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('appContainer').style.display = 'flex';
-                
-                updateProfileUI();
-                
-                await Promise.all([
-                    loadAllUsers(),
-                    loadPublicChats(),
-                    loadAllMessages()
-                ]);
-                
-                ensureFavoriteChat();
-                initAbly();
-                startHeartbeat();
-                startPresenceUpdates();
-                startStatusUpdates();
-                checkUrlForChat();
-                
-                if (myChats.length === 1 && myChats[0].isFavorite) {
-                    joinChat(myChats[0]);
-                } else if (!currentChat) {
-                    joinChat(myChats[0]);
-                }
-                
-                updateBackButtonVisibility();
-                forceShowInput();
-                updateCreateChatButtonVisibility();
-                
-                populateThemeGrid();
-                
-                listenForIncomingCalls();
                 
             } catch (err) {
                 console.error('Login error:', err);
@@ -3582,7 +3608,6 @@
                 const newUser = {
                     id: authData.user.id,
                     username: username,
-                    password: password,
                     avatar: '👤',
                     bio: '',
                     dnd: false,
@@ -4453,7 +4478,6 @@
             }
             
             const newChat = {
-                id: 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8),
                 name: name,
                 description: description || '',
                 password: password || null,
@@ -4476,6 +4500,7 @@
                 }
                 
                 const createdChat = {
+                    id: data[0].id,
                     ...newChat,
                     members: [currentUser.id]
                 };
@@ -5043,7 +5068,6 @@
 
         document.addEventListener('DOMContentLoaded', init);
 
-        // ===== CALL MODULE =====
         async function preloadSounds() {
             return new Promise((resolve) => {
                 callRingtone = new Audio();
@@ -5294,7 +5318,6 @@
                 endCall();
             });
         }
-        // ===== END CALL MODULE =====
     </script>
 </body>
 </html>
