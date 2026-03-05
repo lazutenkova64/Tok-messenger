@@ -2163,21 +2163,29 @@
     </div>
 
     <script>
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ SUPABASE
+        // ============================================
         const SUPABASE_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
         const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
         const ADMIN_USERNAME = "K1lame";
         const VIP_USERNAMES = ["K1lame", "VIP_User", "Premium"];
 
+        // Правильная инициализация Supabase клиента
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: { persistSession: true, autoRefreshToken: true }
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: false
+            }
         });
 
         let ably;
         let currentUser = null;
         let myChats = [];
         let publicChats = [];
-        let allUsers = [];
+        let allProfiles = [];
         let onlineUsers = {};
         let currentChat = null;
         let messages = {};
@@ -2256,6 +2264,9 @@
             { id: 'ocean-deep', name: 'Морская глубина', class: 'ocean-deep' }
         ];
 
+        // ============================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ============================================
         function applyTheme(themeId) {
             document.documentElement.setAttribute('data-theme', themeId);
             currentTheme = themeId;
@@ -2316,6 +2327,101 @@
             callEndedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gR2VuZXJpYyBTb3VuZCBEaXNjb25uZWN0ZWQAVGVzdAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQZAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwP//8AAAA//8AACABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//sQZAADwAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
         }
 
+        // ============================================
+        // ФУНКЦИИ РАБОТЫ С ПРОФИЛЯМИ
+        // ============================================
+        async function getProfileByUsername(username) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('username', username)
+                    .maybeSingle();
+                
+                if (error) throw error;
+                return data;
+            } catch (err) {
+                console.error('Error getting profile by username:', err);
+                return null;
+            }
+        }
+
+        async function getProfileById(userId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .maybeSingle();
+                
+                if (error) throw error;
+                return data;
+            } catch (err) {
+                console.error('Error getting profile by id:', err);
+                return null;
+            }
+        }
+
+        async function getAllProfiles() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .order('username');
+                
+                if (error) throw error;
+                return data || [];
+            } catch (err) {
+                console.error('Error loading profiles:', err);
+                return [];
+            }
+        }
+
+        async function createProfile(userId, username, avatar = '👤', bio = '', dnd = false) {
+            try {
+                const isAdmin = username === ADMIN_USERNAME;
+                const isVip = VIP_USERNAMES.includes(username);
+                
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .insert([{
+                        id: userId,
+                        username: username,
+                        avatar: avatar,
+                        bio: bio,
+                        dnd: dnd,
+                        is_admin: isAdmin,
+                        is_vip: isVip,
+                        last_seen: Date.now(),
+                        created_at: new Date().toISOString()
+                    }]);
+                
+                if (error) throw error;
+                return true;
+            } catch (err) {
+                console.error('Error creating profile:', err);
+                return false;
+            }
+        }
+
+        async function updateProfile(userId, updates) {
+            try {
+                const { error } = await supabaseClient
+                    .from('profiles')
+                    .update(updates)
+                    .eq('id', userId);
+                
+                if (error) throw error;
+                return true;
+            } catch (err) {
+                console.error('Error updating profile:', err);
+                return false;
+            }
+        }
+
+        // ============================================
+        // ИНИЦИАЛИЗАЦИЯ
+        // ============================================
         async function init() {
             if (isInitialized) return;
             isInitialized = true;
@@ -2326,14 +2432,14 @@
                 populateThemeGrid();
                 preloadSounds();
                 
-                const hasSession = await checkSavedSession();
+                const session = await checkSavedSession();
                 
-                if (hasSession) {
+                if (session) {
                     document.getElementById('loginModal').classList.remove('active');
                     document.getElementById('appContainer').style.display = 'flex';
                     
                     await Promise.all([
-                        loadAllUsers(),
+                        loadAllProfiles(),
                         loadPublicChats(),
                         loadAllMessages(),
                         syncWithSupabase()
@@ -2368,13 +2474,126 @@
             }
         }
 
-        function ensureFavoriteChat() {
-            const favChatId = `favorite-${currentUser.id}`;
-            const exists = myChats.some(c => c.id === favChatId);
+        async function checkSavedSession() {
+            try {
+                // Получаем текущую сессию из Supabase Auth
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                if (session) {
+                    // Загружаем профиль пользователя
+                    const profile = await getProfileById(session.user.id);
+                    
+                    if (profile) {
+                        currentUser = {
+                            id: profile.id,
+                            name: profile.username,
+                            avatar: profile.avatar || '👤',
+                            bio: profile.bio || '',
+                            isAdmin: profile.is_admin || false,
+                            isVip: profile.is_vip || false,
+                            dnd: profile.dnd || false
+                        };
+                        
+                        myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
+                        
+                        updateProfileUI();
+                        
+                        return true;
+                    }
+                }
+                
+                return false;
+            } catch (err) {
+                console.error('Error checking saved session:', err);
+                return false;
+            }
+        }
+
+        // ============================================
+        // РЕГИСТРАЦИЯ
+        // ============================================
+        async function register() {
+            const now = Date.now();
+            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
+            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+                alert('Слишком много попыток регистрации. Попробуйте позже.');
+                return;
+            }
+            loginAttempts++;
+            lastLoginAttemptTime = now;
+
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+            const remember = document.getElementById('rememberMeRegister').checked;
             
-            if (!exists) {
+            if (!username || !password) {
+                alert('Заполните все поля');
+                return;
+            }
+            if (password !== confirmPassword) {
+                alert('Пароли не совпадают');
+                return;
+            }
+            if (password.length < 3) {
+                alert('Пароль должен быть минимум 3 символа');
+                return;
+            }
+            
+            try {
+                // Проверяем, существует ли уже такое имя пользователя
+                const existingProfile = await getProfileByUsername(username);
+                if (existingProfile) {
+                    alert('Пользователь с таким именем уже существует');
+                    return;
+                }
+                
+                // Регистрируем пользователя в Supabase Auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: `${username}@telegram.local`,
+                    password: password,
+                    options: {
+                        data: {
+                            username: username
+                        }
+                    }
+                });
+                
+                if (authError) throw authError;
+                if (!authData.user) throw new Error('Не удалось создать пользователя');
+                
+                // Создаем профиль в таблице profiles
+                const profileCreated = await createProfile(
+                    authData.user.id,
+                    username,
+                    '👤',
+                    '',
+                    false
+                );
+                
+                if (!profileCreated) {
+                    throw new Error('Не удалось создать профиль');
+                }
+                
+                // Загружаем созданный профиль
+                const profile = await getProfileById(authData.user.id);
+                
+                currentUser = {
+                    id: profile.id,
+                    name: profile.username,
+                    avatar: profile.avatar || '👤',
+                    bio: profile.bio || '',
+                    isAdmin: profile.is_admin || false,
+                    isVip: profile.is_vip || false,
+                    dnd: profile.dnd || false
+                };
+                
+                if (remember) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+                
                 const favChat = {
-                    id: favChatId,
+                    id: `favorite-${currentUser.id}`,
                     name: 'Избранное',
                     avatar: '⭐',
                     isPrivate: true,
@@ -2383,33 +2602,191 @@
                     isFavorite: true,
                     pinned: true
                 };
-                myChats.unshift(favChat);
+                myChats = [favChat];
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                 
-                if (!messages[favChatId]) {
-                    messages[favChatId] = [];
-                }
+                messages[favChat.id] = [];
+                
+                document.getElementById('loginModal').classList.remove('active');
+                document.getElementById('appContainer').style.display = 'flex';
+                
+                updateProfileUI();
+                
+                await loadAllProfiles();
+                await loadPublicChats();
+                
+                initAbly();
+                startHeartbeat();
+                startPresenceUpdates();
+                startStatusUpdates();
+                listenForIncomingCalls();
+                
+                joinChat(favChat);
+                updateBackButtonVisibility();
+                forceShowInput();
+                updateCreateChatButtonVisibility();
+                
+                alert('Регистрация успешна!');
+                
+            } catch (err) {
+                console.error('Registration error:', err);
+                alert('Ошибка при регистрации: ' + err.message);
             }
         }
 
-        function startPeriodicSync() {
-            // Убрали сохранение в localStorage, оставили только загрузку из БД
+        // ============================================
+        // ВХОД
+        // ============================================
+        async function login() {
+            const now = Date.now();
+            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
+            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+                alert('Слишком много попыток входа. Попробуйте позже.');
+                return;
+            }
+            loginAttempts++;
+            lastLoginAttemptTime = now;
+
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const remember = document.getElementById('rememberMe').checked;
+            
+            if (!username || !password) {
+                alert('Введите имя и пароль');
+                return;
+            }
+            
+            try {
+                // Сначала находим профиль по username
+                const profile = await getProfileByUsername(username);
+                
+                if (!profile) {
+                    alert('Неверное имя пользователя или пароль');
+                    return;
+                }
+                
+                // Пытаемся войти через Supabase Auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: `${username}@telegram.local`,
+                    password: password
+                });
+                
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    alert('Неверное имя пользователя или пароль');
+                    return;
+                }
+                
+                // Загружаем актуальный профиль
+                const updatedProfile = await getProfileById(profile.id);
+                
+                currentUser = {
+                    id: updatedProfile.id,
+                    name: updatedProfile.username,
+                    avatar: updatedProfile.avatar || '👤',
+                    bio: updatedProfile.bio || '',
+                    isAdmin: updatedProfile.is_admin || false,
+                    isVip: updatedProfile.is_vip || false,
+                    dnd: updatedProfile.dnd || false
+                };
+                
+                if (remember) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+                
+                myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
+                
+                document.getElementById('loginModal').classList.remove('active');
+                document.getElementById('appContainer').style.display = 'flex';
+                
+                updateProfileUI();
+                
+                await Promise.all([
+                    loadAllProfiles(),
+                    loadPublicChats(),
+                    loadAllMessages(),
+                    syncWithSupabase()
+                ]);
+                
+                ensureFavoriteChat();
+                initAbly();
+                startHeartbeat();
+                startPresenceUpdates();
+                startStatusUpdates();
+                checkUrlForChat();
+                listenForIncomingCalls();
+                
+                if (myChats.length === 1 && myChats[0].isFavorite) {
+                    joinChat(myChats[0]);
+                } else if (!currentChat) {
+                    joinChat(myChats[0]);
+                }
+                
+                updateBackButtonVisibility();
+                forceShowInput();
+                updateCreateChatButtonVisibility();
+                
+                populateThemeGrid();
+                
+            } catch (err) {
+                console.error('Login error:', err);
+                alert('Ошибка при входе');
+            }
         }
 
-        async function syncWithSupabase() {
+        // ============================================
+        // ЗАГРУЗКА ПРОФИЛЕЙ
+        // ============================================
+        async function loadAllProfiles() {
             try {
-                const { data: chats, error: chatsError } = await supabaseClient
-                    .from('chats')
-                    .select('*');
+                allProfiles = await getAllProfiles();
                 
-                if (!chatsError && chats) {
-                    publicChats = chats.filter(c => c.type === 'public').map(chat => ({
-                        ...chat,
-                        members: typeof chat.members === 'string' ? JSON.parse(chat.members) : chat.members || []
-                    }));
+                if (currentTab === 'users') {
+                    updateChatsList();
                 }
             } catch (err) {
-                console.error('Sync error:', err);
+                console.error('Error loading profiles:', err);
+            }
+        }
+
+        // ============================================
+        // ОСТАЛЬНЫЕ ФУНКЦИИ (сообщения, чаты, Ably и т.д.)
+        // ============================================
+        async function loadPublicChats() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('chats')
+                    .select('*')
+                    .eq('type', 'public');
+                
+                if (error) {
+                    console.error('Error loading chats:', error);
+                    return;
+                }
+                
+                publicChats = (data || []).map(chat => {
+                    let members = [];
+                    if (chat.members) {
+                        if (typeof chat.members === 'string') {
+                            try {
+                                members = JSON.parse(chat.members);
+                            } catch (e) {
+                                members = [];
+                            }
+                        } else if (Array.isArray(chat.members)) {
+                            members = chat.members;
+                        }
+                    }
+                    
+                    return {
+                        ...chat,
+                        members: members
+                    };
+                });
+                
+                if (currentTab === 'public') updateChatsList();
+            } catch (err) {
+                console.error('Error loading public chats:', err);
             }
         }
 
@@ -2468,201 +2845,91 @@
             }
         }
 
-        async function handleBeforeUnload() {
-            if (currentUser && ably) {
-                await updateUserLastSeen();
-                const presenceChannel = ably.channels.get('presence');
-                presenceChannel.presence.leave();
+        async function syncWithSupabase() {
+            try {
+                const { data: chats, error: chatsError } = await supabaseClient
+                    .from('chats')
+                    .select('*');
+                
+                if (!chatsError && chats) {
+                    publicChats = chats.filter(c => c.type === 'public').map(chat => ({
+                        ...chat,
+                        members: typeof chat.members === 'string' ? JSON.parse(chat.members) : chat.members || []
+                    }));
+                }
+            } catch (err) {
+                console.error('Sync error:', err);
             }
         }
 
-        async function updateUserLastSeen() {
+        function ensureFavoriteChat() {
+            const favChatId = `favorite-${currentUser.id}`;
+            const exists = myChats.some(c => c.id === favChatId);
+            
+            if (!exists) {
+                const favChat = {
+                    id: favChatId,
+                    name: 'Избранное',
+                    avatar: '⭐',
+                    isPrivate: true,
+                    members: [currentUser.id],
+                    isSelf: true,
+                    isFavorite: true,
+                    pinned: true
+                };
+                myChats.unshift(favChat);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                
+                if (!messages[favChatId]) {
+                    messages[favChatId] = [];
+                }
+            }
+        }
+
+        function updateProfileUI() {
             if (!currentUser) return;
             
-            try {
-                await supabaseClient
-                    .from('users')
-                    .update({ last_seen: new Date().toISOString() })
-                    .eq('id', currentUser.id);
-            } catch (err) {
-                console.error('Error updating last_seen:', err);
+            const nameSpan = document.getElementById('profileName');
+            nameSpan.innerHTML = '';
+            
+            const nameText = document.createTextNode(currentUser.name + ' ');
+            nameSpan.appendChild(nameText);
+            
+            if (currentUser.isAdmin) {
+                const badge = document.createElement('span');
+                badge.className = 'admin-badge';
+                badge.textContent = 'ADMIN';
+                nameSpan.appendChild(badge);
+            } else if (currentUser.isVip) {
+                const badge = document.createElement('span');
+                badge.className = 'vip-badge';
+                badge.textContent = 'VIP';
+                nameSpan.appendChild(badge);
             }
+            
+            const statusDisplay = document.getElementById('profileStatusDisplay');
+            if (currentUser.dnd) {
+                statusDisplay.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
+            } else {
+                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
+            }
+            
+            document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
+            document.getElementById('profileBioInput').value = currentUser.bio || '';
+            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
         }
 
-        async function checkSavedSession() {
-            try {
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                
-                if (session) {
-                    const { data, error } = await supabaseClient
-                        .from('users')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
-                    
-                    if (!error && data) {
-                        currentUser = {
-                            id: data.id,
-                            name: data.username,
-                            avatar: data.avatar || '👤',
-                            bio: data.bio || '',
-                            isAdmin: data.username === ADMIN_USERNAME,
-                            isVip: VIP_USERNAMES.includes(data.username),
-                            dnd: data.dnd || false
-                        };
-                        
-                        myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
-                        
-                        updateProfileUI();
-                        
-                        return true;
-                    }
-                }
-                
-                const savedUser = localStorage.getItem('currentUser');
-                if (!savedUser) return false;
-
-                const userData = JSON.parse(savedUser);
-                
-                const { data, error } = await supabaseClient
-                    .from('users')
-                    .select('*')
-                    .eq('id', userData.id)
-                    .single();
-                
-                if (error || !data) {
-                    localStorage.removeItem('currentUser');
-                    return false;
-                }
-                
-                currentUser = {
-                    id: data.id,
-                    name: data.username,
-                    avatar: data.avatar || '👤',
-                    bio: data.bio || '',
-                    isAdmin: data.username === ADMIN_USERNAME,
-                    isVip: VIP_USERNAMES.includes(data.username),
-                    dnd: data.dnd || false
-                };
-                
-                myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
-                
-                updateProfileUI();
-                
-                return true;
-            } catch (err) {
-                console.error('Error checking saved session:', err);
-                localStorage.removeItem('currentUser');
-                return false;
-            }
-        }
-
-        function startPresenceUpdates() {
-            if (presenceUpdateInterval) clearInterval(presenceUpdateInterval);
-            
-            presenceUpdateInterval = setInterval(() => {
-                if (ably && ably.connection.state === 'connected' && currentUser) {
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.update({ 
-                        name: currentUser.name, 
-                        avatar: currentUser.avatar || '👤',
-                        bio: currentUser.bio || '',
-                        isAdmin: currentUser.isAdmin || false,
-                        isVip: currentUser.isVip || false,
-                        dnd: currentUser.dnd || false,
-                        lastSeen: Date.now()
-                    });
-                }
-            }, 3000);
-        }
-
-        function formatLastSeen(timestamp) {
-            if (!timestamp) return 'давно';
-            
-            const now = Date.now();
-            const diff = now - timestamp;
-            
-            const seconds = Math.floor(diff / 1000);
-            const minutes = Math.floor(seconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const days = Math.floor(hours / 24);
-            
-            if (seconds < 60) return 'только что';
-            if (minutes < 60) {
-                if (minutes === 1) return '1 минуту назад';
-                if (minutes >= 2 && minutes <= 4) return `${minutes} минуты назад`;
-                return `${minutes} минут назад`;
-            }
-            if (hours < 24) {
-                if (hours === 1) return '1 час назад';
-                if (hours >= 2 && hours <= 4) return `${hours} часа назад`;
-                return `${hours} часов назад`;
-            }
-            if (days === 1) return 'вчера';
-            if (days < 7) {
-                if (days >= 2 && days <= 4) return `${days} дня назад`;
-                return `${days} дней назад`;
-            }
-            if (days < 30) return `${days} дней назад`;
-            
-            return 'давно';
-        }
-
-        async function loadAllUsers() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('users')
-                    .select('*')
-                    .order('username');
-                
-                if (error) throw error;
-                
-                allUsers = (data || []).filter(user => user.username !== 'test');
-                
-                if (currentTab === 'users') {
-                    updateChatsList();
-                }
-            } catch (err) {
-                console.error('Error loading users:', err);
-            }
-        }
-
-        async function loadPublicChats() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('chats')
-                    .select('*')
-                    .eq('type', 'public');
-                
-                if (error) {
-                    console.error('Error loading chats:', error);
-                    return;
-                }
-                
-                publicChats = (data || []).map(chat => {
-                    let members = [];
-                    if (chat.members) {
-                        if (typeof chat.members === 'string') {
-                            try {
-                                members = JSON.parse(chat.members);
-                            } catch (e) {
-                                members = [];
-                            }
-                        } else if (Array.isArray(chat.members)) {
-                            members = chat.members;
-                        }
-                    }
-                    
-                    return {
-                        ...chat,
-                        members: members
-                    };
-                });
-                
-                if (currentTab === 'public') updateChatsList();
-            } catch (err) {
-                console.error('Error loading public chats:', err);
-            }
+        function populateEmojiPicker() {
+            const picker = document.getElementById('emojiPicker');
+            picker.innerHTML = '';
+            emojiList.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.className = 'emoji-btn';
+                btn.textContent = emoji;
+                btn.onclick = () => addEmoji(emoji);
+                picker.appendChild(btn);
+            });
         }
 
         function initAbly() {
@@ -2836,31 +3103,6 @@
             });
         }
 
-        function updateChatStatus() {
-            if (!currentChat || currentChat.isSelf) return;
-            
-            const chatMemberId = currentChat.members?.find(id => id !== currentUser.id);
-            if (!chatMemberId) return;
-            
-            const userOnline = onlineUsers[chatMemberId.toString()];
-            const statusElement = document.getElementById('chatStatus');
-            
-            if (userOnline && userOnline.online) {
-                if (userOnline.dnd) {
-                    statusElement.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
-                } else {
-                    statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
-                }
-            } else {
-                const lastSeen = userOnline?.lastSeen;
-                if (lastSeen) {
-                    statusElement.innerHTML = `был(а) ${formatLastSeen(lastSeen)}`;
-                } else {
-                    statusElement.innerHTML = 'был(а) давно';
-                }
-            }
-        }
-
         function subscribeToChat(chat) {
             if (!ably || !chat) return;
             
@@ -2955,35 +3197,6 @@
             loadChatHistory(chat.id);
         }
 
-        async function saveMessageToDatabase(message) {
-            try {
-                const { error } = await supabaseClient
-                    .from('messages')
-                    .insert([{
-                        id: message.id,
-                        chat_id: message.chatId,
-                        sender_id: message.sender,
-                        sender_name: message.senderName,
-                        text: message.text || null,
-                        audio: message.audio || null,
-                        duration: message.duration || null,
-                        media: message.media || null,
-                        time: message.time,
-                        timestamp: message.timestamp,
-                        is_admin: message.isAdmin || false,
-                        edited: message.edited || false
-                    }]);
-                
-                if (error) {
-                    console.error('❌ Ошибка сохранения в БД:', error);
-                } else {
-                    console.log('✅ Сообщение сохранено в БД:', message.id);
-                }
-            } catch (err) {
-                console.error('❌ Критическая ошибка при сохранении:', err);
-            }
-        }
-
         async function loadChatHistory(chatId) {
             try {
                 const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -3048,6 +3261,35 @@
             }
         }
 
+        async function saveMessageToDatabase(message) {
+            try {
+                const { error } = await supabaseClient
+                    .from('messages')
+                    .insert([{
+                        id: message.id,
+                        chat_id: message.chatId,
+                        sender_id: message.sender,
+                        sender_name: message.senderName,
+                        text: message.text || null,
+                        audio: message.audio || null,
+                        duration: message.duration || null,
+                        media: message.media || null,
+                        time: message.time,
+                        timestamp: message.timestamp,
+                        is_admin: message.isAdmin || false,
+                        edited: message.edited || false
+                    }]);
+                
+                if (error) {
+                    console.error('❌ Ошибка сохранения в БД:', error);
+                } else {
+                    console.log('✅ Сообщение сохранено в БД:', message.id);
+                }
+            } catch (err) {
+                console.error('❌ Критическая ошибка при сохранении:', err);
+            }
+        }
+
         function markMessagesAsRead(chatId) {
             if (!ably || !messages[chatId]) return;
             
@@ -3103,523 +3345,91 @@
             }, 30000);
         }
 
-        function updateProfileUI() {
-            if (!currentUser) return;
+        function startPresenceUpdates() {
+            if (presenceUpdateInterval) clearInterval(presenceUpdateInterval);
             
-            const nameSpan = document.getElementById('profileName');
-            nameSpan.innerHTML = '';
-            
-            const nameText = document.createTextNode(currentUser.name + ' ');
-            nameSpan.appendChild(nameText);
-            
-            if (currentUser.isAdmin) {
-                const badge = document.createElement('span');
-                badge.className = 'admin-badge';
-                badge.textContent = 'ADMIN';
-                nameSpan.appendChild(badge);
-            } else if (currentUser.isVip) {
-                const badge = document.createElement('span');
-                badge.className = 'vip-badge';
-                badge.textContent = 'VIP';
-                nameSpan.appendChild(badge);
-            }
-            
-            const statusDisplay = document.getElementById('profileStatusDisplay');
-            if (currentUser.dnd) {
-                statusDisplay.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
-            } else {
-                statusDisplay.innerHTML = 'онлайн <span class="online-indicator"></span>';
-            }
-            
-            document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileBioInput').value = currentUser.bio || '';
-            document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
-        }
-
-        function handleMessagesContainerClick(event) {
-            if (activeMessageId) {
-                const activeMessage = document.querySelector(`.message[data-id="${activeMessageId}"]`);
-                if (activeMessage && !activeMessage.contains(event.target)) {
-                    hideMessageActions();
-                }
-            }
-        }
-
-        function showMessageActions(messageId, event) {
-            event.stopPropagation();
-            
-            if (activeMessageId) {
-                const prevActive = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
-                if (prevActive) {
-                    prevActive.classList.remove('visible');
-                }
-            }
-            
-            const actions = document.querySelector(`.message-actions[data-message-id="${messageId}"]`);
-            if (actions) {
-                actions.classList.add('visible');
-                activeMessageId = messageId;
-                
-                setTimeout(() => {
-                    if (activeMessageId === messageId) {
-                        hideMessageActions();
-                    }
-                }, 5000);
-            }
-        }
-
-        function hideMessageActions() {
-            if (activeMessageId) {
-                const actions = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
-                if (actions) {
-                    actions.classList.remove('visible');
-                }
-                activeMessageId = null;
-            }
-        }
-
-        function startRecording() {
-            const messageInput = document.getElementById('messageInput');
-            
-            if (messageInput.value.trim().length > 0) {
-                return;
-            }
-            
-            if (isRecording) return;
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-            
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert('Ваш браузер не поддерживает запись аудио');
-                return;
-            }
-            
-            let mimeType = 'audio/webm';
-            if (!MediaRecorder.isTypeSupported('audio/webm')) {
-                mimeType = 'audio/ogg';
-            }
-            
-            recordingStartTime = Date.now();
-            
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    mediaStream = stream;
-                    try {
-                        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
-                    } catch (e) {
-                        mediaRecorder = new MediaRecorder(stream);
-                    }
-                    audioChunks = [];
-
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
-                    };
-
-                    mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: mimeType });
-                        const duration = Math.round((Date.now() - recordingStartTime) / 1000);
-                        
-                        if (mediaStream) {
-                            mediaStream.getTracks().forEach(track => track.stop());
-                            mediaStream = null;
-                        }
-                        
-                        if (audioBlob.size > 0 && duration > 0.1) {
-                            await sendAudioMessage(audioBlob, duration);
-                        }
-                        
-                        document.getElementById('micBtn').classList.remove('recording');
-                    };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    document.getElementById('micBtn').classList.add('recording');
-                    
-                    recordingTimeout = setTimeout(() => {
-                        if (isRecording) stopRecording();
-                    }, 60000);
-                })
-                .catch(err => {
-                    alert('Не удалось получить доступ к микрофону');
-                    console.error(err);
-                });
-        }
-
-        function stopRecording() {
-            if (!isRecording) return;
-            
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                
-                if (recordingTimeout) {
-                    clearTimeout(recordingTimeout);
-                    recordingTimeout = null;
-                }
-            }
-        }
-
-        function cancelRecording() {
-            if (!isRecording) return;
-            
-            if (mediaRecorder && isRecording) {
-                mediaRecorder.stop();
-                isRecording = false;
-                document.getElementById('micBtn').classList.remove('recording');
-                
-                if (recordingTimeout) {
-                    clearTimeout(recordingTimeout);
-                    recordingTimeout = null;
-                }
-                
-                if (mediaStream) {
-                    mediaStream.getTracks().forEach(track => track.stop());
-                    mediaStream = null;
-                }
-            }
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function populateEmojiPicker() {
-            const picker = document.getElementById('emojiPicker');
-            picker.innerHTML = '';
-            emojiList.forEach(emoji => {
-                const btn = document.createElement('button');
-                btn.className = 'emoji-btn';
-                btn.textContent = emoji;
-                btn.onclick = () => addEmoji(emoji);
-                picker.appendChild(btn);
-            });
-        }
-
-        async function login() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                alert('Слишком много попыток входа. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
-            const username = document.getElementById('loginUsername').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            const remember = document.getElementById('rememberMe').checked;
-            
-            if (!username || !password) {
-                alert('Введите имя и пароль');
-                return;
-            }
-            
-            try {
-                const { data, error } = await supabaseClient
-                    .from('users')
-                    .select('*')
-                    .eq('username', username)
-                    .single();
-                
-                if (error || !data) {
-                    alert('Неверное имя пользователя или пароль');
-                    return;
-                }
-                
-                if (data.password !== password) {
-                    alert('Неверное имя пользователя или пароль');
-                    return;
-                }
-                
-                currentUser = {
-                    id: data.id,
-                    name: data.username,
-                    avatar: data.avatar || '👤',
-                    bio: data.bio || '',
-                    isAdmin: data.username === ADMIN_USERNAME,
-                    isVip: VIP_USERNAMES.includes(data.username),
-                    dnd: data.dnd || false
-                };
-                
-                if (remember) {
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                }
-                
-                await supabaseClient.auth.signInWithPassword({
-                    email: `${data.id}@telegram.local`,
-                    password: data.password
-                }).catch(() => {});
-                
-                myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
-                
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('appContainer').style.display = 'flex';
-                
-                updateProfileUI();
-                
-                await Promise.all([
-                    loadAllUsers(),
-                    loadPublicChats(),
-                    loadAllMessages(),
-                    syncWithSupabase()
-                ]);
-                
-                ensureFavoriteChat();
-                initAbly();
-                startHeartbeat();
-                startPresenceUpdates();
-                startStatusUpdates();
-                checkUrlForChat();
-                listenForIncomingCalls();
-                
-                if (myChats.length === 1 && myChats[0].isFavorite) {
-                    joinChat(myChats[0]);
-                } else if (!currentChat) {
-                    joinChat(myChats[0]);
-                }
-                
-                updateBackButtonVisibility();
-                forceShowInput();
-                updateCreateChatButtonVisibility();
-                
-                populateThemeGrid();
-                
-            } catch (err) {
-                console.error('Login error:', err);
-                alert('Ошибка при входе');
-            }
-        }
-
-        async function register() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                alert('Слишком много попыток регистрации. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
-            const username = document.getElementById('registerUsername').value.trim();
-            const password = document.getElementById('registerPassword').value;
-            const confirmPassword = document.getElementById('registerConfirmPassword').value;
-            const remember = document.getElementById('rememberMeRegister').checked;
-            
-            if (!username || !password) {
-                alert('Заполните все поля');
-                return;
-            }
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
-            if (password.length < 3) {
-                alert('Пароль должен быть минимум 3 символа');
-                return;
-            }
-            
-            try {
-                const { data: existingUser } = await supabaseClient
-                    .from('users')
-                    .select('username')
-                    .eq('username', username)
-                    .maybeSingle();
-                
-                if (existingUser) {
-                    alert('Пользователь с таким именем уже существует');
-                    return;
-                }
-                
-                const newUser = {
-                    username: username,
-                    password: password,
-                    avatar: '👤',
-                    bio: '',
-                    dnd: false,
-                    created_at: new Date().toISOString()
-                };
-                
-                const { data, error } = await supabaseClient
-                    .from('users')
-                    .insert([newUser])
-                    .select()
-                    .single();
-                
-                if (error) {
-                    console.error('Insert error:', error);
-                    if (error.code === '23505') {
-                        alert('Пользователь с таким именем уже существует');
-                    } else {
-                        alert('Ошибка при регистрации: ' + error.message);
-                    }
-                    return;
-                }
-                
-                await supabaseClient.auth.signUp({
-                    email: `${data.id}@telegram.local`,
-                    password: password
-                }).catch(() => {});
-                
-                currentUser = {
-                    id: data.id,
-                    name: data.username,
-                    avatar: data.avatar || '👤',
-                    bio: data.bio || '',
-                    isAdmin: data.username === ADMIN_USERNAME,
-                    isVip: VIP_USERNAMES.includes(data.username),
-                    dnd: data.dnd || false
-                };
-                
-                if (remember) {
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                }
-                
-                const favChat = {
-                    id: `favorite-${currentUser.id}`,
-                    name: 'Избранное',
-                    avatar: '⭐',
-                    isPrivate: true,
-                    members: [currentUser.id],
-                    isSelf: true,
-                    isFavorite: true,
-                    pinned: true
-                };
-                myChats = [favChat];
-                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                
-                messages[favChat.id] = [];
-                
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('appContainer').style.display = 'flex';
-                
-                updateProfileUI();
-                
-                await loadAllUsers();
-                await loadPublicChats();
-                
-                initAbly();
-                startHeartbeat();
-                startPresenceUpdates();
-                startStatusUpdates();
-                listenForIncomingCalls();
-                
-                joinChat(favChat);
-                updateBackButtonVisibility();
-                forceShowInput();
-                updateCreateChatButtonVisibility();
-                
-                alert('Регистрация успешна!');
-                
-            } catch (err) {
-                console.error('Registration error:', err);
-                alert('Ошибка при регистрации: ' + err.message);
-            }
-        }
-
-        async function logout() {
-            if (mediaRecorder && isRecording) {
-                stopRecording();
-            }
-            
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
-            }
-            
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            
-            Object.values(audioElements).forEach(audio => {
-                if (audio) {
-                    audio.pause();
-                    audio.currentTime = 0;
-                }
-            });
-            audioElements = {};
-            activeAudio = null;
-            activeAudioId = null;
-            
-            if (audioUpdateInterval) {
-                clearInterval(audioUpdateInterval);
-                audioUpdateInterval = null;
-            }
-            
-            await updateUserLastSeen();
-            await supabaseClient.auth.signOut();
-            
-            if (heartbeatInterval) {
-                clearInterval(heartbeatInterval);
-                heartbeatInterval = null;
-            }
-            if (presenceUpdateInterval) {
-                clearInterval(presenceUpdateInterval);
-                presenceUpdateInterval = null;
-            }
-            if (statusUpdateInterval) {
-                clearInterval(statusUpdateInterval);
-                statusUpdateInterval = null;
-            }
-            if (reconnectTimeout) {
-                clearTimeout(reconnectTimeout);
-                reconnectTimeout = null;
-            }
-            if (saveMessagesTimeout) {
-                clearTimeout(saveMessagesTimeout);
-                saveMessagesTimeout = null;
-            }
-            if (recordingTimeout) {
-                clearTimeout(recordingTimeout);
-                recordingTimeout = null;
-            }
-            
-            if (ably) {
-                try {
-                    myChats.forEach(chat => {
-                        const channel = ably.channels.get(`chat-${chat.id}`);
-                        channel.unsubscribe();
-                    });
-                    
+            presenceUpdateInterval = setInterval(() => {
+                if (ably && ably.connection.state === 'connected' && currentUser) {
                     const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.leave();
-                    
-                    ably.close();
-                } catch (e) {
-                    console.error('Error closing Ably:', e);
+                    presenceChannel.presence.update({ 
+                        name: currentUser.name, 
+                        avatar: currentUser.avatar || '👤',
+                        bio: currentUser.bio || '',
+                        isAdmin: currentUser.isAdmin || false,
+                        isVip: currentUser.isVip || false,
+                        dnd: currentUser.dnd || false,
+                        lastSeen: Date.now()
+                    });
                 }
-                ably = null;
+            }, 3000);
+        }
+
+        function startStatusUpdates() {
+            if (statusUpdateInterval) clearInterval(statusUpdateInterval);
+            
+            statusUpdateInterval = setInterval(() => {
+                if (currentTab === 'users' || currentTab === 'chats') {
+                    updateChatsList();
+                }
+                updateChatStatus();
+            }, 2000);
+        }
+
+        function updateChatStatus() {
+            if (!currentChat || currentChat.isSelf) return;
+            
+            const chatMemberId = currentChat.members?.find(id => id !== currentUser.id);
+            if (!chatMemberId) return;
+            
+            const userOnline = onlineUsers[chatMemberId.toString()];
+            const statusElement = document.getElementById('chatStatus');
+            
+            if (userOnline && userOnline.online) {
+                if (userOnline.dnd) {
+                    statusElement.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
+                } else {
+                    statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
+                }
+            } else {
+                const lastSeen = userOnline?.lastSeen;
+                if (lastSeen) {
+                    statusElement.innerHTML = `был(а) ${formatLastSeen(lastSeen)}`;
+                } else {
+                    statusElement.innerHTML = 'был(а) давно';
+                }
             }
+        }
+
+        function formatLastSeen(timestamp) {
+            if (!timestamp) return 'давно';
             
-            localStorage.removeItem('currentUser');
-            currentUser = null;
-            currentChat = null;
-            myChats = [];
-            onlineUsers = {};
-            allUsers = [];
+            const now = Date.now();
+            const diff = now - timestamp;
             
-            document.getElementById('appContainer').style.display = 'none';
-            document.getElementById('loginModal').classList.add('active');
-            updateUrlWithChat(null);
-            updateBackButtonVisibility();
-            removeCallButton();
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            const days = Math.floor(hours / 24);
             
-            document.getElementById('loginUsername').value = '';
-            document.getElementById('loginPassword').value = '';
-            document.getElementById('registerUsername').value = '';
-            document.getElementById('registerPassword').value = '';
-            document.getElementById('registerConfirmPassword').value = '';
+            if (seconds < 60) return 'только что';
+            if (minutes < 60) {
+                if (minutes === 1) return '1 минуту назад';
+                if (minutes >= 2 && minutes <= 4) return `${minutes} минуты назад`;
+                return `${minutes} минут назад`;
+            }
+            if (hours < 24) {
+                if (hours === 1) return '1 час назад';
+                if (hours >= 2 && hours <= 4) return `${hours} часа назад`;
+                return `${hours} часов назад`;
+            }
+            if (days === 1) return 'вчера';
+            if (days < 7) {
+                if (days >= 2 && days <= 4) return `${days} дня назад`;
+                return `${days} дней назад`;
+            }
+            if (days < 30) return `${days} дней назад`;
+            
+            return 'давно';
         }
 
         async function sendMessage() {
@@ -3765,6 +3575,131 @@
             }, MESSAGE_COOLDOWN);
         }
 
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
+            const oldScrollHeight = container.scrollHeight;
+            const oldScrollTop = container.scrollTop;
+            const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
+            
+            let newMessages = '';
+            
+            if (!currentChat) {
+                newMessages = '<div class="empty-state">👈 Выберите чат</div>';
+            } else if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
+                newMessages = '<div class="empty-state">Нет сообщений</div>';
+            } else {
+                messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                
+                const fragment = [];
+                
+                messages[currentChat.id].forEach(msg => {
+                    const status = messageStatuses[msg.id] || { status: msg.sender == currentUser.id ? 'sent' : 'delivered' };
+                    
+                    let content = '';
+                    let statusHtml = '';
+                    
+                    if (msg.type === 'out') {
+                        statusHtml = `<span class="message-status"><span class="status-icon ${getStatusClass(status.status)}">${getStatusIcon(status.status)}</span></span>`;
+                    }
+                    
+                    if (msg.text) {
+                        content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
+                    } else if (msg.audio) {
+                        const messageId = msg.id;
+                        const duration = msg.duration || 0;
+                        
+                        content = `
+                            <div class="message-bubble audio-message">
+                                <div class="audio-player">
+                                    <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
+                                    <div class="audio-progress-container">
+                                        <div class="audio-progress-bar" onclick="seekAudio('${messageId}', event)">
+                                            <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
+                                        </div>
+                                        <div class="audio-time-container">
+                                            <span class="audio-current-time" data-message-id="${messageId}">0:00</span>
+                                            <span class="audio-duration" data-message-id="${messageId}">${formatTime(duration)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    const canDelete = currentUser.isAdmin || msg.sender == currentUser.id;
+                    const canEdit = msg.sender == currentUser.id;
+                    
+                    let actions = '';
+                    if (canDelete || canEdit) {
+                        actions = `
+                            <div class="message-actions" data-message-id="${msg.id}">
+                                ${canEdit ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
+                                ${canDelete ? `<button class="message-action-btn delete" onclick="deleteMessage('${msg.id}', event)">🗑️</button>` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    const showAdminBadge = msg.isAdmin && msg.senderName === ADMIN_USERNAME;
+                    
+                    fragment.push(`
+                        <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)">
+                            ${actions}
+                            ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>` : ''}
+                            ${content}
+                            <div class="message-footer">
+                                <span class="message-time">${msg.time}</span>
+                                ${statusHtml}
+                            </div>
+                        </div>
+                    `);
+                });
+                
+                newMessages = fragment.join('');
+            }
+            
+            container.innerHTML = newMessages;
+            
+            if (isAtBottom) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth'
+                });
+            }
+            
+            if (currentChat && !currentChat.isSelf && !currentChat.isFavorite) {
+                markMessagesAsRead(currentChat.id);
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function getStatusIcon(status) {
+            switch(status) {
+                case 'pending': return '⏳';
+                case 'sent': return '✓';
+                case 'delivered': return '✓✓';
+                case 'read': return '✓✓';
+                default: return '';
+            }
+        }
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'pending': return 'pending';
+                case 'sent': return 'sent';
+                case 'delivered': return 'delivered';
+                case 'read': return 'read';
+                default: return '';
+            }
+        }
+
         function toggleAudio(messageId, audioSrc) {
             if (activeAudioId === messageId && activeAudio) {
                 if (!activeAudio.paused) {
@@ -3885,124 +3820,6 @@
             return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
 
-        function getStatusIcon(status) {
-            switch(status) {
-                case 'pending': return '⏳';
-                case 'sent': return '✓';
-                case 'delivered': return '✓✓';
-                case 'read': return '✓✓';
-                default: return '';
-            }
-        }
-
-        function getStatusClass(status) {
-            switch(status) {
-                case 'pending': return 'pending';
-                case 'sent': return 'sent';
-                case 'delivered': return 'delivered';
-                case 'read': return 'read';
-                default: return '';
-            }
-        }
-
-        function renderMessages() {
-            const container = document.getElementById('messagesContainer');
-            if (!container) return;
-            
-            const oldScrollHeight = container.scrollHeight;
-            const oldScrollTop = container.scrollTop;
-            const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
-            
-            let newMessages = '';
-            
-            if (!currentChat) {
-                newMessages = '<div class="empty-state">👈 Выберите чат</div>';
-            } else if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
-                newMessages = '<div class="empty-state">Нет сообщений</div>';
-            } else {
-                messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                
-                const fragment = [];
-                
-                messages[currentChat.id].forEach(msg => {
-                    const status = messageStatuses[msg.id] || { status: msg.sender == currentUser.id ? 'sent' : 'delivered' };
-                    
-                    let content = '';
-                    let statusHtml = '';
-                    
-                    if (msg.type === 'out') {
-                        statusHtml = `<span class="message-status"><span class="status-icon ${getStatusClass(status.status)}">${getStatusIcon(status.status)}</span></span>`;
-                    }
-                    
-                    if (msg.text) {
-                        content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
-                    } else if (msg.audio) {
-                        const messageId = msg.id;
-                        const duration = msg.duration || 0;
-                        
-                        content = `
-                            <div class="message-bubble audio-message">
-                                <div class="audio-player">
-                                    <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
-                                    <div class="audio-progress-container">
-                                        <div class="audio-progress-bar" onclick="seekAudio('${messageId}', event)">
-                                            <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
-                                        </div>
-                                        <div class="audio-time-container">
-                                            <span class="audio-current-time" data-message-id="${messageId}">0:00</span>
-                                            <span class="audio-duration" data-message-id="${messageId}">${formatTime(duration)}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    const canDelete = currentUser.isAdmin || msg.sender == currentUser.id;
-                    const canEdit = msg.sender == currentUser.id;
-                    
-                    let actions = '';
-                    if (canDelete || canEdit) {
-                        actions = `
-                            <div class="message-actions" data-message-id="${msg.id}">
-                                ${canEdit ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
-                                ${canDelete ? `<button class="message-action-btn delete" onclick="deleteMessage('${msg.id}', event)">🗑️</button>` : ''}
-                            </div>
-                        `;
-                    }
-                    
-                    const showAdminBadge = msg.isAdmin && msg.senderName === ADMIN_USERNAME;
-                    
-                    fragment.push(`
-                        <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)">
-                            ${actions}
-                            ${msg.type === 'in' ? `<div class="message-sender">${escapeHtml(msg.senderName)}${showAdminBadge ? ' <span class="admin-badge">ADMIN</span>' : ''}</div>` : ''}
-                            ${content}
-                            <div class="message-footer">
-                                <span class="message-time">${msg.time}</span>
-                                ${statusHtml}
-                            </div>
-                        </div>
-                    `);
-                });
-                
-                newMessages = fragment.join('');
-            }
-            
-            container.innerHTML = newMessages;
-            
-            if (isAtBottom) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: 'smooth'
-                });
-            }
-            
-            if (currentChat && !currentChat.isSelf && !currentChat.isFavorite) {
-                markMessagesAsRead(currentChat.id);
-            }
-        }
-
         function updateChatsList() {
             const list = document.getElementById('chatsList');
             if (!list) return;
@@ -4018,7 +3835,7 @@
             } else if (currentTab === 'public') {
                 items = [...publicChats].sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
             } else if (currentTab === 'users') {
-                const allUsersList = allUsers.map(user => {
+                const allUsersList = allProfiles.map(user => {
                     const onlineUser = onlineUsers[user.id.toString()];
                     const isCurrentUser = user.id === currentUser.id;
                     
@@ -4030,8 +3847,8 @@
                         avatar: user.avatar || '👤',
                         bio: user.bio || '',
                         online: onlineUser ? onlineUser.online : false,
-                        isAdmin: user.username === ADMIN_USERNAME,
-                        isVip: VIP_USERNAMES.includes(user.username),
+                        isAdmin: user.is_admin || false,
+                        isVip: user.is_vip || false,
                         dnd: onlineUser ? onlineUser.dnd : (user.dnd || false),
                         lastSeen: onlineUser ? onlineUser.lastSeen : null
                     };
@@ -4228,6 +4045,309 @@
             }
             
             joinChat(privateChat);
+        }
+
+        function addCallButtonIfNeeded(chat) {
+            if (!chat || chat.isFavorite || chat.isSelf || !chat.isPrivate) return;
+            
+            const chatActions = document.getElementById('chatActions');
+            if (!chatActions) return;
+            
+            // Проверяем, есть ли уже кнопка
+            if (document.getElementById('callBtn')) return;
+            
+            const callBtn = document.createElement('button');
+            callBtn.id = 'callBtn';
+            callBtn.className = 'action-btn';
+            callBtn.innerHTML = '📞';
+            callBtn.onclick = initiateCall;
+            chatActions.appendChild(callBtn);
+        }
+
+        function removeCallButton() {
+            const existingBtn = document.getElementById('callBtn');
+            if (existingBtn) existingBtn.remove();
+        }
+
+        // Call functions
+        async function initiateCall() {
+            if (!currentChat || !currentChat.members) return;
+            
+            const receiverId = currentChat.members.find(id => id !== currentUser.id);
+            if (!receiverId) return;
+            
+            try {
+                // Создаем peer connection
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Получаем локальный поток
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
+                // Обработка ICE кандидатов
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        // Отправляем кандидата через Ably
+                        const callChannel = ably.channels.get(`call-${currentCall?.id || 'temp'}`);
+                        callChannel.publish('candidate', {
+                            candidate: event.candidate,
+                            sender: currentUser.id
+                        });
+                    }
+                };
+                
+                // Обработка удаленного потока
+                peerConnection.ontrack = (event) => {
+                    remoteStream = event.streams[0];
+                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                };
+                
+                // Создаем offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                // Создаем запись о звонке в Supabase
+                const { data, error } = await supabaseClient
+                    .from('calls')
+                    .insert([{
+                        caller_id: currentUser.id,
+                        receiver_id: receiverId,
+                        offer: { type: offer.type, sdp: offer.sdp },
+                        status: 'ringing',
+                        created_at: new Date().toISOString()
+                    }])
+                    .select()
+                    .single();
+                
+                if (error) throw error;
+                
+                currentCall = { id: data.id, ...data };
+                
+                // Подписываемся на канал звонка в Ably
+                const callChannel = ably.channels.get(`call-${currentCall.id}`);
+                
+                callChannel.subscribe('answer', async (msg) => {
+                    const answer = msg.data.answer;
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                    document.getElementById('callControls').style.display = 'none';
+                    document.getElementById('activeCallControls').style.display = 'flex';
+                    
+                    if (!currentUser.dnd && callAcceptedSound) {
+                        callAcceptedSound.play().catch(() => {});
+                    }
+                });
+                
+                callChannel.subscribe('candidate', async (msg) => {
+                    if (msg.data.sender !== currentUser.id && peerConnection) {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
+                    }
+                });
+                
+                callChannel.subscribe('reject', () => {
+                    endCall();
+                    alert('Звонок отклонен');
+                });
+                
+                callChannel.subscribe('end', () => {
+                    endCall();
+                });
+                
+                // Показываем модалку исходящего звонка
+                callModal.classList.add('active');
+                document.getElementById('callStatus').textContent = 'Звоним...';
+                document.getElementById('callerName').textContent = currentChat.name;
+                document.getElementById('callAvatar').textContent = currentChat.avatar || '👤';
+                document.getElementById('callControls').style.display = 'none';
+                document.getElementById('activeCallControls').style.display = 'flex';
+                
+            } catch (err) {
+                console.error('Error initiating call:', err);
+                alert('Не удалось начать звонок');
+                endCall();
+            }
+        }
+
+        function listenForIncomingCalls() {
+            if (!currentUser || !ably) return;
+            
+            // Подписываемся на изменения в Supabase
+            supabaseClient
+                .channel('calls-changes')
+                .on('postgres_changes', 
+                    { 
+                        event: 'INSERT', 
+                        schema: 'public', 
+                        table: 'calls',
+                        filter: `receiver_id=eq.${currentUser.id}` 
+                    }, 
+                    async (payload) => {
+                        const callData = payload.new;
+                        
+                        // Находим информацию о звонящем
+                        const caller = allProfiles.find(u => u.id === callData.caller_id);
+                        if (!caller) return;
+                        
+                        // Не звоним если в DND
+                        if (currentUser.dnd) return;
+                        
+                        // Воспроизводим рингтон
+                        if (callRingtone) {
+                            callRingtone.loop = true;
+                            callRingtone.play().catch(() => {});
+                        }
+                        
+                        // Показываем модалку входящего звонка
+                        callModal.classList.add('active');
+                        document.getElementById('callStatus').textContent = 'Входящий звонок...';
+                        document.getElementById('callerName').textContent = caller.username;
+                        document.getElementById('callAvatar').textContent = caller.avatar || '👤';
+                        document.getElementById('callControls').style.display = 'flex';
+                        document.getElementById('activeCallControls').style.display = 'none';
+                        
+                        currentCall = { id: callData.id, ...callData };
+                        
+                        // Подписываемся на канал звонка в Ably
+                        const callChannel = ably.channels.get(`call-${currentCall.id}`);
+                        
+                        callChannel.subscribe('candidate', async (msg) => {
+                            if (msg.data.sender !== currentUser.id && peerConnection) {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
+                            }
+                        });
+                        
+                        callChannel.subscribe('end', () => {
+                            endCall();
+                        });
+                        
+                        // Сохраняем обработчики для кнопок
+                        document.getElementById('answerCallBtn').onclick = () => answerCall(callData);
+                        document.getElementById('rejectCallBtn').onclick = () => rejectCall(callData.id);
+                        document.getElementById('endCallBtn').onclick = endCall;
+                    }
+                )
+                .subscribe();
+        }
+
+        async function answerCall(callData) {
+            if (!callData || !callData.offer) return;
+            
+            try {
+                // Останавливаем рингтон
+                if (callRingtone) {
+                    callRingtone.pause();
+                    callRingtone.currentTime = 0;
+                }
+                
+                // Создаем peer connection
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                
+                // Получаем локальный поток
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                
+                // Обработка ICE кандидатов
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        const callChannel = ably.channels.get(`call-${currentCall.id}`);
+                        callChannel.publish('candidate', {
+                            candidate: event.candidate,
+                            sender: currentUser.id
+                        });
+                    }
+                };
+                
+                // Обработка удаленного потока
+                peerConnection.ontrack = (event) => {
+                    remoteStream = event.streams[0];
+                    document.getElementById('callStatus').textContent = 'В разговоре...';
+                };
+                
+                // Устанавливаем удаленное описание (offer)
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
+                
+                // Создаем answer
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                // Отправляем answer через Ably
+                const callChannel = ably.channels.get(`call-${currentCall.id}`);
+                callChannel.publish('answer', { answer: { type: answer.type, sdp: answer.sdp } });
+                
+                // Обновляем статус звонка в Supabase
+                await supabaseClient
+                    .from('calls')
+                    .update({ 
+                        status: 'answered',
+                        answer: { type: answer.type, sdp: answer.sdp }
+                    })
+                    .eq('id', currentCall.id);
+                
+                // Обновляем UI
+                document.getElementById('callControls').style.display = 'none';
+                document.getElementById('activeCallControls').style.display = 'flex';
+                
+                if (!currentUser.dnd && callAcceptedSound) {
+                    callAcceptedSound.play().catch(() => {});
+                }
+                
+            } catch (err) {
+                console.error('Error answering call:', err);
+                endCall();
+            }
+        }
+
+        async function rejectCall(callId) {
+            if (callRingtone) {
+                callRingtone.pause();
+                callRingtone.currentTime = 0;
+            }
+            
+            const callChannel = ably.channels.get(`call-${callId}`);
+            callChannel.publish('reject', {});
+            
+            await supabaseClient
+                .from('calls')
+                .update({ status: 'rejected' })
+                .eq('id', callId);
+            
+            endCall();
+        }
+
+        function endCall() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            if (currentCall) {
+                const callChannel = ably.channels.get(`call-${currentCall.id}`);
+                callChannel.publish('end', {});
+                
+                supabaseClient
+                    .from('calls')
+                    .update({ status: 'ended' })
+                    .eq('id', currentCall.id)
+                    .then(() => {});
+                
+                currentCall = null;
+            }
+            
+            if (callRingtone) {
+                callRingtone.pause();
+                callRingtone.currentTime = 0;
+            }
+            
+            if (!currentUser?.dnd && callEndedSound) {
+                callEndedSound.play().catch(() => {});
+            }
+            
+            callModal.classList.remove('active');
         }
 
         function deleteChat(chatId, event) {
@@ -4442,18 +4562,265 @@
             }
         }
 
+        function handleMessagesContainerClick(event) {
+            if (activeMessageId) {
+                const activeMessage = document.querySelector(`.message[data-id="${activeMessageId}"]`);
+                if (activeMessage && !activeMessage.contains(event.target)) {
+                    hideMessageActions();
+                }
+            }
+        }
+
+        function showMessageActions(messageId, event) {
+            event.stopPropagation();
+            
+            if (activeMessageId) {
+                const prevActive = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
+                if (prevActive) {
+                    prevActive.classList.remove('visible');
+                }
+            }
+            
+            const actions = document.querySelector(`.message-actions[data-message-id="${messageId}"]`);
+            if (actions) {
+                actions.classList.add('visible');
+                activeMessageId = messageId;
+                
+                setTimeout(() => {
+                    if (activeMessageId === messageId) {
+                        hideMessageActions();
+                    }
+                }, 5000);
+            }
+        }
+
+        function hideMessageActions() {
+            if (activeMessageId) {
+                const actions = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
+                if (actions) {
+                    actions.classList.remove('visible');
+                }
+                activeMessageId = null;
+            }
+        }
+
+        function startRecording() {
+            const messageInput = document.getElementById('messageInput');
+            
+            if (messageInput.value.trim().length > 0) {
+                return;
+            }
+            
+            if (isRecording) return;
+            if (!currentChat) {
+                alert('Сначала выберите чат');
+                return;
+            }
+            
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('Ваш браузер не поддерживает запись аудио');
+                return;
+            }
+            
+            let mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                mimeType = 'audio/ogg';
+            }
+            
+            recordingStartTime = Date.now();
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaStream = stream;
+                    try {
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+                    } catch (e) {
+                        mediaRecorder = new MediaRecorder(stream);
+                    }
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = async () => {
+                        const audioBlob = new Blob(audioChunks, { type: mimeType });
+                        const duration = Math.round((Date.now() - recordingStartTime) / 1000);
+                        
+                        if (mediaStream) {
+                            mediaStream.getTracks().forEach(track => track.stop());
+                            mediaStream = null;
+                        }
+                        
+                        if (audioBlob.size > 0 && duration > 0.1) {
+                            await sendAudioMessage(audioBlob, duration);
+                        }
+                        
+                        document.getElementById('micBtn').classList.remove('recording');
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    document.getElementById('micBtn').classList.add('recording');
+                    
+                    recordingTimeout = setTimeout(() => {
+                        if (isRecording) stopRecording();
+                    }, 60000);
+                })
+                .catch(err => {
+                    alert('Не удалось получить доступ к микрофону');
+                    console.error(err);
+                });
+        }
+
+        function stopRecording() {
+            if (!isRecording) return;
+            
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                
+                if (recordingTimeout) {
+                    clearTimeout(recordingTimeout);
+                    recordingTimeout = null;
+                }
+            }
+        }
+
+        function cancelRecording() {
+            if (!isRecording) return;
+            
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                document.getElementById('micBtn').classList.remove('recording');
+                
+                if (recordingTimeout) {
+                    clearTimeout(recordingTimeout);
+                    recordingTimeout = null;
+                }
+                
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        function updateUrlWithChat(chat) {
+            if (chat) {
+                const newUrl = `${window.location.pathname}#${chat.id}`;
+                window.history.replaceState({ chatId: chat.id }, chat.name, newUrl);
+                document.title = `${chat.name} - Telegram Web`;
+            } else {
+                const newUrl = window.location.pathname;
+                window.history.replaceState({}, 'Telegram Web', newUrl);
+                document.title = 'Telegram Web';
+            }
+        }
+
+        function checkUrlForChat() {
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+                const chat = myChats.find(c => c.id === hash) || publicChats.find(c => c.id === hash);
+                if (chat) setTimeout(() => joinChat(chat), 500);
+            }
+        }
+
+        function openMedia(url) {
+            const viewer = document.getElementById('mediaViewer');
+            const content = document.getElementById('mediaViewerContent');
+            if (url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video')) {
+                content.innerHTML = `<video src="${url}" controls autoplay></video>`;
+            } else {
+                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%;">`;
+            }
+            viewer.classList.add('active');
+        }
+
+        function closeMediaViewer() {
+            document.getElementById('mediaViewer').classList.remove('active');
+            document.getElementById('mediaViewerContent').innerHTML = '';
+        }
+
+        function updateBackButtonVisibility() {
+            const backButton = document.getElementById('backButton');
+            if (window.innerWidth <= 768) {
+                backButton.classList.add('mobile-visible');
+            } else {
+                backButton.classList.remove('mobile-visible');
+            }
+        }
+
+        function setupMobileHandlers() {
+            const setVH = () => {
+                const vh = window.innerHeight * 0.01;
+                document.documentElement.style.setProperty('--vh', `${vh}px`);
+            };
+            
+            setVH();
+            window.addEventListener('resize', setVH);
+            window.addEventListener('orientationchange', setVH);
+            
+            const messageInput = document.getElementById('messageInput');
+            messageInput.addEventListener('focus', () => {
+                setTimeout(() => {
+                    document.getElementById('messagesContainer').scrollTop = 
+                        document.getElementById('messagesContainer').scrollHeight;
+                }, 300);
+            });
+            
+            forceShowInput();
+        }
+
+        function forceShowInput() {
+            const inputContainer = document.getElementById('messageInputContainer');
+            const emojiBtn = document.querySelector('.emoji-toggle-btn');
+            const micBtn = document.getElementById('micBtn');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            if (inputContainer) {
+                inputContainer.style.display = 'flex';
+                inputContainer.style.visibility = 'visible';
+                inputContainer.style.opacity = '1';
+            }
+            
+            if (emojiBtn) {
+                emojiBtn.style.display = 'flex';
+                emojiBtn.style.visibility = 'visible';
+                emojiBtn.style.opacity = '1';
+            }
+            
+            if (micBtn) {
+                micBtn.style.display = 'flex';
+                micBtn.style.visibility = 'visible';
+                micBtn.style.opacity = '1';
+            }
+            
+            if (sendBtn) {
+                sendBtn.style.display = 'flex';
+                sendBtn.style.visibility = 'visible';
+                sendBtn.style.opacity = '1';
+            }
+        }
+
         function openChatUserProfile() {
             if (!currentChat || currentChat.isSelf || currentChat.isFavorite) return;
             
             const userId = currentChat.members?.find(id => id !== currentUser.id);
             if (!userId) return;
             
-            const user = allUsers.find(u => u.id === userId);
-            if (!user) return;
+            const profile = allProfiles.find(p => p.id === userId);
+            if (!profile) return;
             
             const onlineUser = onlineUsers[userId.toString()];
             const isOnline = onlineUser ? onlineUser.online : false;
-            const dnd = onlineUser ? onlineUser.dnd : user.dnd;
+            const dnd = onlineUser ? onlineUser.dnd : profile.dnd;
             const lastSeen = onlineUser ? onlineUser.lastSeen : null;
             
             let statusText = '';
@@ -4464,9 +4831,9 @@
             }
             
             const content = `
-                <div class="user-profile-avatar">${user.avatar || '👤'}</div>
-                <div class="user-profile-name">${user.username}</div>
-                <div class="user-profile-bio">${user.bio || 'Нет информации'}</div>
+                <div class="user-profile-avatar">${profile.avatar || '👤'}</div>
+                <div class="user-profile-name">${profile.username}</div>
+                <div class="user-profile-bio">${profile.bio || 'Нет информации'}</div>
                 <div class="user-profile-status">
                     <span class="status-dot ${isOnline ? (dnd ? 'dnd' : 'online') : 'offline'}"></span>
                     ${statusText}
@@ -4502,14 +4869,8 @@
             const dnd = document.getElementById('profileDNDCheckbox').checked;
             
             if (newName && newName !== currentUser.name) {
-                const { data: existingUsers } = await supabaseClient
-                    .from('users')
-                    .select('username')
-                    .eq('username', newName)
-                    .neq('id', currentUser.id)
-                    .limit(1);
-                
-                if (existingUsers && existingUsers.length > 0) {
+                const existingProfile = await getProfileByUsername(newName);
+                if (existingProfile && existingProfile.id !== currentUser.id) {
                     alert('Пользователь с таким именем уже существует');
                     return;
                 }
@@ -4521,35 +4882,40 @@
             currentUser.dnd = dnd;
             
             try {
-                await supabaseClient
-                    .from('users')
-                    .update({
-                        username: currentUser.name,
-                        bio: currentUser.bio,
-                        dnd: currentUser.dnd,
-                        avatar: currentUser.avatar
-                    })
-                    .eq('id', currentUser.id);
+                const updates = {
+                    username: currentUser.name,
+                    bio: currentUser.bio,
+                    dnd: currentUser.dnd,
+                    avatar: currentUser.avatar,
+                    is_admin: currentUser.isAdmin,
+                    is_vip: currentUser.isVip
+                };
                 
-                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                const success = await updateProfile(currentUser.id, updates);
                 
-                if (ably) {
-                    const presenceChannel = ably.channels.get('presence');
-                    presenceChannel.presence.update({ 
-                        name: currentUser.name, 
-                        avatar: currentUser.avatar,
-                        bio: currentUser.bio,
-                        isAdmin: currentUser.isAdmin,
-                        isVip: currentUser.isVip,
-                        dnd: dnd,
-                        lastSeen: Date.now()
-                    });
+                if (success) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    
+                    if (ably) {
+                        const presenceChannel = ably.channels.get('presence');
+                        presenceChannel.presence.update({ 
+                            name: currentUser.name, 
+                            avatar: currentUser.avatar,
+                            bio: currentUser.bio,
+                            isAdmin: currentUser.isAdmin,
+                            isVip: currentUser.isVip,
+                            dnd: dnd,
+                            lastSeen: Date.now()
+                        });
+                    }
+                    
+                    updateProfileUI();
+                    closeProfileModal();
+                    
+                    await loadAllProfiles();
+                } else {
+                    throw new Error('Не удалось сохранить профиль');
                 }
-                
-                updateProfileUI();
-                closeProfileModal();
-                
-                await loadAllUsers();
                 
             } catch (err) {
                 console.error('Error updating profile:', err);
@@ -4583,25 +4949,26 @@
                 currentUser.avatar = selectedAvatar;
                 
                 try {
-                    await supabaseClient
-                        .from('users')
-                        .update({ avatar: currentUser.avatar })
-                        .eq('id', currentUser.id);
+                    const success = await updateProfile(currentUser.id, { avatar: currentUser.avatar });
                     
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    updateProfileUI();
-                    
-                    if (ably) {
-                        const presenceChannel = ably.channels.get('presence');
-                        presenceChannel.presence.update({ 
-                            name: currentUser.name, 
-                            avatar: selectedAvatar,
-                            bio: currentUser.bio,
-                            isAdmin: currentUser.isAdmin,
-                            isVip: currentUser.isVip,
-                            dnd: currentUser.dnd,
-                            lastSeen: Date.now()
-                        });
+                    if (success) {
+                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                        updateProfileUI();
+                        
+                        if (ably) {
+                            const presenceChannel = ably.channels.get('presence');
+                            presenceChannel.presence.update({ 
+                                name: currentUser.name, 
+                                avatar: selectedAvatar,
+                                bio: currentUser.bio,
+                                isAdmin: currentUser.isAdmin,
+                                isVip: currentUser.isVip,
+                                dnd: currentUser.dnd,
+                                lastSeen: Date.now()
+                            });
+                        }
+                    } else {
+                        throw new Error('Не удалось сохранить аватар');
                     }
                 } catch (err) {
                     console.error('Error saving avatar:', err);
@@ -4642,7 +5009,7 @@
             document.getElementById('searchInput').value = '';
             
             if (tab === 'users') {
-                loadAllUsers();
+                loadAllProfiles();
             } else if (tab === 'public') {
                 loadPublicChats();
             }
@@ -4715,420 +5082,12 @@
 
         function handleTextInput() {}
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('active');
-        }
-
-        function updateUrlWithChat(chat) {
-            if (chat) {
-                const newUrl = `${window.location.pathname}#${chat.id}`;
-                window.history.replaceState({ chatId: chat.id }, chat.name, newUrl);
-                document.title = `${chat.name} - Telegram Web`;
-            } else {
-                const newUrl = window.location.pathname;
-                window.history.replaceState({}, 'Telegram Web', newUrl);
-                document.title = 'Telegram Web';
+        async function handleBeforeUnload() {
+            if (currentUser && ably) {
+                await updateUserLastSeen();
+                const presenceChannel = ably.channels.get('presence');
+                presenceChannel.presence.leave();
             }
-        }
-
-        function checkUrlForChat() {
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                const chat = myChats.find(c => c.id === hash) || publicChats.find(c => c.id === hash);
-                if (chat) setTimeout(() => joinChat(chat), 500);
-            }
-        }
-
-        function openMedia(url) {
-            const viewer = document.getElementById('mediaViewer');
-            const content = document.getElementById('mediaViewerContent');
-            if (url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video')) {
-                content.innerHTML = `<video src="${url}" controls autoplay></video>`;
-            } else {
-                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%;">`;
-            }
-            viewer.classList.add('active');
-        }
-
-        function closeMediaViewer() {
-            document.getElementById('mediaViewer').classList.remove('active');
-            document.getElementById('mediaViewerContent').innerHTML = '';
-        }
-
-        function startStatusUpdates() {
-            if (statusUpdateInterval) clearInterval(statusUpdateInterval);
-            
-            statusUpdateInterval = setInterval(() => {
-                if (currentTab === 'users' || currentTab === 'chats') {
-                    updateChatsList();
-                }
-                updateChatStatus();
-            }, 2000);
-        }
-
-        function updateBackButtonVisibility() {
-            const backButton = document.getElementById('backButton');
-            if (window.innerWidth <= 768) {
-                backButton.classList.add('mobile-visible');
-            } else {
-                backButton.classList.remove('mobile-visible');
-            }
-        }
-
-        function setupMobileHandlers() {
-            const setVH = () => {
-                const vh = window.innerHeight * 0.01;
-                document.documentElement.style.setProperty('--vh', `${vh}px`);
-            };
-            
-            setVH();
-            window.addEventListener('resize', setVH);
-            window.addEventListener('orientationchange', setVH);
-            
-            const messageInput = document.getElementById('messageInput');
-            messageInput.addEventListener('focus', () => {
-                setTimeout(() => {
-                    document.getElementById('messagesContainer').scrollTop = 
-                        document.getElementById('messagesContainer').scrollHeight;
-                }, 300);
-            });
-            
-            forceShowInput();
-        }
-
-        function forceShowInput() {
-            const inputContainer = document.getElementById('messageInputContainer');
-            const emojiBtn = document.querySelector('.emoji-toggle-btn');
-            const micBtn = document.getElementById('micBtn');
-            const sendBtn = document.getElementById('sendBtn');
-            
-            if (inputContainer) {
-                inputContainer.style.display = 'flex';
-                inputContainer.style.visibility = 'visible';
-                inputContainer.style.opacity = '1';
-            }
-            
-            if (emojiBtn) {
-                emojiBtn.style.display = 'flex';
-                emojiBtn.style.visibility = 'visible';
-                emojiBtn.style.opacity = '1';
-            }
-            
-            if (micBtn) {
-                micBtn.style.display = 'flex';
-                micBtn.style.visibility = 'visible';
-                micBtn.style.opacity = '1';
-            }
-            
-            if (sendBtn) {
-                sendBtn.style.display = 'flex';
-                sendBtn.style.visibility = 'visible';
-                sendBtn.style.opacity = '1';
-            }
-        }
-
-        // Call functions
-        function addCallButtonIfNeeded(chat) {
-            if (!chat || chat.isFavorite || chat.isSelf || !chat.isPrivate) return;
-            
-            const chatActions = document.getElementById('chatActions');
-            if (!chatActions) return;
-            
-            // Проверяем, есть ли уже кнопка
-            if (document.getElementById('callBtn')) return;
-            
-            const callBtn = document.createElement('button');
-            callBtn.id = 'callBtn';
-            callBtn.className = 'action-btn';
-            callBtn.innerHTML = '📞';
-            callBtn.onclick = initiateCall;
-            chatActions.appendChild(callBtn);
-        }
-
-        function removeCallButton() {
-            const existingBtn = document.getElementById('callBtn');
-            if (existingBtn) existingBtn.remove();
-        }
-
-        async function initiateCall() {
-            if (!currentChat || !currentChat.members) return;
-            
-            const receiverId = currentChat.members.find(id => id !== currentUser.id);
-            if (!receiverId) return;
-            
-            try {
-                // Создаем peer connection
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                
-                // Получаем локальный поток
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                
-                // Обработка ICE кандидатов
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        // Отправляем кандидата через Ably
-                        const callChannel = ably.channels.get(`call-${currentCall?.id || 'temp'}`);
-                        callChannel.publish('candidate', {
-                            candidate: event.candidate,
-                            sender: currentUser.id
-                        });
-                    }
-                };
-                
-                // Обработка удаленного потока
-                peerConnection.ontrack = (event) => {
-                    remoteStream = event.streams[0];
-                    document.getElementById('callStatus').textContent = 'В разговоре...';
-                };
-                
-                // Создаем offer
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                
-                // Создаем запись о звонке в Supabase
-                const { data, error } = await supabaseClient
-                    .from('calls')
-                    .insert([{
-                        caller_id: currentUser.id,
-                        receiver_id: receiverId,
-                        offer: { type: offer.type, sdp: offer.sdp },
-                        status: 'ringing',
-                        created_at: new Date().toISOString()
-                    }])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                
-                currentCall = { id: data.id, ...data };
-                
-                // Подписываемся на канал звонка в Ably
-                const callChannel = ably.channels.get(`call-${currentCall.id}`);
-                
-                callChannel.subscribe('answer', async (msg) => {
-                    const answer = msg.data.answer;
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                    document.getElementById('callStatus').textContent = 'В разговоре...';
-                    document.getElementById('callControls').style.display = 'none';
-                    document.getElementById('activeCallControls').style.display = 'flex';
-                    
-                    if (!currentUser.dnd && callAcceptedSound) {
-                        callAcceptedSound.play().catch(() => {});
-                    }
-                });
-                
-                callChannel.subscribe('candidate', async (msg) => {
-                    if (msg.data.sender !== currentUser.id && peerConnection) {
-                        await peerConnection.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
-                    }
-                });
-                
-                callChannel.subscribe('reject', () => {
-                    endCall();
-                    alert('Звонок отклонен');
-                });
-                
-                callChannel.subscribe('end', () => {
-                    endCall();
-                });
-                
-                // Показываем модалку исходящего звонка
-                callModal.classList.add('active');
-                document.getElementById('callStatus').textContent = 'Звоним...';
-                document.getElementById('callerName').textContent = currentChat.name;
-                document.getElementById('callAvatar').textContent = currentChat.avatar || '👤';
-                document.getElementById('callControls').style.display = 'none';
-                document.getElementById('activeCallControls').style.display = 'flex';
-                
-            } catch (err) {
-                console.error('Error initiating call:', err);
-                alert('Не удалось начать звонок');
-                endCall();
-            }
-        }
-
-        function listenForIncomingCalls() {
-            if (!currentUser || !ably) return;
-            
-            // Подписываемся на изменения в Supabase
-            supabaseClient
-                .channel('calls-changes')
-                .on('postgres_changes', 
-                    { 
-                        event: 'INSERT', 
-                        schema: 'public', 
-                        table: 'calls',
-                        filter: `receiver_id=eq.${currentUser.id}` 
-                    }, 
-                    async (payload) => {
-                        const callData = payload.new;
-                        
-                        // Находим информацию о звонящем
-                        const caller = allUsers.find(u => u.id === callData.caller_id);
-                        if (!caller) return;
-                        
-                        // Не звоним если в DND
-                        if (currentUser.dnd) return;
-                        
-                        // Воспроизводим рингтон
-                        if (callRingtone) {
-                            callRingtone.loop = true;
-                            callRingtone.play().catch(() => {});
-                        }
-                        
-                        // Показываем модалку входящего звонка
-                        callModal.classList.add('active');
-                        document.getElementById('callStatus').textContent = 'Входящий звонок...';
-                        document.getElementById('callerName').textContent = caller.username;
-                        document.getElementById('callAvatar').textContent = caller.avatar || '👤';
-                        document.getElementById('callControls').style.display = 'flex';
-                        document.getElementById('activeCallControls').style.display = 'none';
-                        
-                        currentCall = { id: callData.id, ...callData };
-                        
-                        // Подписываемся на канал звонка в Ably
-                        const callChannel = ably.channels.get(`call-${currentCall.id}`);
-                        
-                        callChannel.subscribe('candidate', async (msg) => {
-                            if (msg.data.sender !== currentUser.id && peerConnection) {
-                                await peerConnection.addIceCandidate(new RTCIceCandidate(msg.data.candidate));
-                            }
-                        });
-                        
-                        callChannel.subscribe('end', () => {
-                            endCall();
-                        });
-                        
-                        // Сохраняем обработчики для кнопок
-                        document.getElementById('answerCallBtn').onclick = () => answerCall(callData);
-                        document.getElementById('rejectCallBtn').onclick = () => rejectCall(callData.id);
-                        document.getElementById('endCallBtn').onclick = endCall;
-                    }
-                )
-                .subscribe();
-        }
-
-        async function answerCall(callData) {
-            if (!callData || !callData.offer) return;
-            
-            try {
-                // Останавливаем рингтон
-                if (callRingtone) {
-                    callRingtone.pause();
-                    callRingtone.currentTime = 0;
-                }
-                
-                // Создаем peer connection
-                peerConnection = new RTCPeerConnection(rtcConfig);
-                
-                // Получаем локальный поток
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-                
-                // Обработка ICE кандидатов
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        const callChannel = ably.channels.get(`call-${currentCall.id}`);
-                        callChannel.publish('candidate', {
-                            candidate: event.candidate,
-                            sender: currentUser.id
-                        });
-                    }
-                };
-                
-                // Обработка удаленного потока
-                peerConnection.ontrack = (event) => {
-                    remoteStream = event.streams[0];
-                    document.getElementById('callStatus').textContent = 'В разговоре...';
-                };
-                
-                // Устанавливаем удаленное описание (offer)
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(callData.offer));
-                
-                // Создаем answer
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                
-                // Отправляем answer через Ably
-                const callChannel = ably.channels.get(`call-${currentCall.id}`);
-                callChannel.publish('answer', { answer: { type: answer.type, sdp: answer.sdp } });
-                
-                // Обновляем статус звонка в Supabase
-                await supabaseClient
-                    .from('calls')
-                    .update({ 
-                        status: 'answered',
-                        answer: { type: answer.type, sdp: answer.sdp }
-                    })
-                    .eq('id', currentCall.id);
-                
-                // Обновляем UI
-                document.getElementById('callControls').style.display = 'none';
-                document.getElementById('activeCallControls').style.display = 'flex';
-                
-                if (!currentUser.dnd && callAcceptedSound) {
-                    callAcceptedSound.play().catch(() => {});
-                }
-                
-            } catch (err) {
-                console.error('Error answering call:', err);
-                endCall();
-            }
-        }
-
-        async function rejectCall(callId) {
-            if (callRingtone) {
-                callRingtone.pause();
-                callRingtone.currentTime = 0;
-            }
-            
-            const callChannel = ably.channels.get(`call-${callId}`);
-            callChannel.publish('reject', {});
-            
-            await supabaseClient
-                .from('calls')
-                .update({ status: 'rejected' })
-                .eq('id', callId);
-            
-            endCall();
-        }
-
-        function endCall() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            
-            if (peerConnection) {
-                peerConnection.close();
-                peerConnection = null;
-            }
-            
-            if (currentCall) {
-                const callChannel = ably.channels.get(`call-${currentCall.id}`);
-                callChannel.publish('end', {});
-                
-                supabaseClient
-                    .from('calls')
-                    .update({ status: 'ended' })
-                    .eq('id', currentCall.id)
-                    .then(() => {});
-                
-                currentCall = null;
-            }
-            
-            if (callRingtone) {
-                callRingtone.pause();
-                callRingtone.currentTime = 0;
-            }
-            
-            if (!currentUser?.dnd && callEndedSound) {
-                callEndedSound.play().catch(() => {});
-            }
-            
-            callModal.classList.remove('active');
         }
 
         window.addEventListener('popstate', function(event) {
