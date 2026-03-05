@@ -2203,10 +2203,11 @@
         let presenceUpdateInterval;
         let statusUpdateInterval;
 
+        // Убираем строгие лимиты на количество попыток регистрации
         let loginAttempts = 0;
         let lastLoginAttemptTime = 0;
-        const MAX_LOGIN_ATTEMPTS = 3;
-        const LOGIN_TIMEFRAME = 60000;
+        // const MAX_LOGIN_ATTEMPTS = 3; // больше не используем
+        // const LOGIN_TIMEFRAME = 60000;
 
         let isInitialized = false;
         let currentTheme = localStorage.getItem('theme') || 'classic-dark';
@@ -2223,8 +2224,8 @@
         let callModal = null;
         let callMuted = false;
 
-        // Флаг наличия таблицы calls
-        let callsTableExists = true; // по умолчанию считаем, что существует
+        // Флаг наличия таблицы calls (теперь считаем, что она существует, но проверим)
+        let callsTableExists = true;
 
         // Эмодзи
         const emojiList = [
@@ -2469,15 +2470,7 @@
         }
 
         async function login() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                alert('Слишком много попыток входа. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
+            // Убираем ограничение попыток входа
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             
@@ -2553,15 +2546,7 @@
         }
 
         async function register() {
-            const now = Date.now();
-            if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
-            if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
-                alert('Слишком много попыток регистрации. Попробуйте позже.');
-                return;
-            }
-            loginAttempts++;
-            lastLoginAttemptTime = now;
-
+            // Убираем ограничение попыток регистрации
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
@@ -2579,7 +2564,7 @@
             const username = email.split('@')[0];
             
             // Запрещаем регистрацию с именем K1lame, если это не создатель
-            // Создатель должен иметь определенный email, захардкодим его
+            // Создатель должен иметь определенный email, захардкодим его (нужно заменить на реальный email создателя)
             const creatorEmail = "k1lame@example.com"; // замените на реальный email создателя
             if (username === ADMIN_USERNAME && email !== creatorEmail) {
                 alert('Имя пользователя K1lame зарезервировано для создателя');
@@ -2625,7 +2610,7 @@
                 
             } catch (err) {
                 console.error('Registration error:', err);
-                alert('Ошибка при регистрации');
+                alert('Ошибка при регистрации. Проверьте подключение к интернету и повторите попытку.');
             }
         }
 
@@ -2917,6 +2902,16 @@
             const chatChannel = ably.channels.get(`chat-${chatId}`);
             // Отписываемся от всех предыдущих подписок, чтобы не дублировать
             chatChannel.unsubscribe();
+            
+            // Явно прикрепляем канал перед подпиской, чтобы избежать тайм-аутов
+            chatChannel.attach((err) => {
+                if (err) {
+                    console.error('Failed to attach to chat channel', err);
+                    return;
+                }
+                console.log(`Attached to chat-${chatId}`);
+            });
+
             chatChannel.subscribe('message', (message) => {
                 const msg = message.data;
                 if (!msg) return;
@@ -3401,6 +3396,8 @@
                         chatChannel.attach((err) => {
                             if (!err) {
                                 chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name });
+                            } else {
+                                console.error('Failed to attach channel for message', err);
                             }
                         });
                     }
@@ -4389,13 +4386,22 @@
                     .lt('created_at', fiveMinutesAgo);
             } catch (err) {
                 console.error('Error cleaning up old calls:', err);
+                // Если ошибка из-за отсутствия таблицы, обновляем флаг
+                if (err.code === 'PGRST116') {
+                    callsTableExists = false;
+                }
             }
         }
 
         async function startCall() {
+            // Проверяем наличие таблицы calls перед звонком
             if (!callsTableExists) {
-                alert('Функция звонков недоступна, так как таблица calls не создана.');
-                return;
+                // Попробуем проверить ещё раз
+                await checkCallsTable();
+                if (!callsTableExists) {
+                    alert('Функция звонков недоступна, так как таблица calls не создана.');
+                    return;
+                }
             }
             if (!currentChat || currentChat.is_public) return;
             
@@ -4468,14 +4474,22 @@
                 
                 if (ably) {
                     const callsChannel = ably.channels.get('calls');
-                    callsChannel.publish('offer', {
-                        callId,
-                        dbCallId,
-                        offer,
-                        callerId: currentUser.id,
-                        callerName: currentUser.name,
-                        callerAvatar: currentUser.avatar,
-                        targetId: receiverId
+                    // Убедимся, что канал прикреплён
+                    callsChannel.attach((err) => {
+                        if (!err) {
+                            callsChannel.publish('offer', {
+                                callId,
+                                dbCallId,
+                                offer,
+                                callerId: currentUser.id,
+                                callerName: currentUser.name,
+                                callerAvatar: currentUser.avatar,
+                                targetId: receiverId
+                            });
+                        } else {
+                            console.error('Failed to attach calls channel', err);
+                            alert('Ошибка подключения канала звонков');
+                        }
                     });
                 }
                 
@@ -4483,7 +4497,7 @@
                 
             } catch (err) {
                 console.error('Error starting call:', err);
-                alert('Не удалось начать звонок');
+                alert('Не удалось начать звонок: ' + (err.message || 'проверьте консоль'));
             }
         }
 
