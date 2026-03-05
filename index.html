@@ -2224,8 +2224,6 @@
 
         let loginAttempts = 0;
         let lastLoginAttemptTime = 0;
-        // const MAX_LOGIN_ATTEMPTS = 3; // больше не используем
-        // const LOGIN_TIMEFRAME = 60000;
 
         let isInitialized = false;
         let currentTheme = localStorage.getItem('theme') || 'classic-dark';
@@ -2498,7 +2496,6 @@
         }
 
         async function login() {
-            // Убираем ограничение попыток входа
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             
@@ -2574,7 +2571,6 @@
         }
 
         async function register() {
-            // Убираем ограничение попыток регистрации
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
@@ -2931,16 +2927,23 @@
             // Отписываемся от всех предыдущих подписок, чтобы не дублировать
             chatChannel.unsubscribe();
             
-            // Явно прикрепляем канал перед подпиской, чтобы избежать тайм-аутов
-            chatChannel.attach((err) => {
-                if (err) {
-                    console.error('Failed to attach to chat channel', err);
-                    // Пробуем ещё раз через 2 секунды
-                    setTimeout(() => subscribeToChatChannel(chatId), 2000);
-                    return;
-                }
-                console.log(`Attached to chat-${chatId}`);
-            });
+            // Функция для прикрепления с повторными попытками
+            function attachWithRetry(retries = 3, delay = 1000) {
+                chatChannel.attach((err) => {
+                    if (err) {
+                        console.error(`Failed to attach to chat channel ${chatId}, retries left: ${retries}`, err);
+                        if (retries > 0) {
+                            setTimeout(() => attachWithRetry(retries - 1, delay * 2), delay);
+                        } else {
+                            console.error(`Giving up on channel ${chatId}`);
+                        }
+                        return;
+                    }
+                    console.log(`Attached to chat-${chatId}`);
+                });
+            }
+            
+            attachWithRetry(5, 500); // 5 попыток с увеличивающейся задержкой
 
             chatChannel.subscribe('message', (message) => {
                 const msg = message.data;
@@ -3162,6 +3165,7 @@
                 }
             }
             
+            // Переходим в чат с пользователем
             joinChat(privateChat);
         }
 
@@ -3854,7 +3858,7 @@
                 transports: ['web_socket'],
                 disconnectedRetryTimeout: 1000,
                 suspendedRetryTimeout: 2000,
-                realtimeRequestTimeout: 5000,
+                realtimeRequestTimeout: 10000, // увеличиваем таймаут до 10 секунд
                 echoMessages: false
             });
 
@@ -3960,12 +3964,8 @@
                     addPrivateChatFromNotification(message.data);
                 });
 
-                // Подписываемся на все приватные чаты
-                myChats.forEach(chat => {
-                    if (!chat.is_public) {
-                        subscribeToChatChannel(chat.id);
-                    }
-                });
+                // Подписываемся на все приватные чаты (последовательно, чтобы не перегружать)
+                subscribeToAllPrivateChats();
             });
 
             ably.connection.on('disconnected', () => {
@@ -3981,6 +3981,21 @@
                     if (currentUser) initAbly();
                 }, 5000);
             });
+        }
+
+        // Подписка на все приватные чаты с задержкой между ними
+        function subscribeToAllPrivateChats() {
+            let index = 0;
+            function subscribeNext() {
+                if (index >= myChats.length) return;
+                const chat = myChats[index];
+                if (!chat.is_public) {
+                    subscribeToChatChannel(chat.id);
+                }
+                index++;
+                setTimeout(subscribeNext, 100); // задержка 100 мс между подписками
+            }
+            subscribeNext();
         }
 
         function startHeartbeat() {
@@ -4532,39 +4547,29 @@
                 if (ably) {
                     const callsChannel = ably.channels.get('calls');
                     // Убедимся, что канал прикреплён с повторными попытками
-                    callsChannel.attach((err) => {
-                        if (!err) {
-                            callsChannel.publish('offer', {
-                                callId,
-                                dbCallId,
-                                offer,
-                                callerId: currentUser.id,
-                                callerName: currentUser.name,
-                                callerAvatar: currentUser.avatar,
-                                targetId: receiverId
-                            });
-                        } else {
-                            console.error('Failed to attach calls channel', err);
-                            // Пробуем ещё раз через секунду
-                            setTimeout(() => {
-                                callsChannel.attach((err2) => {
-                                    if (!err2) {
-                                        callsChannel.publish('offer', {
-                                            callId,
-                                            dbCallId,
-                                            offer,
-                                            callerId: currentUser.id,
-                                            callerName: currentUser.name,
-                                            callerAvatar: currentUser.avatar,
-                                            targetId: receiverId
-                                        });
-                                    } else {
-                                        alert('Ошибка подключения канала звонков');
-                                    }
+                    function attachAndPublish(retries = 3) {
+                        callsChannel.attach((err) => {
+                            if (!err) {
+                                callsChannel.publish('offer', {
+                                    callId,
+                                    dbCallId,
+                                    offer,
+                                    callerId: currentUser.id,
+                                    callerName: currentUser.name,
+                                    callerAvatar: currentUser.avatar,
+                                    targetId: receiverId
                                 });
-                            }, 1000);
-                        }
-                    });
+                            } else {
+                                console.error('Failed to attach calls channel', err);
+                                if (retries > 0) {
+                                    setTimeout(() => attachAndPublish(retries - 1), 1000);
+                                } else {
+                                    alert('Ошибка подключения канала звонков');
+                                }
+                            }
+                        });
+                    }
+                    attachAndPublish(3);
                 }
                 
                 showOutgoingCallModal();
