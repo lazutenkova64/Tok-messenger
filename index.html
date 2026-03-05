@@ -3466,36 +3466,42 @@
             }
             
             try {
-                const { data, error } = await supabaseClient
+                const { data: userData, error: userError } = await supabaseClient
                     .from('profiles')
                     .select('*')
                     .eq('username', username)
                     .single();
                 
-                if (error || !data) {
+                if (userError || !userData) {
                     alert('Неверное имя пользователя или пароль');
                     return;
                 }
                 
-                if (data.password !== password) {
+                if (userData.password !== password) {
                     alert('Неверное имя пользователя или пароль');
                     return;
                 }
                 
-                if (remember) {
-                    await supabaseClient.auth.signInWithPassword({
-                        email: `${username}@telegram.local`,
-                        password: password
-                    });
+                const email = username + "@app.local";
+                
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+                
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    alert('Ошибка при входе в систему');
+                    return;
                 }
                 
                 currentUser = {
-                    id: data.id,
-                    name: data.username,
-                    avatar: data.avatar || '👤',
-                    bio: data.bio || '',
-                    isAdmin: data.username === ADMIN_USERNAME,
-                    dnd: data.dnd || false
+                    id: userData.id,
+                    name: userData.username,
+                    avatar: userData.avatar || '👤',
+                    bio: userData.bio || '',
+                    isAdmin: userData.username === ADMIN_USERNAME,
+                    dnd: userData.dnd || false
                 };
                 
                 if (remember) {
@@ -3582,7 +3588,21 @@
                     return;
                 }
                 
+                const email = username + "@app.local";
+                
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password
+                });
+                
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    alert('Ошибка при регистрации');
+                    return;
+                }
+                
                 const newUser = {
+                    id: authData.user.id,
                     username: username,
                     password: password,
                     avatar: '👤',
@@ -3605,13 +3625,6 @@
                         alert('Ошибка при регистрации: ' + error.message);
                     }
                     return;
-                }
-                
-                if (remember) {
-                    await supabaseClient.auth.signUp({
-                        email: `${username}@telegram.local`,
-                        password: password
-                    });
                 }
                 
                 currentUser = {
