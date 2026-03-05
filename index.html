@@ -2162,7 +2162,6 @@
             <div id="incomingCallControls" class="call-controls">
                 <button class="call-btn accept" id="answerCallBtn" onclick="answerCall()">📞</button>
                 <button class="call-btn reject" id="rejectCallBtn" onclick="rejectCall()">❌</button>
-                <button class="call-btn" id="incomingMuteBtn" onclick="toggleIncomingMute()">🎤</button>
             </div>
             <div id="outgoingCallControls" class="call-controls" style="display: none;">
                 <button class="call-btn reject" id="endCallBtn" onclick="endCall()">❌</button>
@@ -2405,6 +2404,26 @@
             }
         }
 
+        // ========== ЗАГРУЗКА СТАТУСОВ ПРОЧТЕНИЯ ИЗ LOCALSTORAGE ==========
+        function loadMessageStatuses() {
+            try {
+                const saved = localStorage.getItem('messageStatuses');
+                if (saved) {
+                    messageStatuses = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.error('Failed to load message statuses', e);
+            }
+        }
+
+        function saveMessageStatuses() {
+            try {
+                localStorage.setItem('messageStatuses', JSON.stringify(messageStatuses));
+            } catch (e) {
+                console.error('Failed to save message statuses', e);
+            }
+        }
+
         // ========== АУТЕНТИФИКАЦИЯ ==========
         async function init() {
             if (isInitialized) return;
@@ -2412,6 +2431,7 @@
 
             try {
                 applyTheme(currentTheme);
+                loadMessageStatuses(); // загружаем статусы прочтения
                 
                 callModal = document.getElementById('callModal');
                 
@@ -2833,7 +2853,7 @@
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in'
                             });
                             
-                            if (msg.sender_id === currentUser.id) {
+                            if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
                                 messageStatuses[msg.id] = {
                                     status: 'sent',
                                     deliveredAt: null,
@@ -2896,7 +2916,7 @@
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in'
                             });
                             
-                            if (msg.sender_id === currentUser.id) {
+                            if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
                                 messageStatuses[msg.id] = {
                                     status: 'sent',
                                     deliveredAt: null,
@@ -2927,13 +2947,13 @@
             // Отписываемся от всех предыдущих подписок, чтобы не дублировать
             chatChannel.unsubscribe();
             
-            // Функция для прикрепления с повторными попытками
-            function attachWithRetry(retries = 3, delay = 1000) {
+            // Функция для прикрепления с повторными попытками (увеличим число попыток и уменьшим задержку)
+            function attachWithRetry(retries = 5, delay = 300) {
                 chatChannel.attach((err) => {
                     if (err) {
                         console.error(`Failed to attach to chat channel ${chatId}, retries left: ${retries}`, err);
                         if (retries > 0) {
-                            setTimeout(() => attachWithRetry(retries - 1, delay * 2), delay);
+                            setTimeout(() => attachWithRetry(retries - 1, delay), delay);
                         } else {
                             console.error(`Giving up on channel ${chatId}`);
                         }
@@ -2943,7 +2963,7 @@
                 });
             }
             
-            attachWithRetry(5, 500); // 5 попыток с увеличивающейся задержкой
+            attachWithRetry(5, 300); // 5 попыток с задержкой 300мс
 
             chatChannel.subscribe('message', (message) => {
                 const msg = message.data;
@@ -2997,6 +3017,7 @@
                 const { messageId } = data.data;
                 if (messageStatuses[messageId]) {
                     messageStatuses[messageId].status = 'delivered';
+                    saveMessageStatuses();
                 }
                 if (currentChat && currentChat.id === chatId) {
                     renderMessages();
@@ -3007,6 +3028,7 @@
                 const { messageId } = data.data;
                 if (messageStatuses[messageId]) {
                     messageStatuses[messageId].status = 'read';
+                    saveMessageStatuses();
                 }
                 if (currentChat && currentChat.id === chatId) {
                     renderMessages();
@@ -3289,11 +3311,19 @@
         function markAllMessagesAsRead(chatId) {
             if (!messages[chatId]) return;
             
+            let changed = false;
             messages[chatId].forEach(msg => {
                 if (msg.sender !== currentUser.id) {
-                    messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
+                    if (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read') {
+                        messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
+                        changed = true;
+                    }
                 }
             });
+            
+            if (changed) {
+                saveMessageStatuses();
+            }
             
             unreadCounts[chatId] = 0;
             updateChatsList();
@@ -3383,6 +3413,7 @@
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             
             messageStatuses[tempId] = { status: 'sent', sentAt: timestamp };
+            saveMessageStatuses();
             
             input.value = '';
             input.style.height = 'auto';
@@ -3422,16 +3453,17 @@
                     // Обновляем статус
                     messageStatuses[realId] = messageStatuses[tempId];
                     delete messageStatuses[tempId];
+                    saveMessageStatuses();
                     
                     // Публикуем в Ably для приватных чатов
                     if (ably && !currentChat.is_public) {
                         const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                        // Убедимся, что канал прикреплён перед публикацией
-                        chatChannel.attach((err) => {
-                            if (!err) {
-                                chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name });
-                            } else {
-                                console.error('Failed to attach channel for message', err);
+                        // Пытаемся опубликовать, если канал не прикреплен - он прикрепится автоматически
+                        chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
+                            if (err) {
+                                console.error('Failed to publish message to Ably', err);
+                                // Сохраняем в очередь для повторной отправки
+                                addToMessageQueue(receiverId, { ...dbMessage, id: realId, sender_name: currentUser.name });
                             }
                         });
                     }
@@ -3479,6 +3511,7 @@
                 messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                 
                 messageStatuses[tempId] = { status: 'sent', sentAt: timestamp };
+                saveMessageStatuses();
                 
                 renderMessages();
                 updateChatsList();
@@ -3512,12 +3545,14 @@
                         }
                         messageStatuses[realId] = messageStatuses[tempId];
                         delete messageStatuses[tempId];
+                        saveMessageStatuses();
                         
                         if (ably && !currentChat.is_public) {
                             const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
-                            chatChannel.attach((err) => {
-                                if (!err) {
-                                    chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name });
+                            chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
+                                if (err) {
+                                    console.error('Failed to publish audio message to Ably', err);
+                                    addToMessageQueue(receiverId, { ...dbMessage, id: realId, sender_name: currentUser.name });
                                 }
                             });
                         }
@@ -3554,6 +3589,7 @@
                                 messages[chatId][msgIndex].id = realId;
                                 messageStatuses[realId] = messageStatuses[tempId];
                                 delete messageStatuses[tempId];
+                                saveMessageStatuses();
                                 break;
                             }
                         }
@@ -3594,11 +3630,7 @@
             messagesToSend.forEach(message => {
                 if (ably) {
                     const chatChannel = ably.channels.get(`chat-${message.chat_id}`);
-                    chatChannel.attach((err) => {
-                        if (!err) {
-                            chatChannel.publish('message', message);
-                        }
-                    });
+                    chatChannel.publish('message', message);
                 }
             });
         }
@@ -3801,6 +3833,7 @@
         function markMessagesAsRead(chatId) {
             if (!ably || !messages[chatId] || !currentChat || currentChat.is_public) return;
             
+            let changed = false;
             messages[chatId].forEach(msg => {
                 if (msg.sender != currentUser.id && 
                     (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
@@ -3811,6 +3844,7 @@
                         messageStatuses[msg.id].status = 'read';
                         messageStatuses[msg.id].readAt = Date.now();
                     }
+                    changed = true;
                     
                     const chatChannel = ably.channels.get(`chat-${chatId}`);
                     chatChannel.publish('read_receipt', { 
@@ -3819,6 +3853,10 @@
                     });
                 }
             });
+            
+            if (changed) {
+                saveMessageStatuses();
+            }
         }
 
         function updateUnreadCounts() {
@@ -3858,7 +3896,7 @@
                 transports: ['web_socket'],
                 disconnectedRetryTimeout: 1000,
                 suspendedRetryTimeout: 2000,
-                realtimeRequestTimeout: 10000, // увеличиваем таймаут до 10 секунд
+                realtimeRequestTimeout: 15000, // увеличиваем таймаут до 15 секунд
                 echoMessages: false
             });
 
@@ -3993,7 +4031,7 @@
                     subscribeToChatChannel(chat.id);
                 }
                 index++;
-                setTimeout(subscribeNext, 100); // задержка 100 мс между подписками
+                setTimeout(subscribeNext, 150); // задержка 150 мс между подписками
             }
             subscribeNext();
         }
@@ -4503,9 +4541,7 @@
                     audioElement.autoplay = true;
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
-                    // Важно: на мобильных требуется, чтобы audio элемент был добавлен в DOM и воспроизведение началось после жеста пользователя
                     document.body.appendChild(audioElement);
-                    // Пытаемся воспроизвести (на мобильных может потребоваться дополнительный клик)
                     audioElement.play().catch(e => console.warn('Auto-play failed:', e));
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
@@ -4562,14 +4598,14 @@
                             } else {
                                 console.error('Failed to attach calls channel', err);
                                 if (retries > 0) {
-                                    setTimeout(() => attachAndPublish(retries - 1), 1000);
+                                    setTimeout(() => attachAndPublish(retries - 1), 300);
                                 } else {
                                     alert('Ошибка подключения канала звонков');
                                 }
                             }
                         });
                     }
-                    attachAndPublish(3);
+                    attachAndPublish(5);
                 }
                 
                 showOutgoingCallModal();
@@ -4592,9 +4628,6 @@
             
             document.getElementById('answerCallBtn').onclick = answerCall;
             document.getElementById('rejectCallBtn').onclick = rejectCall;
-            document.getElementById('incomingMuteBtn').onclick = toggleIncomingMute;
-            document.getElementById('incomingMuteBtn').textContent = '🎤';
-            document.getElementById('incomingMuteBtn').classList.remove('muted');
             
             callModal.classList.add('active');
         }
@@ -4636,6 +4669,12 @@
             if (!currentCall || !peerConnection) return;
             
             try {
+                // Получаем доступ к микрофону для ответившего
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+                
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(currentCall.offer));
                 
                 const answer = await peerConnection.createAnswer();
@@ -4659,6 +4698,12 @@
                     });
                 }
                 
+                // Переключаем интерфейс на разговор
+                document.getElementById('incomingCallControls').style.display = 'none';
+                document.getElementById('outgoingCallControls').style.display = 'flex';
+                document.getElementById('muteCallBtn').onclick = toggleMute;
+                document.getElementById('muteCallBtn').textContent = '🎤';
+                document.getElementById('muteCallBtn').classList.remove('muted');
                 document.getElementById('callStatus').textContent = 'В разговоре';
                 startCallTimer();
                 
@@ -4750,26 +4795,6 @@
             }
         }
 
-        function toggleIncomingMute() {
-            if (!localStream) return;
-            
-            const audioTracks = localStream.getAudioTracks();
-            const enabled = !audioTracks[0].enabled;
-            audioTracks.forEach(track => {
-                track.enabled = enabled;
-            });
-            
-            callMuted = !enabled;
-            const muteBtn = document.getElementById('incomingMuteBtn');
-            if (callMuted) {
-                muteBtn.textContent = '🔴';
-                muteBtn.classList.add('muted');
-            } else {
-                muteBtn.textContent = '🎤';
-                muteBtn.classList.remove('muted');
-            }
-        }
-
         function listenForIncomingCalls() {
             if (!ably || !currentUser) return;
             
@@ -4779,22 +4804,7 @@
                 const { offer, callerId, callerName, callerAvatar, callId, dbCallId, targetId } = message.data;
                 if (targetId !== currentUser.id) return;
                 
-                currentCall = {
-                    id: callId,
-                    dbId: dbCallId,
-                    callerId,
-                    callerName,
-                    callerAvatar,
-                    offer
-                };
-                
-                showIncomingCallModal(callerName, callerAvatar);
-                
-                if (!currentUser.dnd && callRingtone) {
-                    callRingtone.loop = true;
-                    callRingtone.play().catch(() => {});
-                }
-                
+                // Создаём peerConnection сразу, чтобы начать ICE gathering
                 peerConnection = new RTCPeerConnection(getIceServers());
                 
                 peerConnection.onicecandidate = (event) => {
@@ -4820,10 +4830,24 @@
                     audioElement.play().catch(e => console.warn('Auto-play failed:', e));
                     
                     document.getElementById('callStatus').textContent = 'В разговоре';
-                    if (!callTimerInterval) {
-                        startCallTimer();
-                    }
+                    // Таймер запустится после ответа, сейчас не запускаем
                 };
+                
+                currentCall = {
+                    id: callId,
+                    dbId: dbCallId,
+                    callerId,
+                    callerName,
+                    callerAvatar,
+                    offer
+                };
+                
+                showIncomingCallModal(callerName, callerAvatar);
+                
+                if (!currentUser.dnd && callRingtone) {
+                    callRingtone.loop = true;
+                    callRingtone.play().catch(() => {});
+                }
             });
 
             callsChannel.subscribe('answer', async (message) => {
