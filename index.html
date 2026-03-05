@@ -2350,7 +2350,7 @@
                 
                 if (session?.user) {
                     const { data: userData } = await supabaseClient
-                        .from('users')
+                        .from('profiles')
                         .select('*')
                         .eq('id', session.user.id)
                         .single();
@@ -2537,7 +2537,7 @@
             
             try {
                 await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .update({ last_seen: new Date().toISOString() })
                     .eq('id', currentUser.id);
             } catch (err) {
@@ -2581,7 +2581,7 @@
         async function loadAllUsers() {
             try {
                 const { data, error } = await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .select('*')
                     .order('username');
                 
@@ -3467,7 +3467,7 @@
             
             try {
                 const { data, error } = await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .select('*')
                     .eq('username', username)
                     .single();
@@ -3572,7 +3572,7 @@
             
             try {
                 const { data: existingUser } = await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .select('username')
                     .eq('username', username)
                     .maybeSingle();
@@ -3592,7 +3592,7 @@
                 };
                 
                 const { data, error } = await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .insert([newUser])
                     .select()
                     .single();
@@ -4678,7 +4678,7 @@
             
             if (newName && newName !== currentUser.name) {
                 const { data: existingUsers } = await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .select('username')
                     .eq('username', newName)
                     .neq('id', currentUser.id)
@@ -4697,7 +4697,7 @@
             
             try {
                 await supabaseClient
-                    .from('users')
+                    .from('profiles')
                     .update({
                         username: currentUser.name,
                         bio: currentUser.bio,
@@ -4758,7 +4758,7 @@
                 
                 try {
                     await supabaseClient
-                        .from('users')
+                        .from('profiles')
                         .update({ avatar: currentUser.avatar })
                         .eq('id', currentUser.id);
                     
