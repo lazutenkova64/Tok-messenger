@@ -73,7 +73,9 @@ async function loadAllMessages() {
             });
             
             Object.keys(messages).forEach(chatId => {
-                messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                if (Array.isArray(messages[chatId])) {
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                }
             });
             
             updateUnreadCounts();
@@ -130,7 +132,9 @@ async function loadChatHistory(chatId) {
                 }
             });
             
-            messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            if (Array.isArray(messages[chatId])) {
+                messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            }
             
             if (currentChat?.id === chatId) {
                 renderMessages();
@@ -179,7 +183,9 @@ async function sendMessage() {
     
     if (!messages[currentChat.id]) messages[currentChat.id] = [];
     messages[currentChat.id].push(localMessage);
-    messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    if (Array.isArray(messages[currentChat.id])) {
+        messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    }
     
     messageStatuses[tempId] = { status: 'sent', sentAt: timestamp };
     saveMessageStatuses();
@@ -188,8 +194,8 @@ async function sendMessage() {
     input.style.height = 'auto';
     
     renderMessages();
-    window.updateChatsList?.();
-    window.forceShowInput?.();
+    if (typeof window.updateChatsList === 'function') window.updateChatsList();
+    if (typeof window.forceShowInput === 'function') window.forceShowInput();
     
     const dbMessage = {
         chat_id: currentChat.id,
@@ -240,6 +246,9 @@ async function sendMessage() {
                     }
                 });
             }
+            
+            // Обновляем список чатов после успешной отправки
+            if (typeof window.updateChatsList === 'function') window.updateChatsList();
         }
     } catch (err) {
         console.error('Ошибка при сохранении:', err);
@@ -282,14 +291,16 @@ async function sendAudioMessage(audioBlob, duration) {
 
         if (!messages[currentChat.id]) messages[currentChat.id] = [];
         messages[currentChat.id].push(localMessage);
-        messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        if (Array.isArray(messages[currentChat.id])) {
+            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        }
         
         messageStatuses[tempId] = { status: 'sent', sentAt: timestamp };
         saveMessageStatuses();
         
         renderMessages();
-        window.updateChatsList?.();
-        window.forceShowInput?.();
+        if (typeof window.updateChatsList === 'function') window.updateChatsList();
+        if (typeof window.forceShowInput === 'function') window.forceShowInput();
 
         const dbMessage = {
             chat_id: currentChat.id,
@@ -341,6 +352,9 @@ async function sendAudioMessage(audioBlob, duration) {
                         }
                     });
                 }
+                
+                // Обновляем список чатов после успешной отправки
+                if (typeof window.updateChatsList === 'function') window.updateChatsList();
             }
         } catch (err) {
             console.error('Ошибка при сохранении аудио:', err);
@@ -459,10 +473,10 @@ function deleteMessage(messageId, event) {
         chatChannel.publish('delete', { messageId, senderId: currentUser.id });
     }
     
-    window.hideMessageActions?.();
+    if (typeof window.hideMessageActions === 'function') window.hideMessageActions();
     renderMessages();
-    window.updateChatsList?.();
-    window.forceShowInput?.();
+    if (typeof window.updateChatsList === 'function') window.updateChatsList();
+    if (typeof window.forceShowInput === 'function') window.forceShowInput();
 }
 
 // Редактирование сообщения
@@ -486,7 +500,7 @@ function editMessage(messageId, event) {
     messageToEdit = msg;
     document.getElementById('editMessageText').value = msg.text || '';
     document.getElementById('editMessageModal').classList.add('active');
-    window.hideMessageActions?.();
+    if (typeof window.hideMessageActions === 'function') window.hideMessageActions();
 }
 
 function saveEditedMessage() {
@@ -542,7 +556,9 @@ function renderMessages() {
     } else if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
         newMessages = '<div class="empty-state">Нет сообщений</div>';
     } else {
-        messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        if (Array.isArray(messages[currentChat.id])) {
+            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        }
         
         const fragment = [];
         
@@ -622,6 +638,9 @@ function renderMessages() {
     
     markMessagesAsRead(currentChat?.id);
     updateUnreadCounts();
+    
+    // Обновляем список чатов после рендера сообщений
+    if (typeof window.updateChatsList === 'function') window.updateChatsList();
 }
 
 function escapeHtml(text) {
@@ -676,12 +695,14 @@ function updateUnreadCounts() {
             unreadCounts[chatId] = 0;
         } else {
             let count = 0;
-            messages[chatId]?.forEach(msg => {
-                if (msg.sender !== currentUser.id && 
-                    (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
-                    count++;
-                }
-            });
+            if (messages[chatId] && Array.isArray(messages[chatId])) {
+                messages[chatId].forEach(msg => {
+                    if (msg.sender !== currentUser.id && 
+                        (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
+                        count++;
+                    }
+                });
+            }
             unreadCounts[chatId] = count;
         }
     });
