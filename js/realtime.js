@@ -159,36 +159,43 @@ function setupPresenceHandlers(presenceChannel) {
     });
 }
 
-// Настройка канала пользователя для звонков
 function setupUserChannelHandlers(userChannel) {
-    userChannel.subscribe('offer', async (message) => {
-    console.log("Incoming call received:", message.data);
 
-    if (window.handleIncomingCall) {
-        window.handleIncomingCall(message.data);
-    }
-});
-        
-        // Проверяем, не устарел ли звонок
-        if (Date.now() - timestamp > 10000) {
-            console.log('Ignoring old call offer', timestamp);
-            return;
-        }
-        
-        // Если уже есть активный звонок, отклоняем
-        if (window.currentCall) {
-            userChannel.publish('end', { callId, timestamp: Date.now() });
-            return;
-        }
-        
-        // Передаём данные в модуль звонков
-        if (typeof window.handleIncomingCall === 'function') {
-            window.handleIncomingCall({
-                offer, callerId, callerName, callerAvatar, callId, dbCallId, timestamp
-            });
+    // входящий звонок
+    userChannel.subscribe('offer', (message) => {
+        console.log("📞 Incoming call:", message.data);
+
+        if (window.handleIncomingCall) {
+            window.handleIncomingCall(message.data);
         }
     });
 
+    // ответ на звонок
+    userChannel.subscribe('answer', (message) => {
+        console.log("✅ Call answered:", message.data);
+
+        if (window.handleCallAnswer) {
+            window.handleCallAnswer(message.data);
+        }
+    });
+
+    // ICE кандидаты
+    userChannel.subscribe('ice-candidate', (message) => {
+        if (window.handleIceCandidate) {
+            window.handleIceCandidate(message.data);
+        }
+    });
+
+    // завершение звонка
+    userChannel.subscribe('end', (message) => {
+        console.log("📴 Call ended:", message.data);
+
+        if (window.handleCallEnd) {
+            window.handleCallEnd(message.data);
+        }
+    });
+
+}
     userChannel.subscribe('answer', async (message) => {
         const { answer, callId, timestamp } = message.data;
         if (Date.now() - timestamp > 10000) return;
