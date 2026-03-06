@@ -10,34 +10,46 @@ let onlineUsers = {};
 
 // Инициализация Ably
 function initAbly() {
-    if (!currentUser) return;
+    console.log('🚀 initAbly called', { currentUser: currentUser?.id });
+    
+    if (!currentUser) {
+        console.error('❌ Cannot init Ably: no currentUser');
+        return;
+    }
     
     if (ably) {
+        console.log('Closing existing Ably connection');
         try {
             ably.close();
-        } catch (e) {}
+        } catch (e) {
+            console.error('Error closing Ably:', e);
+        }
     }
+    
+    console.log('Creating new Ably connection with clientId:', currentUser.id.toString());
     
     ably = new Ably.Realtime({
         key: "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg",
         clientId: currentUser.id.toString(),
-        transports: ['web_socket'],
-        disconnectedRetryTimeout: 1000,
-        suspendedRetryTimeout: 2000,
-        realtimeRequestTimeout: 15000,
+        transports: ['web_socket', 'comet'],
+        disconnectedRetryTimeout: 3000,
+        suspendedRetryTimeout: 5000,
+        realtimeRequestTimeout: 30000,
         echoMessages: false,
-        idleTimeout: 20000
+        idleTimeout: 60000
     });
 
     ably.connection.on('connected', () => {
-        console.log('Connected to Ably');
+        console.log('✅ Connected to Ably, connectionId:', ably.connection.id);
         
         if (ablyReconnectTimer) {
             clearTimeout(ablyReconnectTimer);
             ablyReconnectTimer = null;
         }
         
+        // Presence channel
         const presenceChannel = ably.channels.get('presence');
+        console.log('Entering presence channel');
         presenceChannel.presence.enter({ 
             name: currentUser.name, 
             avatar: currentUser.avatar || '👤',
@@ -45,22 +57,33 @@ function initAbly() {
             isAdmin: currentUser.isAdmin || false,
             dnd: currentUser.dnd || false,
             lastSeen: Date.now()
+        }, (err) => {
+            if (err) console.error('❌ Presence enter error:', err);
+            else console.log('✅ Presence entered');
         });
         
         setupPresenceHandlers(presenceChannel);
         
-        // Подписываемся на персональный канал для звонков ВСЕГДА
-        console.log('Creating user channel for', currentUser.id);
-        const userChannel = ably.channels.get(`user-${currentUser.id}`);
+        // Подписываемся на персональный канал для звонков
+        const userChannelName = `user-${currentUser.id}`;
+        console.log('📞 Creating user channel:', userChannelName);
+        const userChannel = ably.channels.get(userChannelName);
         setupUserChannelHandlers(userChannel);
         
-        // Подписываемся на все чаты (и публичные, и приватные)
+        // Принудительно прикрепляем user channel
+        userChannel.attach((err) => {
+            if (err) console.error('❌ Failed to attach user channel:', err);
+            else console.log('✅ User channel attached:', userChannelName);
+        });
+        
+        // Подписываемся на все чаты
         subscribeToAllChats();
         
         // Глобальный канал для новых публичных чатов
         const globalChatsChannel = ably.channels.get('global-chats');
         globalChatsChannel.subscribe('new-chat', (message) => {
             const newChat = message.data;
+            console.log('New public chat created:', newChat);
             if (!publicChats?.find(c => c.id === newChat.id)) {
                 publicChats?.push(newChat);
                 if (currentTab === 'public' && typeof window.updateChatsList === 'function') {
@@ -70,13 +93,21 @@ function initAbly() {
         });
     });
 
+    ably.connection.on('connecting', () => {
+        console.log('⏳ Ably connecting...');
+    });
+
     ably.connection.on('disconnected', () => {
-        console.log('Ably disconnected, attempting to reconnect...');
+        console.log('⚠️ Ably disconnected, attempting to reconnect...');
         scheduleReconnect();
     });
 
-    ably.connection.on('failed', () => {
-        console.log('Ably failed, reinitializing...');
+    ably.connection.on('suspended', () => {
+        console.log('⚠️ Ably suspended');
+    });
+
+    ably.connection.on('failed', (err) => {
+        console.error('❌ Ably failed:', err);
         scheduleReconnect(true);
     });
 }
@@ -84,6 +115,7 @@ function initAbly() {
 // Настройка обработчиков presence
 function setupPresenceHandlers(presenceChannel) {
     presenceChannel.presence.subscribe('enter', (member) => {
+        console.log('👤 User entered:', member.clientId, member.data);
         if (member.clientId !== currentUser.id.toString()) {
             onlineUsers[member.clientId] = {
                 id: member.clientId,
@@ -95,6 +127,8 @@ function setupPresenceHandlers(presenceChannel) {
                 dnd: member.data.dnd || false,
                 lastSeen: Date.now()
             };
+            
+            console.log('Online users updated:', Object.keys(onlineUsers));
             
             if (typeof window.sendQueuedMessagesToUser === 'function') {
                 window.sendQueuedMessagesToUser(member.clientId);
@@ -127,6 +161,7 @@ function setupPresenceHandlers(presenceChannel) {
     });
     
     presenceChannel.presence.subscribe('leave', (member) => {
+        console.log('👤 User left:', member.clientId);
         if (onlineUsers[member.clientId]) {
             onlineUsers[member.clientId].online = false;
             onlineUsers[member.clientId].lastSeen = Date.now();
@@ -138,6 +173,11 @@ function setupPresenceHandlers(presenceChannel) {
     });
     
     presenceChannel.presence.get((err, members) => {
+        if (err) {
+            console.error('Error getting presence members:', err);
+            return;
+        }
+        console.log('Current presence members:', members?.length);
         if (members) {
             members.forEach(member => {
                 if (member.clientId !== currentUser.id.toString()) {
@@ -160,73 +200,121 @@ function setupPresenceHandlers(presenceChannel) {
     });
 }
 
-// ИСПРАВЛЕНО: Один правильно оформленный обработчик канала пользователя
+// ИСПРАВЛЕННЫЙ обработчик канала пользователя
 function setupUserChannelHandlers(userChannel) {
-    console.log('Setting up user channel handlers for', currentUser?.id);
+    console.log('📞 Setting up user channel handlers for', currentUser?.id);
+
+    // Проверяем, что канал существует
+    if (!userChannel) {
+        console.error('❌ User channel is null');
+        return;
+    }
+
+    // Отписываемся от старых подписок
+    userChannel.unsubscribe();
 
     // входящий звонок
     userChannel.subscribe('offer', (message) => {
-        console.log("📞 Incoming call:", message.data);
+        console.log("📞📞📞 INCOMING CALL OFFER RECEIVED:", message.data);
+        console.log("Current user:", currentUser?.id);
+        console.log("Caller ID:", message.data.callerId);
+        console.log("Target ID:", message.data.targetId);
+        console.log("Call ID:", message.data.callId);
+        console.log("Timestamp:", message.data.timestamp);
+        
         const { offer, callerId, callerName, callerAvatar, callId, dbCallId, timestamp } = message.data;
         
+        // Проверяем, что звонок предназначен этому пользователю
+        if (callerId === currentUser.id) {
+            console.log('⚠️ Ignoring own call');
+            return;
+        }
+        
         // Проверяем, не устарел ли звонок
-        if (Date.now() - timestamp > 10000) {
-            console.log('Ignoring old call offer', timestamp);
+        if (Date.now() - timestamp > 15000) {
+            console.log('⚠️ Ignoring old call offer', timestamp);
             return;
         }
         
         // Если уже есть активный звонок, отклоняем
         if (window.currentCall) {
-            console.log('Already have active call, rejecting');
-            userChannel.publish('end', { callId, timestamp: Date.now() });
+            console.log('⚠️ Already have active call, rejecting');
+            userChannel.publish('end', { 
+                callId, 
+                timestamp: Date.now(),
+                reason: 'busy'
+            });
             return;
         }
 
-        if (window.handleIncomingCall) {
-            window.handleIncomingCall(message.data);
+        // Вызываем обработчик входящего звонка
+        if (typeof window.handleIncomingCall === 'function') {
+            console.log('✅ Calling window.handleIncomingCall');
+            window.handleIncomingCall({
+                offer, 
+                callerId, 
+                callerName, 
+                callerAvatar, 
+                callId, 
+                dbCallId, 
+                timestamp
+            });
+        } else {
+            console.error('❌ window.handleIncomingCall is not defined!');
         }
     });
 
     // ответ на звонок
     userChannel.subscribe('answer', (message) => {
-        console.log("✅ Call answered:", message.data);
+        console.log("✅ Call answer received:", message.data);
         const { answer, callId, timestamp } = message.data;
         
-        if (Date.now() - timestamp > 10000) return;
+        if (Date.now() - timestamp > 15000) {
+            console.log('⚠️ Ignoring old answer');
+            return;
+        }
         
-        if (window.handleCallAnswer) {
+        if (typeof window.handleCallAnswer === 'function') {
             window.handleCallAnswer({ answer, callId });
+        } else {
+            console.error('❌ window.handleCallAnswer is not defined!');
         }
     });
 
     // ICE кандидаты
     userChannel.subscribe('ice-candidate', (message) => {
+        console.log("🧊 ICE candidate received");
         const { candidate, callId, timestamp } = message.data;
         
-        if (Date.now() - timestamp > 10000) return;
+        if (Date.now() - timestamp > 15000) return;
         
-        if (window.handleIceCandidate) {
+        if (typeof window.handleIceCandidate === 'function') {
             window.handleIceCandidate({ candidate, callId });
         }
     });
 
     // завершение звонка
     userChannel.subscribe('end', (message) => {
-        console.log("📴 Call ended:", message.data);
-        const { callId } = message.data;
+        console.log("📴 Call end received:", message.data);
+        const { callId, reason } = message.data;
         
-        if (window.handleCallEnd) {
-            window.handleCallEnd({ callId });
+        if (typeof window.handleCallEnd === 'function') {
+            window.handleCallEnd({ callId, reason });
         }
     });
+
+    console.log('✅ User channel handlers setup complete');
 }
 
 // Подписка на все чаты
 function subscribeToAllChats() {
-    if (!myChats) return;
+    if (!myChats) {
+        console.log('No chats to subscribe to');
+        return;
+    }
     
+    console.log('Subscribing to', myChats.length, 'chats');
     myChats.forEach(chat => {
-        // Подписываемся на ВСЕ чаты, кроме Избранного
         if (!chat.isFavorite) {
             subscribeToChatChannel(chat.id, chat.is_public);
         }
@@ -245,7 +333,7 @@ function subscribeToChatChannel(chatId, isPublic = false) {
     // Прикрепляемся с повторными попытками
     attachWithRetry(chatChannel, chatId);
     
-    // Подписываемся на сообщения (работает для всех типов чатов)
+    // Подписываемся на сообщения
     chatChannel.subscribe('message', (message) => {
         handleIncomingMessage(message, chatId);
     });
@@ -275,10 +363,8 @@ function handleIncomingMessage(message, chatId) {
     const msg = message.data;
     if (!msg) return;
     
-    // Игнорируем свои сообщения
     if (msg.sender_id === currentUser.id) return;
     
-    // Проверяем timestamp
     const now = Date.now();
     const msgTime = msg.created_at ? new Date(msg.created_at).getTime() : now;
     if (now - msgTime > 60000) {
@@ -286,21 +372,16 @@ function handleIncomingMessage(message, chatId) {
         return;
     }
     
-    // Проверяем, не удалено ли сообщение
     if (window.deletedMessages?.[chatId]?.includes(msg.id)) return;
     
-    // Инициализируем messages если нужно
     if (!window.messages) window.messages = {};
     if (!window.messages[chatId]) window.messages[chatId] = [];
     
-    // Проверяем дубликат
     const exists = window.messages[chatId].some(m => m.id === msg.id);
     if (!exists) {
-        // Находим отправителя
         const sender = window.allUsers?.find(u => u.id === msg.sender_id) || 
                      { username: msg.sender_name || 'Неизвестно', avatar: '👤' };
         
-        // Создаём сообщение
         const newMsg = {
             id: msg.id,
             chatId: msg.chat_id,
@@ -316,13 +397,11 @@ function handleIncomingMessage(message, chatId) {
             type: 'in'
         };
         
-        // Добавляем в список
         window.messages[chatId].push(newMsg);
         if (Array.isArray(window.messages[chatId])) {
             window.messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
         }
         
-        // Отправляем подтверждение доставки для приватных чатов
         if (!window.publicChats?.find(c => c.id === chatId)) {
             const chatChannel = ably.channels.get(`chat-${chatId}`);
             chatChannel.publish('delivery_receipt', { 
@@ -331,12 +410,10 @@ function handleIncomingMessage(message, chatId) {
             });
         }
         
-        // Обновляем счетчик непрочитанных
         if (!window.unreadCounts) window.unreadCounts = {};
         if (currentChat?.id !== chatId) {
             window.unreadCounts[chatId] = (window.unreadCounts[chatId] || 0) + 1;
             
-            // Показываем уведомление
             if (Notification.permission === 'granted') {
                 new Notification(`Новое сообщение от ${sender.username}`, {
                     body: msg.text || 'Голосовое сообщение',
@@ -345,14 +422,12 @@ function handleIncomingMessage(message, chatId) {
             }
         }
         
-        // Если это текущий чат, обновляем UI
         if (currentChat && currentChat.id === chatId) {
             if (typeof window.renderMessages === 'function') window.renderMessages();
             window.unreadCounts[chatId] = 0;
             if (typeof window.markMessagesAsRead === 'function') window.markMessagesAsRead(chatId);
         }
         
-        // ВСЕГДА обновляем список чатов (чтобы последнее сообщение появилось)
         if (typeof window.updateChatsList === 'function') window.updateChatsList();
     }
 }
@@ -425,7 +500,7 @@ function attachWithRetry(channel, chatId, retries = 10, delay = 300) {
                 setTimeout(() => attachWithRetry(channel, chatId, retries - 1, delay), delay);
             }
         } else {
-            console.log(`Attached to chat-${chatId}`);
+            console.log(`✅ Attached to chat-${chatId}`);
         }
     });
 }
@@ -435,12 +510,14 @@ function scheduleReconnect(fullReinit = false) {
     ablyReconnectTimer = setTimeout(() => {
         if (currentUser) {
             if (fullReinit) {
+                console.log('🔄 Full Ably reinitialization');
                 initAbly();
             } else if (ably && ably.connection.state !== 'connected') {
+                console.log('🔄 Attempting to reconnect Ably');
                 ably.connection.connect();
             }
         }
-    }, fullReinit ? 3000 : 1000);
+    }, fullReinit ? 5000 : 2000);
 }
 
 // Heartbeat для поддержания присутствия
@@ -457,6 +534,8 @@ function startHeartbeat() {
                     isAdmin: currentUser.isAdmin || false,
                     dnd: currentUser.dnd || false,
                     lastSeen: Date.now()
+                }, (err) => {
+                    if (err) console.error('Heartbeat update error:', err);
                 });
             }
         }
@@ -492,6 +571,20 @@ function startStatusUpdates() {
     }, 2000);
 }
 
+// Диагностическая функция
+function diagnoseAbly() {
+    console.log('=== ABLY DIAGNOSTICS ===');
+    console.log('Ably exists:', !!ably);
+    console.log('Ably connection state:', ably?.connection.state);
+    console.log('Current user:', currentUser);
+    console.log('Online users:', Object.keys(onlineUsers).length);
+    console.log('handleIncomingCall exists:', typeof window.handleIncomingCall === 'function');
+    console.log('handleCallAnswer exists:', typeof window.handleCallAnswer === 'function');
+    console.log('handleIceCandidate exists:', typeof window.handleIceCandidate === 'function');
+    console.log('handleCallEnd exists:', typeof window.handleCallEnd === 'function');
+    console.log('=== END DIAGNOSTICS ===');
+}
+
 // Экспорт в глобальную область
 window.ably = ably;
 window.onlineUsers = onlineUsers;
@@ -501,3 +594,4 @@ window.subscribeToChatChannel = subscribeToChatChannel;
 window.startHeartbeat = startHeartbeat;
 window.startPresenceUpdates = startPresenceUpdates;
 window.startStatusUpdates = startStatusUpdates;
+window.diagnoseAbly = diagnoseAbly;
