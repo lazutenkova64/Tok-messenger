@@ -69,27 +69,27 @@ async function login() {
             document.getElementById('appContainer').style.display = 'flex';
             
             // Обновляем UI
-            window.updateProfileUI?.();
+            if (typeof window.updateProfileUI === 'function') window.updateProfileUI();
             
             // Загружаем данные
             await Promise.all([
-                window.loadAllUsers?.(),
-                window.loadUserChats?.(),
-                window.loadAllMessages?.()
+                typeof window.loadAllUsers === 'function' ? window.loadAllUsers() : Promise.resolve(),
+                typeof window.loadUserChats === 'function' ? window.loadUserChats() : Promise.resolve(),
+                typeof window.loadAllMessages === 'function' ? window.loadAllMessages() : Promise.resolve()
             ]);
             
-            window.loadPinnedChats?.();
-            window.initAbly?.();
-            window.startHeartbeat?.();
-            window.startPresenceUpdates?.();
-            window.startStatusUpdates?.();
-            window.cleanupOldCalls?.();
-            window.checkUrlForChat?.();
-            window.forceShowInput?.();
-            window.updateBackButtonVisibility?.();
-            window.updateCreateChatButtonVisibility?.();
-            window.populateThemeGrid?.();
-            window.listenForIncomingCalls?.();
+            if (typeof window.loadPinnedChats === 'function') window.loadPinnedChats();
+            if (typeof window.initAbly === 'function') window.initAbly();
+            if (typeof window.startHeartbeat === 'function') window.startHeartbeat();
+            if (typeof window.startPresenceUpdates === 'function') window.startPresenceUpdates();
+            if (typeof window.startStatusUpdates === 'function') window.startStatusUpdates();
+            if (typeof window.cleanupOldCalls === 'function') window.cleanupOldCalls();
+            if (typeof window.checkUrlForChat === 'function') window.checkUrlForChat();
+            if (typeof window.forceShowInput === 'function') window.forceShowInput();
+            if (typeof window.updateBackButtonVisibility === 'function') window.updateBackButtonVisibility();
+            if (typeof window.updateCreateChatButtonVisibility === 'function') window.updateCreateChatButtonVisibility();
+            if (typeof window.populateThemeGrid === 'function') window.populateThemeGrid();
+            if (typeof window.listenForIncomingCalls === 'function') window.listenForIncomingCalls();
             
             return true;
         }
@@ -167,7 +167,7 @@ async function register() {
         }
         
         alert('Регистрация успешна! Теперь вы можете войти.');
-        window.switchAuthMode?.('login');
+        if (typeof window.switchAuthMode === 'function') window.switchAuthMode('login');
         return true;
         
     } catch (err) {
@@ -180,7 +180,7 @@ async function register() {
 // Выход
 async function logout() {
     if (window.mediaRecorder && window.isRecording) {
-        window.stopRecording?.();
+        if (typeof window.stopRecording === 'function') window.stopRecording();
     }
     
     if (window.mediaStream) {
@@ -203,10 +203,12 @@ async function logout() {
     
     if (window.ably) {
         try {
-            window.myChats?.forEach(chat => {
-                const channel = window.ably.channels.get(`chat-${chat.id}`);
-                channel.unsubscribe();
-            });
+            if (window.myChats && Array.isArray(window.myChats)) {
+                window.myChats.forEach(chat => {
+                    const channel = window.ably.channels.get(`chat-${chat.id}`);
+                    channel.unsubscribe();
+                });
+            }
             
             const presenceChannel = window.ably.channels.get('presence');
             presenceChannel.presence.leave();
@@ -227,9 +229,9 @@ async function logout() {
     
     document.getElementById('appContainer').style.display = 'none';
     document.getElementById('loginModal').classList.add('active');
-    window.updateUrlWithChat?.(null);
-    window.updateBackButtonVisibility?.();
-    window.updateCreateChatButtonVisibility?.();
+    if (typeof window.updateUrlWithChat === 'function') window.updateUrlWithChat(null);
+    if (typeof window.updateBackButtonVisibility === 'function') window.updateBackButtonVisibility();
+    if (typeof window.updateCreateChatButtonVisibility === 'function') window.updateCreateChatButtonVisibility();
     
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
