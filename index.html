@@ -1929,6 +1929,128 @@
             text-shadow: 0 0 10px rgba(0, 122, 255, 0.5);
         }
 
+        /* ========== НОВЫЕ СТИЛИ ДЛЯ ЮРИДИЧЕСКОГО СОГЛАШЕНИЯ (ДОБАВЛЕНЫ БЕЗ ИЗМЕНЕНИЙ СУЩЕСТВУЮЩИХ) ========== */
+        .legal-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 4px 10px;
+            background-color: rgba(18, 18, 18, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid var(--border-light);
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: center;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            line-height: 1.3;
+            transform: translateZ(0);
+            pointer-events: auto;
+            transition: opacity 0.3s ease;
+        }
+        .legal-footer button {
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            transition: background-color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .legal-footer button:active {
+            background-color: rgba(255,255,255,0.1);
+        }
+
+        .legal-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.95);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .legal-modal.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+        .legal-modal-content {
+            background-color: var(--bg-tertiary);
+            border-radius: 24px;
+            padding: 28px 24px;
+            width: 100%;
+            max-width: 520px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .legal-modal-content h3 {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--accent-blue);
+        }
+        .legal-modal-content p {
+            margin-bottom: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+        .legal-modal-content strong {
+            color: var(--text-primary);
+        }
+        .legal-modal-close {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+        .legal-modal-close button {
+            background-color: var(--accent-blue);
+            border: none;
+            color: white;
+            padding: 10px 28px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            box-shadow: 0 2px 10px rgba(0,122,255,0.3);
+        }
+        .legal-modal-close button:active {
+            background-color: var(--accent-blue-hover);
+        }
+
+        @media (max-width: 480px) {
+            .legal-footer {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .legal-footer button {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+            .legal-modal-content {
+                padding: 20px 16px;
+            }
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 width: 100%;
@@ -2222,6 +2344,29 @@
             <div id="outgoingCallControls" class="call-controls" style="display: none;">
                 <button class="call-btn reject" id="endCallBtn" onclick="endCall()">❌</button>
                 <button class="call-btn mute" id="muteCallBtn" onclick="toggleMute()">🎤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== НОВЫЙ ФУТЕР С ЮРИДИЧЕСКИМ СОГЛАШЕНИЕМ (ДОБАВЛЕН БЕЗ УДАЛЕНИЙ) ========== -->
+    <div class="legal-footer" id="legalFooter">
+        <span>⚠️ Проект носит исключительно развлекательный характер</span>
+        <button onclick="openLegalModal()">Правовое соглашение</button>
+    </div>
+
+    <!-- Модальное окно с полным текстом соглашения -->
+    <div class="legal-modal" id="legalModal" onclick="if(event.target === this) closeLegalModal()">
+        <div class="legal-modal-content">
+            <h3>⚖️ Правовое уведомление (в соответствии с законодательством РФ)</h3>
+            <p>Настоящий веб-сайт и все его компоненты (далее — «Проект») представляют собой <strong>любительскую, некоммерческую разработку, созданную исключительно в развлекательных и образовательных целях</strong>. Проект не является средством массовой информации, не осуществляет коммерческую деятельность и не преследует цели извлечения прибыли.</p>
+            <p><strong>1. Отсутствие ответственности за контент.</strong> Проект не контролирует и не несет ответственности за сообщения, файлы или иную информацию, передаваемую пользователями. Пользователи самостоятельно несут полную ответственность за размещаемый контент в соответствии с законодательством РФ (включая, но не ограничиваясь, Федеральным законом «Об информации, информационных технологиях и о защите информации»).</p>
+            <p><strong>2. Несерьезность и демонстрационный характер.</strong> Проект является «песочницей» для тестирования технологий реального времени (Ably, Supabase) и не должен рассматриваться как полноценный аналог мессенджера. Все данные могут быть удалены в любой момент без предупреждения.</p>
+            <p><strong>3. Отсутствие обработки персональных данных.</strong> Администрация не собирает, не хранит и не обрабатывает персональные данные пользователей в понимании ФЗ-152. Все данные (логин, аватар) используются только для локальной симуляции работы и видны только в рамках данного приложения.</p>
+            <p><strong>4. Предупреждение о недопустимости противоправных действий.</strong> Запрещено использовать Проект для распространения экстремистских материалов, пропаганды насилия, наркотиков, призывов к свержению власти или иных действий, нарушающих законодательство РФ. При выявлении нарушений доступ к Проекту будет немедленно заблокирован, а информация передана компетентным органам.</p>
+            <p><strong>5. Гарантии и ограничение ответственности.</strong> Проект предоставляется «как есть» (as is). Администрация не гарантирует бесперебойную работу, сохранность данных или соответствие ожиданиям пользователей. Используя Проект, вы подтверждаете, что осознаете его экспериментальный и несерьезный характер.</p>
+            <p><em>Настоящий текст составлен для максимальной защиты создателя от возможных претензий и подчеркивает, что всё происходящее — лишь техническая демонстрация.</em></p>
+            <div class="legal-modal-close">
+                <button onclick="closeLegalModal()">Принимаю и закрываю</button>
             </div>
         </div>
     </div>
@@ -2629,6 +2774,15 @@
             } catch (e) {
                 console.error('Failed to save message statuses', e);
             }
+        }
+
+        // ========== НОВЫЕ ФУНКЦИИ ДЛЯ ЮРИДИЧЕСКОГО СОГЛАШЕНИЯ ==========
+        function openLegalModal() {
+            document.getElementById('legalModal').classList.add('active');
+        }
+
+        function closeLegalModal() {
+            document.getElementById('legalModal').classList.remove('active');
         }
 
         // ========== АУТЕНТИФИКАЦИЯ ==========
@@ -5592,6 +5746,11 @@
                 if (callModal && callModal.classList.contains('active')) {
                     endCall();
                 }
+                // Закрываем юридическое модальное окно по ESC
+                const legalModal = document.getElementById('legalModal');
+                if (legalModal.classList.contains('active')) {
+                    closeLegalModal();
+                }
             }
         });
 
@@ -5614,6 +5773,106 @@
             init();
         });
     </script>
+    <!-- ========== PRODUCTION ARCHITECTURE RECOMMENDATIONS ========== -->
+    <!--
+    1. Таблицы Supabase:
+       profiles:
+         - id (uuid, primary key)
+         - username (text, unique)
+         - avatar (text)
+         - bio (text)
+         - dnd (boolean)
+         - last_seen (timestamp)
+         - created_at (timestamp)
+         Индексы: username, last_seen
 
+       chats:
+         - id (uuid, primary key)
+         - name (text)
+         - is_public (boolean)
+         - type (text) - 'private' или 'public'
+         - created_at (timestamp)
+         Индексы: type, created_at
+
+       messages:
+         - id (uuid, primary key)
+         - chat_id (uuid, references chats)
+         - sender_id (uuid, references profiles)
+         - text (text)
+         - audio_url (text) - ссылка на файл в Supabase Storage
+         - duration (integer) - длительность аудио в секундах
+         - created_at (timestamp)
+         - edited (boolean)
+         - reply_to (uuid, self-reference) - для ответов на сообщения
+         - is_deleted (boolean)
+         Индексы: chat_id, sender_id, created_at
+
+       calls:
+         - id (uuid, primary key)
+         - caller_id (uuid, references profiles)
+         - receiver_id (uuid, references profiles)
+         - status (text) - 'calling', 'active', 'ended', 'missed'
+         - created_at (timestamp)
+         - ended_at (timestamp)
+         Индексы: caller_id, receiver_id, status, created_at
+
+       chat_participants (для приватных чатов):
+         - chat_id (uuid, references chats)
+         - user_id (uuid, references profiles)
+         - joined_at (timestamp)
+         - left_at (timestamp)
+         Primary key: (chat_id, user_id)
+         Индексы: user_id
+
+    2. Ably каналы:
+       - chat:{chat_id} - для сообщений в чате
+       - user:{user_id} - для персональных уведомлений (звонки, новые чаты)
+       - presence:global - для онлайн статусов
+       - typing:{chat_id} - для индикации печатания
+
+    3. RLS политики:
+       messages:
+         - INSERT: auth.uid() = sender_id
+         - SELECT: auth.role() = 'authenticated'
+         - UPDATE: auth.uid() = sender_id
+         - DELETE: auth.uid() = sender_id OR is_admin()
+
+       chats:
+         - SELECT: auth.role() = 'authenticated'
+         - INSERT: (is_public AND check_public_limit()) OR is_admin()
+         - UPDATE: is_admin()
+         - DELETE: is_admin()
+
+       calls:
+         - INSERT: auth.uid() = caller_id
+         - SELECT: auth.uid() = caller_id OR auth.uid() = receiver_id
+         - UPDATE: auth.uid() = caller_id OR auth.uid() = receiver_id
+
+    4. Обработка username:
+       - Все связи используют user_id (uuid)
+       - При смене username обновляется только profiles.username
+       - Сообщения хранят sender_id, при рендере подставляем актуальное имя из profiles
+       - Чат name для приватных чатов формируется как сортированная конкатенация username
+         (не меняется при смене username, чтобы избежать дублирования)
+
+    5. Защита от дубликатов:
+       - Каждое сообщение имеет client_id на фронтенде
+       - При получении из Ably проверяем по id, не дублируем
+       - Supabase гарантирует уникальность id
+       - В Ably используем echoMessages: false для исключения эхо
+
+    6. Статусы сообщений:
+       - sent: сохранено в БД
+       - delivered: получено подтверждение от Ably (delivery_receipt)
+       - read: получено подтверждение прочтения (read_receipt)
+       - pending: ожидает отправки (офлайн режим)
+
+    7. Production оптимизации:
+       - Использовать Supabase Realtime для тех, кто не хочет Ably
+       - Кэшировать сообщения в localStorage для офлайн доступа
+       - Использовать IndexedDB для больших объемов
+       - Web Workers для фоновой синхронизации
+       - Push-уведомления через Service Workers
+    -->
 </body>
 </html>
