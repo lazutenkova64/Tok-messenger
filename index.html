@@ -2364,7 +2364,7 @@
             // === ПОЛУЧЕНИЕ ИМЕНИ ДЛЯ ПРИВАТНОГО ЧАТА ===
             function getPrivateChatDisplayName(chat) {
                 if (!chat || chat.type !== 'private' || !currentUser) return chat?.name || '';
-                // Всегда показываем имя другого пользователя, а не "Приватный чат"
+                // Всегда показываем имя другого пользователя
                 return chat.otherUserName || '';
             }
 
@@ -3217,7 +3217,6 @@
 
                     // 3. Если чат не найден, создаём новый
                     const newChat = {
-                        // name: NULL (не указываем)
                         type: 'private',
                         is_public: false,
                         created_by: currentUser.id,
@@ -3259,6 +3258,34 @@
 
             async function joinChat(chat) {
                 if (!chat) return;
+
+                // Если это приватный чат и у нас нет информации о втором пользователе, загружаем
+                if (chat.type === 'private' && !chat.otherUserId) {
+                    try {
+                        const { data: members, error: memErr } = await supabase
+                            .from('chat_members')
+                            .select('user_id')
+                            .eq('chat_id', chat.id);
+                        if (!memErr && members) {
+                            const otherId = members.find(m => m.user_id !== currentUser.id)?.user_id;
+                            if (otherId) {
+                                const { data: otherUser, error: userErr } = await supabase
+                                    .from('profiles')
+                                    .select('*')
+                                    .eq('id', otherId)
+                                    .single();
+                                if (!userErr && otherUser) {
+                                    chat.otherUserId = otherUser.id;
+                                    chat.otherUserName = otherUser.username;
+                                    chat.avatar = otherUser.avatar || '👤';
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error loading other user in joinChat', err);
+                    }
+                }
+
                 // Убедимся, что пользователь участник (если нет, добавим) — для приватных чатов это уже должно быть выполнено
                 const { data: membership } = await supabase
                     .from('chat_members')
@@ -3267,7 +3294,6 @@
                     .eq('user_id', currentUser.id)
                     .maybeSingle();
                 if (!membership && !chat.is_public) {
-                    // Если пользователь не участник приватного чата (маловероятно), добавим
                     await supabase.from('chat_members').insert({ chat_id: chat.id, user_id: currentUser.id });
                 }
                 if (!myChats.find(c => c.id === chat.id) && chat.type === 'private') {
@@ -3826,8 +3852,8 @@
                 if (chat.type === 'private' && currentUser) {
                     displayName = chat.otherUserName || '???';
                 }
-                // Убираем иконку замка для приватных чатов
-                const lockIcon = chat.is_public ? '<span class="lock-icon">🌐</span>' : '';
+                // Иконка замка только для приватных (не публичных)
+                const lockIcon = !chat.is_public ? '<span class="lock-icon">🔒</span>' : '';
                 return `
                     <div class="chat-item ${currentChat?.id === chat.id ? 'active' : ''}" onclick="joinChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
                         <div class="chat-avatar">${chat.avatar || '👥'}</div>
