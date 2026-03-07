@@ -2170,6 +2170,12 @@
 
     <script>
         (function() {
+            // === СВЯЗИ ТАБЛИЦ SUPABASE ===
+            // messages.chat_id -> chats.id
+            // messages.sender_id -> profiles.id
+            // chat_members.user_id -> profiles.id
+            // chat_members.chat_id -> chats.id
+
             // === КОНФИГУРАЦИЯ ===
             const SUPABASE_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
             const SUPABASE_ANON_KEY = "sb_publishable_nuCZ7nbXGaseOjl8VIsKpA_-o1MEZlY";
@@ -2422,6 +2428,10 @@
                         .select('*')
                         .in('id', chatIds);
                     if (chatsError) throw chatsError;
+                    if (!chats || chats.length === 0) {
+                        myChats = [];
+                        return;
+                    }
 
                     // Для каждого приватного чата находим другого участника
                     myChats = await Promise.all(chats.map(async (chat) => {
@@ -2621,7 +2631,7 @@
                     .subscribe();
             }
 
-            function handleNewMessage(msg) {
+            async function handleNewMessage(msg) {
                 if (!currentUser) return;
                 const chatId = msg.chat_id;
                 // Игнорируем свои сообщения (они уже добавлены локально)
@@ -2630,7 +2640,12 @@
                 if (!messages[chatId]) messages[chatId] = [];
                 if (messages[chatId].some(m => m.id === msg.id)) return; // защита от дублей
 
-                const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤' };
+                let sender = allUsers.find(u => u.id === msg.sender_id);
+                if (!sender) {
+                    const { data: profile } = await supabase.from('profiles').select('id, username, avatar').eq('id', msg.sender_id).single();
+                    sender = profile ? { id: profile.id, username: profile.username, avatar: profile.avatar || '👤' } : { username: 'Неизвестно', avatar: '👤' };
+                    if (profile && !allUsers.find(u => u.id === profile.id)) allUsers.push(profile);
+                }
                 const newMsg = {
                     id: msg.id,
                     chatId: msg.chat_id,
@@ -2655,7 +2670,8 @@
                     .from('messages')
                     .update({ delivered_at: new Date().toISOString() })
                     .eq('id', msg.id)
-                    .then();
+                    .then()
+                    .catch(err => console.error('Error updating delivered_at:', err));
 
                 if (currentChat && currentChat.id === chatId) {
                     renderMessages();
@@ -2886,7 +2902,7 @@
                     localStorage.setItem('deletedMessages', JSON.stringify(deletedMessages));
                 }
                 messages[currentChat.id] = messages[currentChat.id].filter(m => m.id !== messageId);
-                supabase.from('messages').delete().eq('id', messageId).then();
+                supabase.from('messages').delete().eq('id', messageId).then().catch(err => console.error('Error deleting message:', err));
                 hideMessageActions();
                 renderMessages();
                 updateChatsList();
@@ -2913,7 +2929,7 @@
                 if (idx !== -1) {
                     messages[currentChat.id][idx].text = newText;
                     messages[currentChat.id][idx].edited = true;
-                    supabase.from('messages').update({ text: newText, edited: true }).eq('id', messageToEdit.id).then();
+                    supabase.from('messages').update({ text: newText, edited: true }).eq('id', messageToEdit.id).then().catch(err => console.error('Error updating message:', err));
                     renderMessages();
                     closeEditMessageModal();
                 }
@@ -2927,7 +2943,7 @@
                 messages[chatId].forEach(msg => {
                     if (msg.sender !== currentUser.id && !msg.read_at) {
                         msg.read_at = now;
-                        supabase.from('messages').update({ read_at: now }).eq('id', msg.id).then();
+                        supabase.from('messages').update({ read_at: now }).eq('id', msg.id).then().catch(err => console.error('Error updating read_at:', err));
                     }
                 });
             }
@@ -3249,7 +3265,7 @@
                             const fullChat = {
                                 ...chatData,
                                 avatar: user.avatar,
-                                otherUserName: user.username,
+                                otherUserName: user.name || user.username,
                                 otherUserId: user.id
                             };
                             if (!myChats.find(c => c.id === fullChat.id)) {
@@ -3288,7 +3304,7 @@
                     const fullChat = {
                         ...chatInsert[0],
                         avatar: user.avatar,
-                        otherUserName: user.username,
+                        otherUserName: user.name || user.username,
                         otherUserId: user.id
                     };
                     if (!myChats.find(c => c.id === fullChat.id)) {
@@ -3347,7 +3363,7 @@
                 if (!membership && !chat.is_public) {
                     await supabase.from('chat_members').insert({ chat_id: chat.id, user_id: currentUser.id });
                 }
-                if (!myChats.find(c => c.id === chat.id) && chat.type === 'private') {
+                if (!myChats.find(c => c.id === chat.id)) {
                     myChats.push(chat);
                 }
                 if (chat.is_public) {
@@ -3827,14 +3843,12 @@
                 if (!list) return;
                 let items = [];
                 if (currentTab === 'chats') {
-                    // Показываем только те чаты, в которых есть сообщения
-                    items = myChats.filter(chat => messages[chat.id] && messages[chat.id].length > 0);
-                    items.sort((a, b) => {
-                        // Сортировка по последнему сообщению (по убыванию)
+                    // Показываем все чаты пользователя (из chat_members + chats), сортировка по последнему сообщению
+                    items = [...myChats].sort((a, b) => {
                         const lastMsgA = messages[a.id] && messages[a.id].length ? messages[a.id][messages[a.id].length - 1] : null;
                         const lastMsgB = messages[b.id] && messages[b.id].length ? messages[b.id][messages[b.id].length - 1] : null;
-                        const timeA = lastMsgA ? lastMsgA.timestamp : 0;
-                        const timeB = lastMsgB ? lastMsgB.timestamp : 0;
+                        const timeA = lastMsgA ? lastMsgA.timestamp : (a.created_at ? new Date(a.created_at).getTime() : 0);
+                        const timeB = lastMsgB ? lastMsgB.timestamp : (b.created_at ? new Date(b.created_at).getTime() : 0);
                         return timeB - timeA;
                     });
                 } else if (currentTab === 'public') {
