@@ -3329,6 +3329,12 @@
                     } catch (err) {
                         console.error('Error loading other user in joinChat', err);
                     }
+                    // После загрузки обновляем заголовок
+                    if (chat.type === 'private') {
+                        document.getElementById('currentChatName').innerHTML = chat.otherUserName || '???';
+                        document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
+                        updateChatStatus();
+                    }
                 }
 
                 // Убедимся, что пользователь участник (если нет, добавим) — для приватных чатов это уже должно быть выполнено
@@ -3348,50 +3354,17 @@
                     chat.avatar = '👥';
                 }
                 currentChat = chat;
-
-if (chat.type === 'private') {
-
-    const { data: members } = await supabase
-        .from('chat_members')
-        .select('user_id')
-        .eq('chat_id', chat.id);
-
-    if (members) {
-
-        const otherUserId = members.find(m => m.user_id !== currentUser.id)?.user_id;
-
-        if (otherUserId) {
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('username, avatar')
-                .eq('id', otherUserId)
-                .single();
-
-            if (profile) {
-                chat.otherUserName = profile.username;
-                chat.avatar = profile.avatar || '👤';
-            }
-
-        }
-
-    }
-
-}
-updateUrlWithChat(chat);
-
-let displayName = '';
-
-if (chat.type === 'private') {
-    displayName = chat.otherUserName || 'User';
-} else {
-    displayName = chat.name;
-}
-
-document.getElementById('currentChatName').innerHTML = displayName;
-document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : '';
-document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
-document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists) ? 'flex' : 'none';
+                updateUrlWithChat(chat);
+                let displayName = '';
+                if (chat.type === 'private') {
+                    displayName = chat.otherUserName || '???';
+                } else {
+                    displayName = chat.name;
+                }
+                document.getElementById('currentChatName').innerHTML = displayName;
+                document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : '';
+                document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
+                document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists) ? 'flex' : 'none';
                 // Загружаем историю асинхронно (не блокируя UI)
                 loadChatHistory(chat.id);
                 if (!messages[chat.id]) messages[chat.id] = [];
