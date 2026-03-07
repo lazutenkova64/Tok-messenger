@@ -2364,7 +2364,8 @@
             // === ПОЛУЧЕНИЕ ИМЕНИ ДЛЯ ПРИВАТНОГО ЧАТА ===
             function getPrivateChatDisplayName(chat) {
                 if (!chat || chat.type !== 'private' || !currentUser) return chat?.name || '';
-                return chat.otherUserName || 'Приватный чат';
+                // Всегда показываем имя другого пользователя, а не "Приватный чат"
+                return chat.otherUserName || '';
             }
 
             // === ПРОВЕРКА ТАБЛИЦЫ CALLS ===
@@ -2434,7 +2435,7 @@
                             return {
                                 ...chat,
                                 avatar: otherUser?.avatar || '👤',
-                                otherUserName: otherUser?.username || 'Приватный чат',
+                                otherUserName: otherUser?.username || '???',
                                 otherUserId: otherId
                             };
                         } else {
@@ -3171,81 +3172,52 @@
                 }
             }
 
-            // === СОЗДАНИЕ ПРИВАТНОГО ЧАТА (без RPC) ===
+            // === СОЗДАНИЕ ПРИВАТНОГО ЧАТА (без дубликатов) ===
             async function createPrivateChat(user) {
-                // 1. Проверить существование приватного чата между пользователями
+                // 1. Получить все чаты текущего пользователя
                 try {
-                    // Получить все chat_id текущего пользователя
                     const { data: myMemberships, error: myErr } = await supabase
                         .from('chat_members')
                         .select('chat_id')
                         .eq('user_id', currentUser.id);
                     if (myErr) throw myErr;
                     const myChatIds = myMemberships.map(m => m.chat_id);
-                    if (myChatIds.length === 0) {
-                        // Нет ни одного чата, создаем новый
-                        await createNewPrivateChat(user);
-                        return;
-                    }
 
-                    // Найти среди моих чатов те, которые являются приватными и имеют второго участника = user.id
-                    const { data: privateChats, error: privErr } = await supabase
-                        .from('chats')
-                        .select('id')
-                        .eq('type', 'private')
-                        .in('id', myChatIds);
-                    if (privErr) throw privErr;
-                    const privateChatIds = privateChats.map(c => c.id);
-                    if (privateChatIds.length === 0) {
-                        // Нет приватных чатов, создаем новый
-                        await createNewPrivateChat(user);
-                        return;
-                    }
+                    if (myChatIds.length > 0) {
+                        // 2. Найти среди этих чатов те, где есть второй пользователь
+                        const { data: commonMembers, error: commonErr } = await supabase
+                            .from('chat_members')
+                            .select('chat_id')
+                            .in('chat_id', myChatIds)
+                            .eq('user_id', user.id);
+                        if (commonErr) throw commonErr;
 
-                    // Проверить chat_members для этих чатов на наличие второго пользователя
-                    const { data: members, error: memErr } = await supabase
-                        .from('chat_members')
-                        .select('chat_id')
-                        .in('chat_id', privateChatIds)
-                        .eq('user_id', user.id);
-                    if (memErr) throw memErr;
-                    if (members && members.length > 0) {
-                        // Чат уже существует
-                        const chatId = members[0].chat_id;
-                        const { data: chatData, error: chatErr } = await supabase
-                            .from('chats')
-                            .select('*')
-                            .eq('id', chatId)
-                            .single();
-                        if (chatErr) throw chatErr;
-                        const fullChat = {
-                            ...chatData,
-                            avatar: user.avatar,
-                            otherUserName: user.username,
-                            otherUserId: user.id
-                        };
-                        if (!myChats.find(c => c.id === fullChat.id)) {
-                            myChats.push(fullChat);
+                        if (commonMembers && commonMembers.length > 0) {
+                            // Чат уже существует, открываем его
+                            const chatId = commonMembers[0].chat_id;
+                            const { data: chatData, error: chatErr } = await supabase
+                                .from('chats')
+                                .select('*')
+                                .eq('id', chatId)
+                                .single();
+                            if (chatErr) throw chatErr;
+                            const fullChat = {
+                                ...chatData,
+                                avatar: user.avatar,
+                                otherUserName: user.username,
+                                otherUserId: user.id
+                            };
+                            if (!myChats.find(c => c.id === fullChat.id)) {
+                                myChats.push(fullChat);
+                            }
+                            joinChat(fullChat);
+                            return;
                         }
-                        joinChat(fullChat);
-                        return;
-                    } else {
-                        // Нет общего приватного чата
-                        await createNewPrivateChat(user);
                     }
-                } catch (err) {
-                    console.error('Error checking existing private chat:', err);
-                    // В случае ошибки всё равно пытаемся создать новый чат
-                    await createNewPrivateChat(user);
-                }
-            }
 
-            // Вспомогательная функция для создания нового приватного чата
-            async function createNewPrivateChat(user) {
-                try {
-                    // Создаём новый чат
+                    // 3. Если чат не найден, создаём новый
                     const newChat = {
-                        name: 'private', // можно оставить пустым или генерировать
+                        // name: NULL (не указываем)
                         type: 'private',
                         is_public: false,
                         created_by: currentUser.id,
@@ -3258,7 +3230,7 @@
                     if (chatError) throw chatError;
                     const chatId = chatInsert[0].id;
 
-                    // Добавляем участников
+                    // 4. Добавляем участников
                     const membersInsert = [
                         { chat_id: chatId, user_id: currentUser.id },
                         { chat_id: chatId, user_id: user.id }
@@ -3268,7 +3240,7 @@
                         .insert(membersInsert);
                     if (membersError) throw membersError;
 
-                    // Получаем полный чат для открытия
+                    // 5. Открываем чат
                     const fullChat = {
                         ...chatInsert[0],
                         avatar: user.avatar,
@@ -3280,8 +3252,8 @@
                     }
                     joinChat(fullChat);
                 } catch (err) {
-                    console.error('Error creating new private chat:', err);
-                    alert('Не удалось создать чат. Возможно, недостаточно прав.');
+                    console.error('Error creating private chat:', err);
+                    alert('Не удалось создать чат');
                 }
             }
 
@@ -3308,24 +3280,22 @@
                 updateUrlWithChat(chat);
                 let displayName = '';
                 if (chat.type === 'private') {
-                    displayName = chat.otherUserName || 'Приватный чат';
+                    displayName = chat.otherUserName || '???';
                 } else {
                     displayName = chat.name;
                 }
                 document.getElementById('currentChatName').innerHTML = displayName;
-                document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : 'Приватный чат';
-                document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👥';
+                document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : '';
+                document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
                 document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists) ? 'flex' : 'none';
                 // Загружаем историю асинхронно (не блокируя UI)
                 loadChatHistory(chat.id);
                 if (!messages[chat.id]) messages[chat.id] = [];
-                // Не сортируем здесь, loadChatHistory перезапишет массив
                 markMessagesAsRead(chat.id);
                 renderMessages(); // может отрисовать пусто, потом история догрузится
                 updateChatsList();
                 updateChatStatus();
                 if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('active');
-                // Убрали setTimeout, фокус сразу
                 document.getElementById('messageInput').focus();
                 forceShowInput();
             }
@@ -3333,7 +3303,7 @@
             function updateChatStatus() {
                 if (!currentChat || currentChat.is_public) return;
                 const otherId = currentChat.otherUserId;
-                if (!otherId) { document.getElementById('chatStatus').innerHTML = 'Приватный чат'; return; }
+                if (!otherId) { document.getElementById('chatStatus').innerHTML = ''; return; }
                 const otherUser = allUsers.find(u => u.id === otherId);
                 if (!otherUser) return;
                 const userOnline = onlineUsers[otherUser.id];
@@ -3780,7 +3750,16 @@
                 if (!list) return;
                 let items = [];
                 if (currentTab === 'chats') {
-                    items = [...myChats].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                    // Показываем только те чаты, в которых есть сообщения
+                    items = myChats.filter(chat => messages[chat.id] && messages[chat.id].length > 0);
+                    items.sort((a, b) => {
+                        // Сортировка по последнему сообщению (по убыванию)
+                        const lastMsgA = messages[a.id] && messages[a.id].length ? messages[a.id][messages[a.id].length - 1] : null;
+                        const lastMsgB = messages[b.id] && messages[b.id].length ? messages[b.id][messages[b.id].length - 1] : null;
+                        const timeA = lastMsgA ? lastMsgA.timestamp : 0;
+                        const timeB = lastMsgB ? lastMsgB.timestamp : 0;
+                        return timeB - timeA;
+                    });
                 } else if (currentTab === 'public') {
                     items = [...publicChats].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 } else if (currentTab === 'users') {
@@ -3845,15 +3824,17 @@
                 const timeText = lastMsg ? lastMsg.time : '';
                 let displayName = chat.name;
                 if (chat.type === 'private' && currentUser) {
-                    displayName = chat.otherUserName || 'Приватный чат';
+                    displayName = chat.otherUserName || '???';
                 }
+                // Убираем иконку замка для приватных чатов
+                const lockIcon = chat.is_public ? '<span class="lock-icon">🌐</span>' : '';
                 return `
                     <div class="chat-item ${currentChat?.id === chat.id ? 'active' : ''}" onclick="joinChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
                         <div class="chat-avatar">${chat.avatar || '👥'}</div>
                         <div class="chat-details">
                             <div class="chat-name">
                                 ${displayName}
-                                ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
+                                ${lockIcon}
                                 ${currentUser?.isAdmin && currentUser.name === ADMIN_USERNAME && currentTab === 'public' ? 
                                     `<button class="delete-chat-btn" onclick="deleteChat('${chat.id}', event)">Удалить</button>` : ''}
                             </div>
@@ -4238,7 +4219,7 @@
                 if (chat) {
                     const newUrl = `${window.location.pathname}#${chat.id}`;
                     window.history.replaceState({ chatId: chat.id }, chat.name, newUrl);
-                    document.title = `${chat.type === 'private' ? (chat.otherUserName || 'Приватный чат') : chat.name} - Telegram Web`;
+                    document.title = `${chat.type === 'private' ? (chat.otherUserName || '???') : chat.name} - Telegram Web`;
                 } else {
                     window.history.replaceState({}, 'Telegram Web', window.location.pathname);
                     document.title = 'Telegram Web';
