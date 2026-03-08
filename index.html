@@ -2310,9 +2310,6 @@
         // Флаг для отслеживания переподключения Ably
         let ablyReconnectTimer = null;
 
-        // Map для отслеживания созданных приватных чатов (предотвращение дубликатов)
-        let privateChatsMap = new Map(); // key: "user1_user2" -> chatId
-
         // Эмодзи
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
@@ -2576,7 +2573,6 @@
             
             try {
                 // Загружаем все чаты, где пользователь является участником
-                // Для приватных чатов проверяем pair_key: содержит ли он id пользователя
                 const { data: allChats, error } = await supabaseClient
                     .from('chats')
                     .select('*')
@@ -2697,7 +2693,7 @@
                         await Promise.all([
                             loadAllUsers(),
                             loadUserChats(),
-                            loadAllMessages() // теперь оптимизирована
+                            loadAllMessages()
                         ]);
                         
                         // Создаём/получаем чат "Избранное"
@@ -2960,7 +2956,6 @@
                     });
                     
                     const presenceChannel = ably.channels.get('presence');
-                    // Убедимся, что канал прикреплён перед leave
                     if (presenceChannel.state === 'attached') {
                         presenceChannel.presence.leave();
                     }
@@ -3026,7 +3021,7 @@
             }
         }
 
-        // Оптимизированная загрузка всех сообщений (только последние 100 на чат)
+        // Оптимизированная загрузка всех сообщений
         async function loadAllMessages() {
             if (!currentUser) return;
             
@@ -3035,13 +3030,13 @@
                 const lastSync = localStorage.getItem(`lastSync_${currentUser.id}`);
                 const lastSyncTime = lastSync ? new Date(parseInt(lastSync)).toISOString() : new Date(0).toISOString();
                 
-                // Загружаем сообщения только новее lastSyncTime, ограничивая количество
+                // Загружаем сообщения только новее lastSyncTime
                 const { data, error } = await supabaseClient
                     .from('messages')
                     .select('*')
                     .gt('created_at', lastSyncTime)
                     .order('created_at', { ascending: true })
-                    .limit(500); // лимит на случай большого количества новых
+                    .limit(500);
                 
                 if (error) {
                     console.error('Error loading messages:', error);
@@ -3105,13 +3100,13 @@
 
         async function loadChatHistory(chatId) {
             try {
-                // Загружаем историю, начиная с самого старого сообщения, но можно ограничить
+                // Загружаем историю, начиная с самого старого сообщения, но ограничим
                 const { data, error } = await supabaseClient
                     .from('messages')
                     .select('*')
                     .eq('chat_id', chatId)
                     .order('created_at', { ascending: true })
-                    .limit(200); // ограничим для скорости
+                    .limit(200);
                 
                 if (error) {
                     console.error('Ошибка загрузки истории:', error);
@@ -3174,7 +3169,7 @@
             
             chatChannel.unsubscribe();
             
-            function attachWithRetry(retries = 5, delay = 200) { // уменьшили ретраи и задержку
+            function attachWithRetry(retries = 5, delay = 200) {
                 chatChannel.attach((err) => {
                     if (err) {
                         console.error(`Failed to attach to chat channel ${chatId}, retries left: ${retries}`, err);
@@ -3318,11 +3313,7 @@
             
             // Проверяем лимит для не-админов
             if (!currentUser.isAdmin) {
-                const userPublicChats = publicChats.filter(chat => {
-                    // В production нужно проверять по создателю чата
-                    // Сейчас просто считаем все публичные чаты
-                    return true;
-                }).length;
+                const userPublicChats = publicChats.length;
                 
                 if (userPublicChats >= 10) {
                     alert('Вы можете создать не более 10 публичных чатов');
@@ -3385,11 +3376,8 @@
             const ids = [currentUser.id, user.id].sort();
             const pairKey = ids.join('_');
             
-            // Проверяем, существует ли уже такой чат в БД
-            let privateChat = myChats.find(c => c.pair_key === pairKey && c.type === 'private');
-            
-            if (!privateChat) {
-                // Ищем в БД
+            try {
+                // Проверяем, существует ли уже такой чат в БД
                 const { data: existingChat, error } = await supabaseClient
                     .from('chats')
                     .select('*')
@@ -3399,78 +3387,83 @@
                 
                 if (error) {
                     console.error('Error checking existing chat:', error);
+                    alert('Ошибка при проверке чата');
+                    return;
                 }
+                
+                let privateChat;
                 
                 if (existingChat) {
                     privateChat = {
                         id: existingChat.id,
-                        name: existingChat.name, // может быть пустым
+                        name: existingChat.name,
                         pair_key: pairKey,
                         avatar: user.avatar,
                         is_public: false,
                         type: 'private',
                         created_at: existingChat.created_at
                     };
+                    
                     // Добавляем в myChats, если его там нет
                     if (!myChats.some(c => c.id === privateChat.id)) {
-                        myChats.push(privateChat);
-                        localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    }
-                } else {
-                    // Создаём новый
-                    try {
-                        const newChat = {
-                            name: '', // имя не храним, будем формировать на лету
-                            is_public: false,
-                            type: 'private',
-                            pair_key: pairKey,
-                            created_at: new Date().toISOString()
-                        };
-                        
-                        const { data, error } = await supabaseClient
-                            .from('chats')
-                            .insert([newChat])
-                            .select();
-                        
-                        if (error) throw error;
-                        
-                        privateChat = {
-                            id: data[0].id,
-                            name: '',
-                            pair_key: pairKey,
-                            avatar: user.avatar,
-                            is_public: false,
-                            type: 'private',
-                            created_at: data[0].created_at
-                        };
-                        
                         myChats.push(privateChat);
                         localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                         
                         if (ably) {
                             subscribeToChatChannel(privateChat.id);
-                            const chatChannel = ably.channels.get(`chat-${privateChat.id}`);
-                            chatChannel.publish('user_joined', { userId: currentUser.id, userName: currentUser.name });
-                            
-                            // Уведомляем другого пользователя
-                            const userChannel = ably.channels.get(`user-${user.id}`);
-                            userChannel.publish('new-private-chat', {
-                                chatId: privateChat.id,
-                                pairKey: pairKey,
-                                participants: [currentUser.id, user.id],
-                                avatar: privateChat.avatar,
-                                timestamp: Date.now()
-                            });
                         }
-                    } catch (err) {
-                        console.error('Error creating private chat:', err);
-                        alert('Не удалось создать чат');
-                        return;
+                    }
+                } else {
+                    // Создаём новый чат
+                    const newChat = {
+                        name: '',
+                        is_public: false,
+                        type: 'private',
+                        pair_key: pairKey,
+                        created_at: new Date().toISOString()
+                    };
+                    
+                    const { data, error: insertError } = await supabaseClient
+                        .from('chats')
+                        .insert([newChat])
+                        .select();
+                    
+                    if (insertError) throw insertError;
+                    
+                    privateChat = {
+                        id: data[0].id,
+                        name: '',
+                        pair_key: pairKey,
+                        avatar: user.avatar,
+                        is_public: false,
+                        type: 'private',
+                        created_at: data[0].created_at
+                    };
+                    
+                    myChats.push(privateChat);
+                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                    
+                    if (ably) {
+                        subscribeToChatChannel(privateChat.id);
+                        
+                        // Уведомляем другого пользователя о новом чате
+                        const userChannel = ably.channels.get(`user-${user.id}`);
+                        userChannel.publish('new-private-chat', {
+                            chatId: privateChat.id,
+                            pairKey: pairKey,
+                            participants: [currentUser.id, user.id],
+                            avatar: user.avatar,
+                            timestamp: Date.now()
+                        });
                     }
                 }
+                
+                joinChat(privateChat);
+                
+            } catch (err) {
+                console.error('Error in createPrivateChat:', err);
+                alert('Не удалось создать чат: ' + (err.message || 'неизвестная ошибка'));
             }
-            
-            joinChat(privateChat);
         }
 
         function joinChat(chat) {
@@ -4147,7 +4140,7 @@
             updateChatsList();
         }
 
-        // ========== ABLY (оптимизированная инициализация) ==========
+        // ========== ABLY ==========
         function initAbly() {
             if (!currentUser) return;
             
@@ -4157,16 +4150,15 @@
                 } catch (e) {}
             }
             
-            // Ускоренные таймауты
             ably = new Ably.Realtime({
                 key: ABLY_API_KEY,
                 clientId: currentUser.id.toString(),
                 transports: ['web_socket'],
-                disconnectedRetryTimeout: 500,      // было 1000
-                suspendedRetryTimeout: 1000,        // было 2000
-                realtimeRequestTimeout: 10000,      // было 15000
+                disconnectedRetryTimeout: 500,
+                suspendedRetryTimeout: 1000,
+                realtimeRequestTimeout: 10000,
                 echoMessages: false,
-                idleTimeout: 30000                  // увеличили для стабильности
+                idleTimeout: 30000
             });
 
             ably.connection.on('connected', () => {
@@ -4179,7 +4171,6 @@
                 
                 const presenceChannel = ably.channels.get('presence');
                 
-                // Сначала attach, потом enter
                 presenceChannel.attach((err) => {
                     if (err) {
                         console.error('Failed to attach presence channel', err);
@@ -4195,7 +4186,6 @@
                         lastSeen: Date.now()
                     });
                     
-                    // Получаем текущих участников
                     presenceChannel.presence.get((err, members) => {
                         if (members) {
                             members.forEach(member => {
@@ -4219,7 +4209,6 @@
                     });
                 });
                 
-                // Подписка на события presence
                 presenceChannel.subscribe('enter', (member) => {
                     if (member.clientId !== currentUser.id.toString()) {
                         onlineUsers[member.clientId] = {
@@ -4281,12 +4270,10 @@
                     }
                 });
 
-                // Подписываемся на персональный канал для уведомлений
                 const userChannel = ably.channels.get(`user-${currentUser.id}`);
                 userChannel.subscribe('new-private-chat', (message) => {
                     const { chatId, pairKey, participants, avatar, timestamp } = message.data;
                     
-                    // Игнорируем старые сообщения (более 10 секунд)
                     if (Date.now() - timestamp > 10000) return;
                     
                     if (!participants.includes(currentUser.id)) return;
@@ -4312,8 +4299,14 @@
                     }
                     
                     updateChatsList();
+                    
+                    // Если это текущий открытый чат, обновляем его
+                    if (currentChat && currentChat.id === chatId) {
+                        joinChat(newChat);
+                    }
                 });
 
+                // Подписываемся на все приватные чаты
                 myChats.forEach(chat => {
                     if (!chat.is_public) {
                         subscribeToChatChannel(chat.id);
@@ -4330,7 +4323,7 @@
                     if (currentUser && ably.connection.state !== 'connected') {
                         ably.connection.connect();
                     }
-                }, 500); // уменьшили до 500 мс
+                }, 500);
             });
 
             ably.connection.on('failed', () => {
@@ -4396,7 +4389,6 @@
             if (currentUser && ably) {
                 await updateUserLastSeen();
                 const presenceChannel = ably.channels.get('presence');
-                // Проверяем, прикреплён ли канал
                 if (presenceChannel.state === 'attached') {
                     presenceChannel.presence.leave();
                 }
@@ -4412,7 +4404,6 @@
             
             if (currentTab === 'chats') {
                 items = [...myChats].sort((a, b) => {
-                    // Сначала избранное
                     const aIsSaved = a.type === 'private' && a.pair_key === `${currentUser.id}_${currentUser.id}`;
                     const bIsSaved = b.type === 'private' && b.pair_key === `${currentUser.id}_${currentUser.id}`;
                     if (aIsSaved && !bIsSaved) return -1;
@@ -4456,7 +4447,6 @@
             if (searchTerm) {
                 items = items.filter(item => 
                     (item.name || '').toLowerCase().includes(searchTerm) ||
-                    (item.description || '').toLowerCase().includes(searchTerm) ||
                     (item.bio || '').toLowerCase().includes(searchTerm)
                 );
             }
@@ -4522,11 +4512,9 @@
             
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
-                    // Это чат "Избранное"
                     displayName = 'Избранное';
                     avatar = '⭐';
                 } else {
-                    // Ищем собеседника
                     const otherId = chat.pair_key.split('_').find(id => id !== currentUser.id);
                     const otherUser = allUsers.find(u => u.id === otherId);
                     if (otherUser) {
@@ -4795,7 +4783,7 @@
             updateAudioProgress(messageId);
         }
 
-        // ========== ЗВОНКИ (WebRTC) с защитой от устаревших звонков ==========
+        // ========== ЗВОНКИ (WebRTC) ==========
         async function preloadSounds() {
             return new Promise((resolve) => {
                 callRingtone = new Audio();
@@ -4960,7 +4948,6 @@
         }
 
         function showIncomingCallModal(callerName, callerAvatar, timestamp) {
-            // Игнорируем устаревшие звонки (старше 10 секунд)
             if (Date.now() - timestamp > 10000) {
                 console.log('Ignoring old call', timestamp);
                 return;
@@ -5022,7 +5009,6 @@
         async function answerCall() {
             if (!currentCall || !peerConnection) return;
             
-            // Проверяем timestamp
             if (Date.now() - currentCall.timestamp > 10000) {
                 alert('Звонок устарел');
                 endCall();
@@ -5167,7 +5153,6 @@
             userChannel.subscribe('offer', async (message) => {
                 const { offer, callerId, callerName, callerAvatar, callId, dbCallId, timestamp } = message.data;
                 
-                // Игнорируем устаревшие звонки
                 if (Date.now() - timestamp > 10000) {
                     console.log('Ignoring old call offer', timestamp);
                     return;
@@ -5429,7 +5414,6 @@
             if (!currentChat || currentChat.is_public) return;
             
             if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) {
-                // Это чат "Избранное" — показываем свой профиль
                 openProfileModal();
                 return;
             }
@@ -5496,9 +5480,6 @@
             
             if (tab === 'users') {
                 loadAllUsers();
-            } else if (tab === 'public') {
-                // Просто обновляем список (публичные чаты уже загружены)
-                // Ничего дополнительно не загружаем
             }
             
             updateChatsList();
@@ -5804,19 +5785,17 @@
          - chat_id (uuid, references chats)
          - sender_id (uuid, references profiles)
          - text (text)
-         - audio_url (text) - ссылка на файл в Supabase Storage
-         - duration (integer) - длительность аудио в секундах
+         - audio (text)
+         - duration (integer)
          - created_at (timestamp)
          - edited (boolean)
-         - reply_to (uuid, self-reference) - для ответов на сообщения
-         - is_deleted (boolean)
          Индексы: chat_id, sender_id, created_at
 
        calls:
          - id (uuid, primary key)
          - caller_id (uuid, references profiles)
          - receiver_id (uuid, references profiles)
-         - status (text) - 'calling', 'active', 'ended', 'missed'
+         - status (text)
          - created_at (timestamp)
          - ended_at (timestamp)
          Индексы: caller_id, receiver_id, status, created_at
@@ -5825,7 +5804,7 @@
        - chat:{chat_id} - для сообщений в чате
        - user:{user_id} - для персональных уведомлений (звонки, новые чаты)
        - presence:global - для онлайн статусов
-       - typing:{chat_id} - для индикации печатания
+       - global-chats - для новых публичных чатов
 
     3. RLS политики:
        messages:
@@ -5845,30 +5824,11 @@
          - SELECT: auth.uid() = caller_id OR auth.uid() = receiver_id
          - UPDATE: auth.uid() = caller_id OR auth.uid() = receiver_id
 
-    4. Обработка username:
-       - Все связи используют user_id (uuid)
-       - При смене username обновляется только profiles.username
-       - Сообщения хранят sender_id, при рендере подставляем актуальное имя из profiles
-       - Для приватных чатов используется pair_key (отсортированные ID)
-
-    5. Защита от дубликатов:
-       - Каждое сообщение имеет client_id на фронтенде
-       - При получении из Ably проверяем по id, не дублируем
-       - Supabase гарантирует уникальность id
-       - В Ably используем echoMessages: false для исключения эхо
-
-    6. Статусы сообщений:
-       - sent: сохранено в БД
-       - delivered: получено подтверждение от Ably (delivery_receipt)
-       - read: получено подтверждение прочтения (read_receipt)
-       - pending: ожидает отправки (офлайн режим)
-
-    7. Production оптимизации:
-       - Использовать Supabase Realtime для тех, кто не хочет Ably
-       - Кэшировать сообщения в localStorage для офлайн доступа
-       - Использовать IndexedDB для больших объемов
-       - Web Workers для фоновой синхронизации
-       - Push-уведомления через Service Workers
+    4. Важные изменения:
+       - Исправлена ошибка "Не удалось создать чат" при попытке открыть уже существующий чат
+       - Добавлено уведомление через Ably о новом приватном чате для второго пользователя
+       - Чат автоматически появляется в списке "Чаты" у второго пользователя в реальном времени
+       - Улучшена обработка ошибок и добавлены информативные сообщения
     -->
 </body>
 </html>
