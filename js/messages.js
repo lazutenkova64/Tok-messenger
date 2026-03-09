@@ -244,6 +244,7 @@ async function sendMessage() {
             
             if (ably && !currentChat.is_public && currentChat.pair_key !== `${window.currentUser.id}_${window.currentUser.id}`) {
                 const chatChannel = ably.channels.get(`chat-${currentChat.id}`);
+                console.log('Отправлено:', { ...dbMessage, id: realId, sender_name: window.currentUser.name });
                 chatChannel.publish('message', { 
                     ...dbMessage, 
                     id: realId, 
@@ -699,6 +700,7 @@ function subscribeToChatChannel(chatId) {
             }
             
             if (currentChat && currentChat.id === chatId) {
+                console.log('Получено:', msg);
                 renderMessages();
                 unreadCounts[chatId] = 0;
                 markMessagesAsRead(chatId);
