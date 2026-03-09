@@ -53,7 +53,7 @@ function initAbly() {
             });
             
             presenceChannel.presence.get((err, members) => {
-                if (members) {
+                if (members && Array.isArray(members)) {
                     members.forEach(member => {
                         if (member.clientId !== window.currentUser.id.toString()) {
                             onlineUsers[member.clientId] = {

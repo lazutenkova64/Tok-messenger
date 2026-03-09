@@ -223,7 +223,10 @@ async function createPrivateChat(user) {
                     .insert([newChat])
                     .select();
                 
-                if (error) throw error;
+                if (error) {
+                    console.error('Error creating private chat:', error);
+                    throw error;
+                }
                 
                 privateChat = {
                     id: data[0].id,
