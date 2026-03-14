@@ -2183,7 +2183,7 @@
         </div>
     </div>
 
-    <!-- Модальные окна (без изменений, добавлены позже) -->
+    <!-- Модальные окна -->
     <div class="modal" id="createChatModal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeCreateChatModal()">×</button>
@@ -2347,12 +2347,12 @@
         ];
 
         // Переменные для звонков
-        let currentCall = null; // { channel, peerId, pc, stream, isIncoming, status }
+        let currentCall = null;
         let callOverlay = null;
         let localStream = null;
         let remoteStream = null;
         let peerConnection = null;
-        const callChannels = {}; // для подписки на события звонков
+        const callChannels = {};
 
         function applyTheme(themeId) {
             document.documentElement.setAttribute('data-theme', themeId);
@@ -2812,9 +2812,8 @@
                 const callChannel = ably.channels.get('calls');
                 callChannel.subscribe('call-offer', async (message) => {
                     const { callerId, callerName, callerAvatar, chatId, offer } = message.data;
-                    if (callerId == currentUser.id) return; // игнорируем свои офферы
+                    if (callerId == currentUser.id) return;
                     console.log('📞 Входящий звонок от', callerName);
-                    // Показываем интерфейс входящего звонка
                     showIncomingCall(callerId, callerName, callerAvatar, chatId, offer);
                 });
                 callChannel.subscribe('call-answer', (message) => {
@@ -2835,7 +2834,7 @@
                     const { callerId } = message.data;
                     if (callerId == currentUser.id) return;
                     console.log('📞 Звонок завершен удаленно');
-                    endCall(true); // true = remote end
+                    endCall(true);
                 });
 
                 callChannels['calls'] = callChannel;
@@ -3241,8 +3240,18 @@
                     .select('*')
                     .eq('username', username)
                     .single();
-                if (error || !data) { alert('Неверное имя пользователя или пароль'); return; }
-                if (data.password !== password) { alert('Неверное имя пользователя или пароль'); return; }
+                
+                if (error || !data) {
+                    alert('Неверное имя пользователя или пароль');
+                    return;
+                }
+                
+                // Прямое сравнение паролей (так как в БД они хранятся в открытом виде)
+                if (data.password !== password) {
+                    alert('Неверное имя пользователя или пароль');
+                    return;
+                }
+                
                 currentUser = {
                     id: data.id,
                     name: data.username,
@@ -3252,12 +3261,20 @@
                     isVip: VIP_USERNAMES.includes(data.username),
                     dnd: data.dnd || false
                 };
-                if (remember) localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                if (remember) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+                
                 myChats = JSON.parse(localStorage.getItem(`myChats_${currentUser.id}`)) || [];
+                
                 document.getElementById('loginModal').classList.remove('active');
                 document.getElementById('appContainer').style.display = 'flex';
+                
                 updateProfileUI();
+                
                 await Promise.all([ loadAllUsers(), loadPublicChats(), loadAllMessages(), syncWithSupabase() ]);
+                
                 ensureFavoriteChat();
                 initAbly();
                 startHeartbeat();
@@ -3265,11 +3282,15 @@
                 startStatusUpdates();
                 startPeriodicSync();
                 checkUrlForChat();
+                
                 if (myChats.length === 1 && myChats[0].isFavorite) joinChat(myChats[0]);
                 else if (!currentChat) joinChat(myChats[0]);
+                
                 updateBackButtonVisibility();
                 forceShowInput();
+                
                 populateThemeGrid();
+                
             } catch (err) { console.error('Login error:', err); alert('Ошибка при входе'); }
         }
 
@@ -3290,24 +3311,45 @@
             if (password.length < 3) { alert('Пароль должен быть минимум 3 символа'); return; }
             
             try {
+                // Проверяем, существует ли пользователь
                 const { data: existingUser } = await supabaseClient
                     .from('users')
                     .select('username')
                     .eq('username', username)
                     .maybeSingle();
-                if (existingUser) { alert('Пользователь с таким именем уже существует'); return; }
-                const newUser = { username: username, password: password, avatar: '👤', bio: '', dnd: false, created_at: new Date().toISOString() };
+                
+                if (existingUser) {
+                    alert('Пользователь с таким именем уже существует');
+                    return;
+                }
+                
+                // Создаем нового пользователя с обязательными полями
+                const newUser = {
+                    username: username,
+                    password: password,
+                    avatar: '👤',
+                    bio: '',
+                    dnd: false,
+                    created_at: new Date().toISOString(),
+                    last_seen: new Date().toISOString()
+                };
+                
                 const { data, error } = await supabaseClient
                     .from('users')
                     .insert([newUser])
                     .select()
                     .single();
+                
                 if (error) {
                     console.error('Insert error:', error);
-                    if (error.code === '23505') alert('Пользователь с таким именем уже существует');
-                    else alert('Ошибка при регистрации: ' + error.message);
+                    if (error.code === '23505') {
+                        alert('Пользователь с таким именем уже существует');
+                    } else {
+                        alert('Ошибка при регистрации: ' + error.message);
+                    }
                     return;
                 }
+                
                 currentUser = {
                     id: data.id,
                     name: data.username,
@@ -3317,25 +3359,46 @@
                     isVip: VIP_USERNAMES.includes(data.username),
                     dnd: data.dnd || false
                 };
-                if (remember) localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                const favChat = { id: `favorite-${currentUser.id}`, name: 'Избранное', avatar: '⭐', isPrivate: true, members: [currentUser.id], isSelf: true, isFavorite: true, pinned: true };
+                
+                if (remember) {
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                }
+                
+                const favChat = {
+                    id: `favorite-${currentUser.id}`,
+                    name: 'Избранное',
+                    avatar: '⭐',
+                    isPrivate: true,
+                    members: [currentUser.id],
+                    isSelf: true,
+                    isFavorite: true,
+                    pinned: true
+                };
                 myChats = [favChat];
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                
                 messages[favChat.id] = [];
+                
                 document.getElementById('loginModal').classList.remove('active');
                 document.getElementById('appContainer').style.display = 'flex';
+                
                 updateProfileUI();
+                
                 await loadAllUsers();
                 await loadPublicChats();
+                
                 initAbly();
                 startHeartbeat();
                 startPresenceUpdates();
                 startStatusUpdates();
                 startPeriodicSync();
+                
                 joinChat(favChat);
                 updateBackButtonVisibility();
                 forceShowInput();
+                
                 alert('Регистрация успешна!');
+                
             } catch (err) { console.error('Registration error:', err); alert('Ошибка при регистрации: ' + err.message); }
         }
 
@@ -4255,7 +4318,6 @@
 
             peerConnection.onicecandidate = (event) => {
                 if (event.candidate) {
-                    // Отправляем кандидата собеседнику
                     const callChannel = ably.channels.get('calls');
                     callChannel.publish('call-ice-candidate', { candidate: event.candidate, callerId: currentUser.id, peerId: peerId });
                 }
@@ -4263,8 +4325,6 @@
 
             peerConnection.ontrack = (event) => {
                 remoteStream = event.streams[0];
-                // Создаем или обновляем видеоэлемент для удаленного потока (опционально)
-                // Здесь мы просто подключаем аудио к аудиоэлементу (слышим собеседника)
                 const audio = new Audio();
                 audio.srcObject = remoteStream;
                 audio.play().catch(e => console.log('Audio play failed (autoplay policy)', e));
@@ -4273,7 +4333,6 @@
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
 
-            // Отправляем оффер
             const callChannel = ably.channels.get('calls');
             callChannel.publish('call-offer', {
                 callerId: currentUser.id,
@@ -4288,10 +4347,7 @@
         }
 
         function showIncomingCall(callerId, callerName, callerAvatar, chatId, offer) {
-            if (currentCall) {
-                // Уже в звонке - игнорируем или можно предложить переключиться
-                return;
-            }
+            if (currentCall) return;
             currentCall = { status: 'incoming', peerId: callerId, chatId, offer, peerName: callerName, peerAvatar: callerAvatar };
             showCallUI('incoming', callerName, callerAvatar);
         }
@@ -4406,7 +4462,6 @@
             localStream = null; remoteStream = null; peerConnection = null;
 
             if (!remote) {
-                // Уведомляем собеседника о завершении звонка
                 const callChannel = ably.channels.get('calls');
                 if (currentCall) callChannel.publish('call-end', { callerId: currentUser.id, peerId: currentCall.peerId });
             }
