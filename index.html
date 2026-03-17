@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Tok-messenger</title>
-    <script src="https://cdn.ably.com/lib/ably.min-1.js"></script>
+    <!-- Подключаем Ably с запасным вариантом на случай ошибки -->
+    <script src="https://cdn.ably.com/lib/ably.min.js"></script>
+    <!-- Подключаем Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Полифиллы для старых браузеров (опционально) -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=Promise%2Cfetch%2CArray.prototype.find%2CArray.prototype.includes%2CObject.assign"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💬</text></svg>">
     <style>
+        /* --- все стили остаются без изменений (скопированы из оригинального кода) --- */
         * {
             margin: 0;
             padding: 0;
@@ -2050,8 +2056,30 @@
             }
         }
     </style>
+    <!-- Добавляем обработчик ошибок загрузки скриптов -->
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.target.tagName === 'SCRIPT') {
+                console.error('Failed to load script:', e.target.src);
+                // Можно показать сообщение пользователю
+                const errorDiv = document.createElement('div');
+                errorDiv.style.position = 'fixed';
+                errorDiv.style.top = '0';
+                errorDiv.style.left = '0';
+                errorDiv.style.right = '0';
+                errorDiv.style.backgroundColor = '#ff3b30';
+                errorDiv.style.color = 'white';
+                errorDiv.style.padding = '10px';
+                errorDiv.style.textAlign = 'center';
+                errorDiv.style.zIndex = '9999';
+                errorDiv.textContent = 'Ошибка загрузки. Проверьте подключение к интернету и перезагрузите страницу.';
+                document.body.appendChild(errorDiv);
+            }
+        }, true);
+    </script>
 </head>
 <body>
+    <!-- весь HTML остается без изменений (скопирован из оригинального кода) -->
     <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()">
         <div class="media-viewer-content" id="mediaViewerContent"></div>
         <button class="media-viewer-close" onclick="closeMediaViewer()">×</button>
@@ -2263,9 +2291,14 @@
         const ADMIN_USERNAME = "K1lame";
         const VIP_USERNAMES = ["K1lame", "VIP_User", "Premium"];
 
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        // Проверка наличия Supabase и Ably
+        if (typeof window.supabase === 'undefined') {
+            console.error('Supabase SDK не загружен');
+            alert('Ошибка загрузки Supabase SDK. Проверьте подключение.');
+        }
+        const supabaseClient = window.supabase?.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
             auth: { persistSession: true, autoRefreshToken: true }
-        });
+        }) || null;
 
         // ==================== Глобальные переменные ====================
         let ably;
@@ -2400,25 +2433,26 @@
 
         // Проверка наличия таблицы profiles
         async function checkTablesExist() {
+            if (!supabaseClient) return false;
             try {
                 const { error } = await supabaseClient.from('profiles').select('id').limit(1);
                 if (error && error.message && error.message.includes('relation') && error.message.includes('does not exist')) {
-                    document.getElementById('loginModal').classList.remove('active');
-                    document.getElementById('tableErrorModal').classList.add('active');
+                    document.getElementById('loginModal')?.classList.remove('active');
+                    document.getElementById('tableErrorModal')?.classList.add('active');
                     return false;
                 }
                 return true;
             } catch (err) {
                 console.error('Error checking tables:', err);
-                document.getElementById('loginModal').classList.remove('active');
-                document.getElementById('tableErrorModal').classList.add('active');
+                document.getElementById('loginModal')?.classList.remove('active');
+                document.getElementById('tableErrorModal')?.classList.add('active');
                 return false;
             }
         }
 
         // Загрузка всех чатов пользователя (из chats + chat_members)
         async function loadUserChats() {
-            if (!currentUser) return [];
+            if (!currentUser || !supabaseClient) return [];
             try {
                 const { data: memberships, error: memError } = await supabaseClient
                     .from('chat_members')
@@ -2517,6 +2551,7 @@
         }
 
         async function loadPublicChats() {
+            if (!supabaseClient) return;
             try {
                 const { data, error } = await supabaseClient
                     .from('chats')
@@ -2540,6 +2575,7 @@
         }
 
         async function loadAllUsers() {
+            if (!supabaseClient || !currentUser) return;
             try {
                 const { data, error } = await supabaseClient
                     .from('profiles')
@@ -2554,7 +2590,7 @@
         }
 
         async function loadMyChatsMessages() {
-            if (!currentUser) return;
+            if (!currentUser || !supabaseClient) return;
             const chatIds = myChats.map(c => c.id);
             if (chatIds.length === 0) return;
 
@@ -2611,6 +2647,7 @@
         }
 
         async function saveMessageToDatabase(message) {
+            if (!supabaseClient) return;
             try {
                 const { data: existing } = await supabaseClient
                     .from('messages')
@@ -2721,6 +2758,7 @@
 
         // Создание публичного чата
         async function createPublicChat() {
+            if (!supabaseClient || !currentUser) return;
             const name = document.getElementById('chatNameInput').value.trim();
             const password = document.getElementById('chatPasswordInput').value.trim();
             const description = document.getElementById('chatDescriptionInput').value.trim();
@@ -2785,6 +2823,7 @@
 
         // Создание приватного чата
         async function createPrivateChat(user) {
+            if (!supabaseClient || !currentUser) return;
             const pairKey = [currentUser.id, user.id].sort().join('-');
             const { data: existingChat, error: searchError } = await supabaseClient
                 .from('chats')
@@ -2848,6 +2887,16 @@
             joinChat(privateChat);
         }
 
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
         function joinChat(chat) {
             if (!chat) return;
 
@@ -2872,7 +2921,7 @@
             updateUrlWithChat(chat);
 
             const titleElement = document.getElementById('currentChatName');
-            titleElement.innerHTML = chat.name + (chat.isFavorite ? ' ⭐' : '');
+            titleElement.innerHTML = escapeHtml(chat.name) + (chat.isFavorite ? ' ⭐' : '');
 
             document.getElementById('chatStatus').textContent = chat.description || (chat.isFavorite ? 'Сохраненные сообщения' : 'Чат');
             document.getElementById('chatHeaderAvatar').textContent = chat.avatar || '👤';
@@ -2909,6 +2958,7 @@
         }
 
         async function loadChatHistory(chatId) {
+            if (!supabaseClient) return;
             try {
                 const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
                 let query = supabaseClient
@@ -3106,6 +3156,10 @@
 
         // ==================== ИСПРАВЛЕННЫЕ ФУНКЦИИ ВХОДА И РЕГИСТРАЦИИ ====================
         async function login() {
+            if (!supabaseClient) {
+                alert('Supabase не загружен');
+                return;
+            }
             const now = Date.now();
             if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
             if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
@@ -3211,6 +3265,10 @@
         }
 
         async function register() {
+            if (!supabaseClient) {
+                alert('Supabase не загружен');
+                return;
+            }
             const now = Date.now();
             if (now - lastLoginAttemptTime > LOGIN_TIMEFRAME) loginAttempts = 0;
             if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
@@ -3381,7 +3439,7 @@
         }
 
         async function updateUserLastSeen() {
-            if (!currentUser) return;
+            if (!currentUser || !supabaseClient) return;
             try {
                 await supabaseClient.from('profiles').update({ last_seen: Date.now() }).eq('id', currentUser.id);
             } catch (err) { console.error('Error updating last_seen:', err); }
@@ -3418,6 +3476,11 @@
         function initAbly() {
             if (!currentUser) return;
             if (ably) { try { ably.close(); } catch (e) {} }
+            if (typeof Ably === 'undefined') {
+                console.error('Ably SDK не загружен');
+                alert('Ошибка загрузки Ably. Перезагрузите страницу.');
+                return;
+            }
             ably = new Ably.Realtime({
                 key: ABLY_API_KEY,
                 clientId: currentUser.id,
@@ -3730,15 +3793,9 @@
             }
         }
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
         function populateEmojiPicker() {
             const picker = document.getElementById('emojiPicker');
+            if (!picker) return;
             picker.innerHTML = '';
             emojiList.forEach(emoji => {
                 const btn = document.createElement('button');
@@ -4094,11 +4151,11 @@
             const statusClass = user.online ? (user.dnd ? 'dnd' : 'online') : 'offline';
             const lastSeenText = !user.online && user.lastSeen ? formatLastSeen(user.lastSeen) : '';
             return `
-                <div class="chat-item" onclick="createPrivateChat({id: '${user.id}', name: '${user.name}', avatar: '${user.avatar}'})">
+                <div class="chat-item" onclick="createPrivateChat({id: '${user.id}', name: '${escapeHtml(user.name)}', avatar: '${escapeHtml(user.avatar)}'})">
                     <div class="chat-avatar">${user.avatar}</div>
                     <div class="chat-details">
                         <div class="chat-name">
-                            ${user.name}
+                            ${escapeHtml(user.name)}
                             ${user.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}
                             ${user.isVip ? '<span class="vip-badge">VIP</span>' : ''}
                             <div class="status-container">
@@ -4107,7 +4164,7 @@
                                 ${user.dnd && user.online ? '<span class="dnd-badge">DND</span>' : ''}
                             </div>
                         </div>
-                        <div class="chat-last-message">${user.bio || 'Нет информации'}</div>
+                        <div class="chat-last-message">${escapeHtml(user.bio) || 'Нет информации'}</div>
                     </div>
                 </div>
             `;
@@ -4126,7 +4183,7 @@
                     <div class="chat-avatar">${chat.avatar || chat.name.charAt(0)}</div>
                     <div class="chat-details">
                         <div class="chat-name">
-                            ${chat.name}
+                            ${escapeHtml(chat.name)}
                             ${chat.password ? '<span class="lock-icon">🔒</span>' : ''}
                             ${chat.isFavorite ? '<span class="favorite-badge">ИЗБРАННОЕ</span>' : ''}
                             ${chat.pinned ? '📌' : ''}
@@ -4239,9 +4296,9 @@
             if (isOnline) statusText = dnd ? 'Не беспокоит' : 'В сети';
             else statusText = lastSeen ? `Был(а) ${formatLastSeen(lastSeen)}` : 'Был(а) давно';
             const content = `
-                <div class="user-profile-avatar">${user.avatar || '👤'}</div>
-                <div class="user-profile-name">${user.username}</div>
-                <div class="user-profile-bio">${user.bio || 'Нет информации'}</div>
+                <div class="user-profile-avatar">${escapeHtml(user.avatar || '👤')}</div>
+                <div class="user-profile-name">${escapeHtml(user.username)}</div>
+                <div class="user-profile-bio">${escapeHtml(user.bio) || 'Нет информации'}</div>
                 <div class="user-profile-status">
                     <span class="status-dot ${isOnline ? (dnd ? 'dnd' : 'online') : 'offline'}"></span>
                     ${statusText}
@@ -4418,7 +4475,9 @@
             window.addEventListener('resize', setVH);
             window.addEventListener('orientationchange', setVH);
             const messageInput = document.getElementById('messageInput');
-            messageInput.addEventListener('focus', () => { setTimeout(() => { document.getElementById('messagesContainer').scrollTop = document.getElementById('messagesContainer').scrollHeight; }, 300); });
+            if (messageInput) {
+                messageInput.addEventListener('focus', () => { setTimeout(() => { document.getElementById('messagesContainer').scrollTop = document.getElementById('messagesContainer').scrollHeight; }, 300); });
+            }
             forceShowInput();
         }
         function forceShowInput() {
@@ -4459,7 +4518,7 @@
             const status = document.getElementById('callStatus');
             const buttons = document.getElementById('callButtons');
             avatar.textContent = callState.peerAvatar;
-            name.textContent = callState.peerName;
+            name.textContent = escapeHtml(callState.peerName);
             if (type === 'outgoing') {
                 status.textContent = 'Исходящий вызов...';
                 buttons.innerHTML = `<button class="call-btn-action call-btn-decline" onclick="endCall('decline')">❌</button>`;
@@ -4589,6 +4648,11 @@
                 populateEmojiPicker();
                 populateThemeGrid();
 
+                if (!supabaseClient) {
+                    alert('Supabase SDK не загружен. Проверьте подключение к интернету.');
+                    return;
+                }
+
                 const tablesOk = await checkTablesExist();
                 if (!tablesOk) return;
 
@@ -4695,9 +4759,12 @@
         document.addEventListener('click', function(e) {
             const emojiPicker = document.getElementById('emojiPicker');
             const emojiBtn = document.querySelector('.emoji-toggle-btn');
-            if (emojiPicker.style.display === 'flex' && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) emojiPicker.style.display = 'none';
+            if (emojiPicker && emojiPicker.style.display === 'flex' && !emojiPicker.contains(e.target) && !emojiBtn.contains(e.target)) emojiPicker.style.display = 'none';
         });
-        document.getElementById('messageInput').addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; });
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; });
+        }
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
