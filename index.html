@@ -2069,9 +2069,37 @@
                 height: 48px;
             }
         }
+
+        /* ===== AUTH LOADING SPLASH ===== */
+        .auth-loading {
+            display: none !important;
+        }
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--bg-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .splash-screen.hidden {
+            display: none;
+        }
+        #remote-audios {
+            display: none;
+        }
     </style>
 </head>
 <body>
+    <div class="splash-screen" id="splashScreen">Tok Web</div>
+
     <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()">
         <div class="media-viewer-content" id="mediaViewerContent"></div>
         <button class="media-viewer-close" onclick="closeMediaViewer()">×</button>
@@ -2261,9 +2289,12 @@
         </div>
     </div>
 
+    <!-- Контейнер для удаленных аудио-элементов WebRTC -->
+    <div id="remote-audios"></div>
+
     <script>
         // ========== PRODUCTION-READY REALTIME MESSENGER ARCHITECTURE ==========
-        // Адаптировано для Tok: исправлены ошибки, добавлены chat_members, поля is_vip/is_admin, Ably каналы переименованы
+        // Адаптировано для Tok: исправлены критические ошибки, добавлены фичи.
 
         // ========== ИНИЦИАЛИЗАЦИЯ SUPABASE ==========
         const DB_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
@@ -2285,7 +2316,7 @@
         let currentTab = 'chats';
         let messageToEdit = null;
         let activeMessageId = null;
-        let messageStatuses = {};        
+        let messageStatuses = {};         // статусы прочитанных сообщений
         let deletedMessages = {};         // храним удалённые messageId для каждого чата
         let pinnedChats = [];              // закрепленные чаты (из localStorage)
 
@@ -2351,6 +2382,12 @@
 
         // Флаг для отслеживания переподключения Ably
         let ablyReconnectTimer = null;
+
+        // AudioContext для разблокировки звука на мобильных
+        let audioCtx = null;
+
+        // Service Worker registration
+        let swRegistration = null;
 
         // Эмодзи
         const emojiList = [
@@ -2490,6 +2527,50 @@
                 const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+        }
+
+        // ========== SERVICE WORKER РЕГИСТРАЦИЯ ==========
+        async function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                try {
+                    // Создаем воркер как строку (минимальный обработчик)
+                    const swCode = `
+                        self.addEventListener('push', event => {
+                            const data = event.data.json();
+                            self.registration.showNotification(data.title, {
+                                body: data.body,
+                                icon: data.icon,
+                                vibrate: [200, 100, 200],
+                                data: data.url
+                            });
+                        });
+                        self.addEventListener('notificationclick', event => {
+                            event.notification.close();
+                            event.waitUntil(clients.openWindow(event.notification.data || '/'));
+                        });
+                    `;
+                    const blob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(blob);
+                    swRegistration = await navigator.serviceWorker.register(swUrl);
+                    console.log('Service Worker registered');
+                } catch (err) {
+                    console.warn('Service Worker registration failed', err);
+                }
+            }
+        }
+
+        // Функция для показа уведомления (если приложение в фоне)
+        function showBackgroundNotification(title, options) {
+            if (document.visibilityState === 'hidden') {
+                if (swRegistration) {
+                    swRegistration.showNotification(title, options);
+                } else if (Notification.permission === 'granted') {
+                    new Notification(title, options);
+                }
+                if (navigator.vibrate) {
+                    navigator.vibrate([200, 100, 200]);
+                }
+            }
         }
 
         // ========== ЗАКРЕПЛЕНИЕ ЧАТОВ ==========
@@ -2840,6 +2921,7 @@
                         
                         document.getElementById('loginModal').classList.remove('active');
                         document.getElementById('appContainer').style.display = 'flex';
+                        document.getElementById('splashScreen').classList.add('hidden');
                         
                         updateProfileUI();
                         
@@ -2883,13 +2965,18 @@
 
                         // FIX 1: слушаем visibilitychange для пробуждения PWA
                         document.addEventListener('visibilitychange', handleVisibilityChange);
+
+                        // Регистрируем Service Worker
+                        await registerServiceWorker();
                     } else {
                         document.getElementById('loginModal').classList.add('active');
                         document.getElementById('appContainer').style.display = 'none';
+                        document.getElementById('splashScreen').classList.add('hidden');
                     }
                 } else {
                     document.getElementById('loginModal').classList.add('active');
                     document.getElementById('appContainer').style.display = 'none';
+                    document.getElementById('splashScreen').classList.add('hidden');
                 }
                 
                 setupMobileHandlers();
@@ -2905,6 +2992,7 @@
                 console.error('Init error:', err);
                 document.getElementById('loginModal').classList.add('active');
                 document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('splashScreen').classList.add('hidden');
                 loadingComplete = true;
             }
         }
@@ -2974,6 +3062,7 @@
                     
                     document.getElementById('loginModal').classList.remove('active');
                     document.getElementById('appContainer').style.display = 'flex';
+                    document.getElementById('splashScreen').classList.add('hidden');
                     
                     updateProfileUI();
                     
@@ -3007,6 +3096,8 @@
                     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                         Notification.requestPermission();
                     }
+
+                    await registerServiceWorker();
                 }
                 
             } catch (err) {
@@ -3159,6 +3250,7 @@
             
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginModal').classList.add('active');
+            document.getElementById('splashScreen').classList.add('hidden');
             updateUrlWithChat(null);
             updateBackButtonVisibility();
             updateCreateChatButtonVisibility();
@@ -3350,7 +3442,8 @@
         function subscribeToChatChannel(chatId) {
             if (!ably || !currentUser) return;
             
-            const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
+            // Используем rewind: 1, чтобы получить последнее сообщение при подключении
+            const chatChannel = ably.channels.get(`tok_chat_${chatId}`, { params: { rewind: '1' } });
             
             chatChannel.unsubscribe();
             
@@ -3900,7 +3993,8 @@
             messages[currentChat.id].push(localMessage);
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             
-            messageStatuses[clientId] = { status: 'sent', sentAt: timestamp };
+            // Статус pending до подтверждения от сервера
+            messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
             saveMessageStatuses();
             
             input.value = '';
@@ -3933,14 +4027,18 @@
                     if (error.code === '42501') {
                         alert('Ошибка прав доступа к таблице messages. Убедитесь, что в Supabase настроены политики RLS.');
                     }
+                    // Статус останется pending, будет попытка позже
                 } else {
                     const realId = data[0].id;
                     const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
                     if (msgIndex !== -1) {
                         messages[currentChat.id][msgIndex].id = realId;
                     }
-                    messageStatuses[realId] = messageStatuses[clientId];
-                    delete messageStatuses[clientId];
+                    // Меняем статус на sent
+                    if (messageStatuses[clientId]) {
+                        messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                        delete messageStatuses[clientId];
+                    }
                     saveMessageStatuses();
                     
                     if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
@@ -3960,6 +4058,11 @@
                                         id: realId, 
                                         sender_name: currentUser.name 
                                     });
+                                }
+                            } else {
+                                // После успешной публикации можно считать доставленным до сервера Ably
+                                if (messageStatuses[realId] && messageStatuses[realId].status === 'sent') {
+                                    // Но для delivered нужен отдельный receipt
                                 }
                             }
                         });
@@ -4009,7 +4112,7 @@
                 messages[currentChat.id].push(localMessage);
                 messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                 
-                messageStatuses[clientId] = { status: 'sent', sentAt: timestamp };
+                messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
                 saveMessageStatuses();
                 
                 renderMessages();
@@ -4046,8 +4149,10 @@
                         if (msgIndex !== -1) {
                             messages[currentChat.id][msgIndex].id = realId;
                         }
-                        messageStatuses[realId] = messageStatuses[clientId];
-                        delete messageStatuses[clientId];
+                        if (messageStatuses[clientId]) {
+                            messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                            delete messageStatuses[clientId];
+                        }
                         saveMessageStatuses();
                         
                         if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
@@ -4101,8 +4206,10 @@
                             const msgIndex = messages[chatId].findIndex(m => m.id === tempId);
                             if (msgIndex !== -1) {
                                 messages[chatId][msgIndex].id = realId;
-                                messageStatuses[realId] = messageStatuses[tempId];
-                                delete messageStatuses[tempId];
+                                if (messageStatuses[tempId]) {
+                                    messageStatuses[realId] = { status: 'sent', sentAt: messageStatuses[tempId].sentAt };
+                                    delete messageStatuses[tempId];
+                                }
                                 saveMessageStatuses();
                                 break;
                             }
@@ -4275,7 +4382,12 @@
                     let statusHtml = '';
                     
                     if (msg.type === 'out') {
-                        statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${status.status === 'read' ? '✓✓' : '✓'}</span></span>`;
+                        let statusIcon = '';
+                        if (status.status === 'pending') statusIcon = '⏳';
+                        else if (status.status === 'sent') statusIcon = '✓';
+                        else if (status.status === 'delivered') statusIcon = '✓';
+                        else if (status.status === 'read') statusIcon = '✓✓';
+                        statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${statusIcon}</span></span>`;
                     }
                     
                     if (msg.text) {
@@ -5153,6 +5265,16 @@
             };
         }
 
+        // Функция для создания AudioContext и разблокировки звука
+        function initAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume().then(() => console.log('AudioContext resumed'));
+            }
+        }
+
         // FIX: Новая логика звонков
         function resetCallState() {
             if (peerConnection) {
@@ -5366,6 +5488,9 @@
             clearTimeout(currentCall.timeout);
             currentCall.status = 'connecting';
 
+            // Инициализируем и возобновляем AudioContext для разблокировки звука на мобильных
+            initAudioContext();
+
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 peerConnection = new RTCPeerConnection(getIceServers());
@@ -5385,18 +5510,20 @@
 
                 peerConnection.ontrack = (event) => {
                     const remoteStream = event.streams[0];
+                    const remoteAudioDiv = document.getElementById('remote-audios');
                     const audioElement = document.createElement('audio');
                     audioElement.srcObject = remoteStream;
                     audioElement.autoplay = true;
+                    audioElement.playsinline = true;
                     audioElement.controls = false;
                     audioElement.style.display = 'none';
-                    document.body.appendChild(audioElement);
-                    // Для мобильных нужно разблокировать
-                    const playAudio = () => {
-                        audioElement.play().catch(e => console.warn('Play failed:', e));
-                        document.removeEventListener('click', playAudio);
-                    };
-                    document.addEventListener('click', playAudio, { once: true });
+                    remoteAudioDiv.appendChild(audioElement);
+                    
+                    // Разблокировка аудио на iOS: после добавления в DOM, нужно вызвать play через взаимодействие
+                    // Уже autoplay должно сработать, но для гарантии пробуем воспроизвести после короткой задержки
+                    setTimeout(() => {
+                        audioElement.play().catch(e => console.warn('Autoplay failed:', e));
+                    }, 100);
 
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
@@ -5540,6 +5667,9 @@
                 clearTimeout(currentCall.timeout);
                 currentCall.status = 'connecting';
 
+                // Инициализируем и возобновляем AudioContext
+                initAudioContext();
+
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                     peerConnection = new RTCPeerConnection(getIceServers());
@@ -5559,17 +5689,18 @@
 
                     peerConnection.ontrack = (event) => {
                         const remoteStream = event.streams[0];
+                        const remoteAudioDiv = document.getElementById('remote-audios');
                         const audioElement = document.createElement('audio');
                         audioElement.srcObject = remoteStream;
                         audioElement.autoplay = true;
+                        audioElement.playsinline = true;
                         audioElement.controls = false;
                         audioElement.style.display = 'none';
-                        document.body.appendChild(audioElement);
-                        const playAudio = () => {
-                            audioElement.play().catch(e => console.warn('Play failed:', e));
-                            document.removeEventListener('click', playAudio);
-                        };
-                        document.addEventListener('click', playAudio, { once: true });
+                        remoteAudioDiv.appendChild(audioElement);
+                        
+                        setTimeout(() => {
+                            audioElement.play().catch(e => console.warn('Autoplay failed:', e));
+                        }, 100);
 
                         currentCall.status = 'connected';
                         currentCall.startTime = Date.now();
@@ -6198,11 +6329,75 @@
             this.style.height = (this.scrollHeight) + 'px';
         });
 
-        document.addEventListener('DOMContentLoaded', () => {
+        // ========== СТАРТОВАЯ ИНИЦИАЛИЗАЦИЯ ==========
+        (async function() {
+            // Сразу проверяем сессию, чтобы избежать мигания формы
+            try {
+                const { data: { session } } = await db.auth.getSession();
+                if (session?.user) {
+                    // Если есть сессия, скрываем сплеш позже, после init
+                } else {
+                    // Нет сессии — показываем форму входа, скрываем сплеш
+                    document.getElementById('splashScreen').classList.add('hidden');
+                    document.getElementById('loginModal').classList.add('active');
+                }
+            } catch (e) {
+                console.error('Auth check failed', e);
+                document.getElementById('splashScreen').classList.add('hidden');
+                document.getElementById('loginModal').classList.add('active');
+            }
+
+            // Продолжаем инициализацию
             populateEmojiPicker();
-            document.getElementById('loginModal').classList.add('active');
             init();
-        });
+        })();
+
+        // Экспортируем функции в глобальную область для onclick
+        window.switchAuthMode = switchAuthMode;
+        window.login = login;
+        window.register = register;
+        window.logout = logout;
+        window.switchTab = switchTab;
+        window.handleSearch = handleSearch;
+        window.openCreateChatModal = openCreateChatModal;
+        window.closeCreateChatModal = closeCreateChatModal;
+        window.createPublicChat = createPublicChat;
+        window.joinChat = joinChat;
+        window.createPrivateChat = createPrivateChat;
+        window.openProfileModal = openProfileModal;
+        window.closeProfileModal = closeProfileModal;
+        window.saveProfile = saveProfile;
+        window.openAvatarModal = openAvatarModal;
+        window.closeAvatarModal = closeAvatarModal;
+        window.saveAvatar = saveAvatar;
+        window.openChatUserProfile = openChatUserProfile;
+        window.closeUserProfileModal = closeUserProfileModal;
+        window.toggleNotificationBell = toggleNotificationBell;
+        window.togglePinChat = togglePinChat;
+        window.deleteChat = deleteChat;
+        window.sendMessage = sendMessage;
+        window.toggleRecording = toggleRecording;
+        window.toggleAudio = toggleAudio;
+        window.seekAudio = seekAudio;
+        window.deleteMessage = deleteMessage;
+        window.editMessage = editMessage;
+        window.saveEditedMessage = saveEditedMessage;
+        window.closeEditMessageModal = closeEditMessageModal;
+        window.toggleEmojiPicker = toggleEmojiPicker;
+        window.handleKeyPress = handleKeyPress;
+        window.handleTextInput = handleTextInput;
+        window.handleBackButton = handleBackButton;
+        window.showMessageActions = showMessageActions;
+        window.openMedia = openMedia;
+        window.closeMediaViewer = closeMediaViewer;
+        window.togglePassword = togglePassword;
+        window.scrollToBottomOnMobile = scrollToBottomOnMobile;
+        window.handleMessagesContainerClick = handleMessagesContainerClick;
+        window.startCall = startCall;
+        window.answerCall = answerCall;
+        window.rejectCall = rejectCall;
+        window.endCall = endCall;
+        window.toggleMute = toggleMute;
     </script>
     <!-- ========== PRODUCTION ARCHITECTURE RECOMMENDATIONS ========== -->
     <!--
