@@ -375,6 +375,9 @@
             flex-shrink: 0;
             color: white;
             box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         .avatar:active {
@@ -1674,6 +1677,9 @@
             font-weight: 500;
             color: white;
             box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
 
         .user-profile-name {
@@ -2151,6 +2157,7 @@
                     <div class="chat-subtitle" id="chatStatus"></div>
                 </div>
                 <div class="chat-actions">
+                    <button class="action-btn" id="notificationBell" onclick="toggleNotificationBell()">🔔</button>
                     <button class="action-btn" onclick="openProfileModal()">👤</button>
                     <button class="action-btn" id="callBtn" style="display: none;" onclick="startCall()">📞</button>
                 </div>
@@ -2282,6 +2289,10 @@
         let deletedMessages = {};         // храним удалённые messageId для каждого чата
         let pinnedChats = [];              // закрепленные чаты (из localStorage)
 
+        // ========== НОВОЕ: Уведомления (колокольчик) ==========
+        let notifications = {};            // { chatId: true/false }
+        let incomingMessageSound = null;   // звук входящего сообщения
+
         let lastMessageTime = 0;
         const MESSAGE_COOLDOWN = 500;
         let sendBtnDisabled = false;
@@ -2331,9 +2342,6 @@
 
         // Флаг для отслеживания переподключения Ably
         let ablyReconnectTimer = null;
-
-        // Map для отслеживания созданных приватных чатов (предотвращение дубликатов) - теперь через БД
-        // let privateChatsMap = new Map(); // больше не нужен, используем pair_key в БД
 
         // Эмодзи
         const emojiList = [
@@ -2515,6 +2523,77 @@
 
         function isChatPinned(chatId) {
             return pinnedChats.includes(chatId);
+        }
+
+        // ========== НОВОЕ: ФУНКЦИИ ДЛЯ КОЛОКОЛЬЧИКА ==========
+        function loadNotifications() {
+            try {
+                const saved = localStorage.getItem('tok_notifications');
+                if (saved) {
+                    notifications = JSON.parse(saved);
+                } else {
+                    notifications = {};
+                }
+            } catch (e) {
+                notifications = {};
+            }
+        }
+
+        function saveNotifications() {
+            try {
+                localStorage.setItem('tok_notifications', JSON.stringify(notifications));
+            } catch (e) {}
+        }
+
+        function getNotificationState(chatId) {
+            // Если состояние явно сохранено, используем его
+            if (notifications.hasOwnProperty(chatId)) {
+                return notifications[chatId];
+            }
+            // Иначе определяем по умолчанию
+            const chat = myChats.find(c => c.id === chatId) || publicChats.find(c => c.id === chatId);
+            if (chat) {
+                // Для приватных чатов (кроме избранного) по умолчанию включено, для публичных и избранного - выключено
+                if (chat.type === 'private' && chat.pair_key !== `${currentUser?.id}_${currentUser?.id}`) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function toggleNotification(chatId) {
+            const currentState = getNotificationState(chatId);
+            notifications[chatId] = !currentState;
+            saveNotifications();
+            updateNotificationBell(chatId);
+        }
+
+        function updateNotificationBell(chatId) {
+            const bellBtn = document.getElementById('notificationBell');
+            if (!bellBtn) return;
+            const state = getNotificationState(chatId);
+            if (state) {
+                bellBtn.innerHTML = '🔔';
+                bellBtn.style.color = '';
+                bellBtn.style.textDecoration = 'none';
+            } else {
+                bellBtn.innerHTML = '🔕';
+                bellBtn.style.color = 'darkred';
+                bellBtn.style.textDecoration = 'line-through';
+            }
+        }
+
+        function toggleNotificationBell() {
+            if (!currentChat) return;
+            toggleNotification(currentChat.id);
+        }
+
+        function playIncomingMessageSound() {
+            if (incomingMessageSound) {
+                incomingMessageSound.play().catch(() => {});
+            }
         }
 
         // ========== ЧАТ "ИЗБРАННОЕ" ==========
@@ -2711,6 +2790,7 @@
             try {
                 applyTheme(currentTheme);
                 loadMessageStatuses();
+                loadNotifications(); // Загружаем состояние колокольчиков
                 
                 callModal = document.getElementById('callModal');
                 
@@ -2780,6 +2860,9 @@
                         if (myChats.length === 0) {
                             updateChatsList();
                         }
+
+                        // FIX 1: слушаем visibilitychange для пробуждения PWA
+                        document.addEventListener('visibilitychange', handleVisibilityChange);
                     } else {
                         document.getElementById('loginModal').classList.add('active');
                         document.getElementById('appContainer').style.display = 'none';
@@ -2803,6 +2886,22 @@
                 document.getElementById('loginModal').classList.add('active');
                 document.getElementById('appContainer').style.display = 'none';
                 loadingComplete = true;
+            }
+        }
+
+        // FIX 1: Обработчик видимости страницы
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'visible' && currentUser) {
+                console.log('App became visible, refreshing messages and Ably connection');
+                // Переподключаем Ably, если нужно
+                if (ably && ably.connection.state !== 'connected') {
+                    ably.connection.connect();
+                }
+                // Загружаем пропущенные сообщения
+                loadAllMessages();
+                if (currentChat) {
+                    loadChatHistory(currentChat.id);
+                }
             }
         }
 
@@ -3283,6 +3382,11 @@
                     messages[chatId].push(newMsg);
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
+                    // FIX 3: Воспроизводим звук, если уведомления для этого чата включены
+                    if (getNotificationState(chatId) && msg.sender_id !== currentUser.id) {
+                        playIncomingMessageSound();
+                    }
+                    
                     chatChannel.publish('delivery_receipt', { 
                         messageId: msg.id, 
                         receiver: currentUser.id
@@ -3598,14 +3702,17 @@
             
             document.getElementById('currentChatName').innerHTML = displayName;
             
-            // Применяем FIX 1: проверяем, является ли avatar URL, иначе генерируем
-            const avatarHeader = document.getElementById('chatHeaderAvatar');
+            // Применяем FIX 4: проверяем, является ли avatar URL, иначе генерируем
             const finalAvatar = (avatar && avatar.includes('http')) ? avatar : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(usernameForAvatar) + '&background=random&color=fff';
+            const avatarHeader = document.getElementById('chatHeaderAvatar');
             avatarHeader.style.backgroundImage = `url('${finalAvatar}')`;
             avatarHeader.textContent = ''; // очищаем текст, так как используется фон
             
             document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : 'Приватный чат';
             document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists && displayName !== 'Избранное') ? 'flex' : 'none';
+            
+            // Обновляем колокольчик для текущего чата
+            updateNotificationBell(chat.id);
             
             loadChatHistory(chat.id);
             
@@ -4606,7 +4713,7 @@
             if (user.is_vip) badges += ' 👑';
             if (user.is_admin) badges += ' ⚡';
             
-            // Применяем FIX 1: определяем финальный аватар
+            // Применяем FIX 4: определяем финальный аватар
             const finalAvatar = (user.avatar && user.avatar.includes('http')) ? user.avatar : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.name) + '&background=random&color=fff';
             
             // Формируем HTML для аватара с возможностью фонового изображения
@@ -4667,7 +4774,7 @@
                 }
             }
             
-            // Применяем FIX 1: определяем финальный аватар
+            // Применяем FIX 4: определяем финальный аватар
             const finalAvatar = (avatar && avatar.includes('http')) ? avatar : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(usernameForAvatar) + '&background=random&color=fff';
             
             // Формируем HTML для аватара с возможностью фонового изображения
@@ -4724,9 +4831,28 @@
                 statusDisplay.innerHTML = '<span class="online-indicator"></span> в сети';
             }
             
-            // Для аватара в профиле используем текстовое представление, но для блока .avatar оставляем текст (эмодзи)
-            document.getElementById('profileAvatar').textContent = currentUser.avatar || '👤';
-            document.getElementById('profileAvatarLarge').textContent = currentUser.avatar || '👤';
+            // FIX 4: для аватара используем URL, если это ссылка
+            const avatarElement = document.getElementById('profileAvatar');
+            const avatarLarge = document.getElementById('profileAvatarLarge');
+            
+            if (currentUser.avatar && currentUser.avatar.includes('http')) {
+                avatarElement.style.backgroundImage = `url('${currentUser.avatar}')`;
+                avatarElement.style.backgroundSize = 'cover';
+                avatarElement.style.backgroundPosition = 'center';
+                avatarElement.textContent = '';
+                
+                avatarLarge.style.backgroundImage = `url('${currentUser.avatar}')`;
+                avatarLarge.style.backgroundSize = 'cover';
+                avatarLarge.style.backgroundPosition = 'center';
+                avatarLarge.textContent = '';
+            } else {
+                avatarElement.style.backgroundImage = '';
+                avatarElement.textContent = currentUser.avatar || '👤';
+                
+                avatarLarge.style.backgroundImage = '';
+                avatarLarge.textContent = currentUser.avatar || '👤';
+            }
+            
             document.getElementById('profileBioInput').value = currentUser.bio || '';
             document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
         }
@@ -4763,11 +4889,18 @@
                 .then(stream => {
                     mediaStream = stream;
                     
-                    let mimeType = 'audio/webm';
-                    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    // FIX 2: определяем поддерживаемый MIME-тип для iOS Safari
+                    let mimeType = 'audio/webm;codecs=opus';
+                    if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                        mimeType = 'audio/mp4';
+                    } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+                        mimeType = 'audio/aac';
+                    } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                         mimeType = 'audio/webm;codecs=opus';
                     } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
                         mimeType = 'audio/ogg;codecs=opus';
+                    } else {
+                        mimeType = 'audio/webm';
                     }
                     
                     const options = { mimeType: mimeType };
@@ -4775,6 +4908,7 @@
                     try {
                         mediaRecorder = new MediaRecorder(stream, options);
                     } catch (e) {
+                        console.warn('MIME type not supported, using default');
                         mediaRecorder = new MediaRecorder(stream);
                     }
                     
@@ -4785,7 +4919,7 @@
                     };
 
                     mediaRecorder.onstop = async () => {
-                        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        const audioBlob = new Blob(audioChunks, { type: mimeType });
                         const duration = Math.round((Date.now() - recordingStartTime) / 1000);
                         
                         if (mediaStream) {
@@ -4832,6 +4966,11 @@
             if (!audioElements[messageId]) {
                 try {
                     audioElements[messageId] = new Audio(audioSrc);
+                    
+                    // FIX 2: добавляем атрибуты для iOS Safari
+                    audioElements[messageId].playsinline = true;
+                    audioElements[messageId].setAttribute('playsinline', '');
+                    audioElements[messageId].preload = 'auto';
                     
                     audioElements[messageId].ontimeupdate = () => updateAudioProgress(messageId);
                     
@@ -4949,6 +5088,10 @@
                 
                 callEndedSound = new Audio();
                 callEndedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+                // FIX 3: Звук входящего сообщения
+                incomingMessageSound = new Audio();
+                incomingMessageSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
                 
                 setTimeout(resolve, 100);
             });
@@ -5681,7 +5824,7 @@
             sidebar.classList.toggle('active');
         }
 
-        // FIX 2: Новая функция для кнопки назад
+        // FIX 2: Новая функция для кнопки назад (уже есть)
         function handleBackButton() {
             const sidebar = document.getElementById('sidebar');
             if (window.innerWidth <= 768) {
