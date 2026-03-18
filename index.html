@@ -625,6 +625,13 @@
             flex-shrink: 0;
             color: white;
             box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+            overflow: hidden; /* for images */
+        }
+
+        .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .chat-details {
@@ -813,6 +820,13 @@
             color: white;
             cursor: pointer;
             box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+            overflow: hidden;
+        }
+
+        .chat-avatar-small img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .chat-avatar-small:active {
@@ -1668,6 +1682,13 @@
             font-weight: 500;
             color: white;
             box-shadow: 0 4px 16px rgba(0, 122, 255, 0.4);
+            overflow: hidden;
+        }
+
+        .user-profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .user-profile-name {
@@ -2136,7 +2157,7 @@
 
         <div class="chat-area">
             <div class="chat-header">
-                <button class="back-button" id="backButton" onclick="toggleSidebar()">←</button>
+                <button class="back-button" id="backButton" onclick="closeChat()">←</button>
                 <div class="chat-avatar-small" id="chatHeaderAvatar" onclick="openChatUserProfile()">👤</div>
                 <div class="chat-info" onclick="openChatUserProfile()">
                     <div class="chat-title" id="currentChatName">
@@ -2467,6 +2488,17 @@
                 const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
                 return v.toString(16);
             });
+        }
+
+        // ========== НОВАЯ ФУНКЦИЯ ДЛЯ АВАТАРОВ ==========
+        function getAvatarHtml(avatar, username) {
+            if (!avatar || avatar.length < 5) {
+                // Fallback to placeholder image
+                return `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random" alt="${username}" class="avatar-img" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+            } else {
+                // Assume avatar is a URL
+                return `<img src="${avatar}" alt="${username}" class="avatar-img" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random';">`;
+            }
         }
 
         // ========== ЗАКРЕПЛЕНИЕ ЧАТОВ ==========
@@ -3584,7 +3616,7 @@
             }
             
             document.getElementById('currentChatName').innerHTML = displayName;
-            document.getElementById('chatHeaderAvatar').textContent = avatar;
+            document.getElementById('chatHeaderAvatar').innerHTML = getAvatarHtml(avatar, displayName);
             
             document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : 'Приватный чат';
             document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists && displayName !== 'Избранное') ? 'flex' : 'none';
@@ -3608,6 +3640,23 @@
                 document.getElementById('messageInput').focus();
                 forceShowInput();
             }, 100);
+        }
+
+        // ========== НОВАЯ ФУНКЦИЯ ДЛЯ ЗАКРЫТИЯ ЧАТА ==========
+        function closeChat() {
+            if (currentChat) {
+                currentChat = null;
+                renderMessages();                     // shows empty state
+                updateUrlWithChat(null);               // remove hash from URL
+                document.getElementById('currentChatName').innerHTML = 'Выберите чат';
+                document.getElementById('chatHeaderAvatar').innerHTML = '👤';  // reset to default
+                document.getElementById('chatStatus').innerHTML = '';
+                document.getElementById('callBtn').style.display = 'none';
+            }
+            // On mobile, show the sidebar (chat list)
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('active');
+            }
         }
 
         function updateChatStatus() {
@@ -4590,7 +4639,7 @@
             
             return `
                 <div class="chat-item" onclick="createPrivateChat({id: '${user.id}', name: '${user.name}', avatar: '${user.avatar}'})">
-                    <div class="chat-avatar">${user.avatar}</div>
+                    <div class="chat-avatar">${getAvatarHtml(user.avatar, user.name)}</div>
                     <div class="chat-details">
                         <div class="chat-name">
                             ${user.name}${badges}
@@ -4641,7 +4690,7 @@
             
             return `
                 <div class="chat-item ${currentChat?.id === chat.id ? 'active' : ''}" onclick="joinChat(${JSON.stringify(chat).replace(/"/g, '&quot;')})">
-                    <div class="chat-avatar">${avatar}</div>
+                    <div class="chat-avatar">${getAvatarHtml(avatar, displayName)}</div>
                     <div class="chat-details">
                         <div class="chat-name">
                             ${displayName}
@@ -5560,7 +5609,7 @@
             if (user.is_admin) badges += ' ⚡';
             
             const content = `
-                <div class="user-profile-avatar">${user.avatar || '👤'}</div>
+                <div class="user-profile-avatar">${getAvatarHtml(user.avatar, user.username)}</div>
                 <div class="user-profile-name">${user.username}${badges}</div>
                 <div class="user-profile-bio">${user.bio || 'Нет информации'}</div>
                 <div class="user-profile-status">
