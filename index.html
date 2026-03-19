@@ -1680,6 +1680,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            margin: 0 auto; /* Центрирование */
         }
 
         .user-profile-name {
@@ -2094,6 +2095,14 @@
         }
         #remote-audios {
             display: none;
+        }
+        
+        /* Исправление для центрирования аватара в звонках */
+        #callerInfo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -2787,7 +2796,7 @@
             }
         }
 
-        // ========== ЗАГРУЗКА ЧАТОВ ИЗ БД (ЧЕРЕЗ chat_members) ==========
+        // ========== ЗАГРУЗКА ЧАТОВ ИЗ БД (ЧЕРЕЗ chat_members) С ПОСЛЕДНИМ СООБЩЕНИЕМ ==========
         async function loadUserChats() {
             if (!currentUser) return [];
             
@@ -2835,6 +2844,52 @@
                 
                 // Сохраняем в localStorage для офлайн доступа
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                
+                // Загружаем последние сообщения для этих чатов (не более 500 последних сообщений всего)
+                if (chatIds.length > 0) {
+                    const { data: latestMessages, error: msgError } = await db
+                        .from('messages')
+                        .select('*')
+                        .in('chat_id', chatIds)
+                        .order('created_at', { ascending: false })
+                        .limit(500);
+                    
+                    if (!msgError && latestMessages) {
+                        // Группируем последние сообщения по chat_id (берем первое встреченное, т.к. сортировка DESC)
+                        const lastMsgMap = {};
+                        latestMessages.forEach(msg => {
+                            if (!lastMsgMap[msg.chat_id]) {
+                                lastMsgMap[msg.chat_id] = msg;
+                            }
+                        });
+                        // Сохраняем в messages, но только как временные для превью? Лучше добавить в общий кеш, но без дублирования.
+                        // Просто добавим в messages, если их там еще нет (для превью). При открытии чата подгрузится полная история.
+                        for (const [chatId, msg] of Object.entries(lastMsgMap)) {
+                            if (!messages[chatId]) messages[chatId] = [];
+                            // Проверяем, нет ли уже этого сообщения
+                            const exists = messages[chatId].some(m => m.id === msg.id);
+                            if (!exists) {
+                                const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
+                                messages[chatId].push({
+                                    id: msg.id,
+                                    chatId: msg.chat_id,
+                                    sender: msg.sender_id,
+                                    senderName: sender.username,
+                                    senderIsVip: sender.is_vip,
+                                    senderIsAdmin: sender.is_admin,
+                                    text: msg.text,
+                                    audio: msg.audio,
+                                    duration: msg.duration,
+                                    time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                                    timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+                                    isAdmin: msg.is_admin || false,
+                                    edited: msg.edited || false,
+                                    type: msg.sender_id === currentUser.id ? 'out' : 'in'
+                                });
+                            }
+                        }
+                    }
+                }
                 
                 return myChats;
             } catch (err) {
@@ -3503,9 +3558,24 @@
                     messages[chatId].push(newMsg);
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
-                    // FIX 3: Воспроизводим звук, если уведомления для этого чата включены
-                    if (getNotificationState(chatId) && msg.sender_id !== currentUser.id) {
+                    // FIX 3: Воспроизводим звук, если уведомления для этого чата включены и пользователь не в DND
+                    if (!currentUser.dnd && getNotificationState(chatId) && msg.sender_id !== currentUser.id) {
                         playIncomingMessageSound();
+                    }
+                    
+                    // Уведомление в фоне (Service Worker) если вкладка неактивна
+                    if (document.visibilityState === 'hidden' && !currentUser.dnd && getNotificationState(chatId)) {
+                        showBackgroundNotification(`Новое сообщение от ${sender.username}`, {
+                            body: msg.text || 'Голосовое сообщение',
+                            icon: sender.avatar,
+                            vibrate: [200, 100, 200]
+                        });
+                    } else if (Notification.permission === 'granted' && !currentUser.dnd && getNotificationState(chatId) && document.visibilityState !== 'hidden') {
+                        // Если вкладка активна, но разрешены уведомления, показываем обычное уведомление
+                        new Notification(`Новое сообщение от ${sender.username}`, {
+                            body: msg.text || 'Голосовое сообщение',
+                            icon: sender.avatar
+                        });
                     }
                     
                     chatChannel.publish('delivery_receipt', { 
@@ -3515,19 +3585,14 @@
                     
                     if (currentChat?.id !== chatId) {
                         unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                        
-                        if (Notification.permission === 'granted') {
-                            new Notification(`Новое сообщение от ${sender.username}`, {
-                                body: msg.text || 'Голосовое сообщение',
-                                icon: sender.avatar
-                            });
-                        }
+                        updateAppBadge(); // обновляем бейдж
                     }
                     
                     if (currentChat && currentChat.id === chatId) {
                         renderMessages();
                         unreadCounts[chatId] = 0;
                         markMessagesAsRead(chatId);
+                        updateAppBadge();
                     }
                     
                     updateChatsList();
@@ -3546,13 +3611,26 @@
             });
             
             chatChannel.subscribe('read_receipt', (data) => {
-                const { messageId } = data.data;
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'read';
-                    saveMessageStatuses();
-                }
-                if (currentChat && currentChat.id === chatId) {
-                    renderMessages();
+                const { messageId, reader } = data.data;
+                if (!currentChat || currentChat.id !== chatId) return;
+                
+                // Каскадное прочтение: если сообщение прочитано, все предыдущие сообщения отправителя тоже считаем прочитанными
+                if (messages[chatId]) {
+                    // Находим индекс сообщения, которое было отмечено как прочитанное
+                    const readMsgIndex = messages[chatId].findIndex(m => m.id === messageId);
+                    if (readMsgIndex !== -1) {
+                        // Проходим по всем сообщениям до этого индекса включительно, которые принадлежат отправителю (currentUser)
+                        for (let i = 0; i <= readMsgIndex; i++) {
+                            const msg = messages[chatId][i];
+                            if (msg.sender === currentUser.id) { // только свои исходящие
+                                if (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read') {
+                                    messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
+                                }
+                            }
+                        }
+                        saveMessageStatuses();
+                        renderMessages();
+                    }
                 }
             });
             
@@ -3907,6 +3985,7 @@
             
             unreadCounts[chatId] = 0;
             updateChatsList();
+            updateAppBadge(); // обновляем бейдж
         }
 
         // ========== УДАЛЕНИЕ ЧАТА (для админа) ==========
@@ -4509,6 +4588,15 @@
             });
             
             updateChatsList();
+            updateAppBadge();
+        }
+
+        // Обновление бейджа приложения
+        function updateAppBadge() {
+            if ('setAppBadge' in navigator) {
+                const unreadChats = Object.values(unreadCounts).filter(count => count > 0).length;
+                navigator.setAppBadge(unreadChats).catch(e => console.warn('Badge error:', e));
+            }
         }
 
         // ========== ABLY (оптимизированная инициализация) ==========
@@ -4789,7 +4877,8 @@
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
             } else if (currentTab === 'public') {
-                items = [...publicChats].sort((a, b) => {
+                // Исключаем чаты, которые уже есть в myChats (чтобы не дублировать)
+                items = [...publicChats].filter(pc => !myChats.some(mc => mc.id === pc.id)).sort((a, b) => {
                     return new Date(b.created_at) - new Date(a.created_at);
                 });
             } else if (currentTab === 'users') {
@@ -5309,6 +5398,9 @@
                 callRingtone.pause();
                 callRingtone.currentTime = 0;
             }
+            // Очищаем таймер
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
         }
 
         async function startCall() {
@@ -5337,9 +5429,8 @@
             }
             const receiverId = otherUser.id;
 
-            // Проверяем, не занят ли собеседник (по наличию в onlineUsers и флагу dnd? но лучше по своему состоянию)
-            // Здесь мы полагаемся на то, что если собеседник онлайн, он получит запрос, иначе отправим уведомление позже.
-            // Можно было бы хранить статус звонка в БД, но для простоты оставим так.
+            // Инициализируем AudioContext для разблокировки звука на мобильных
+            initAudioContext();
 
             const callId = generateUUID();
             const timestamp = Date.now();
@@ -5404,6 +5495,10 @@
             const callerAvatarEl = document.getElementById('callAvatar');
             const incomingControls = document.getElementById('incomingCallControls');
             const outgoingControls = document.getElementById('outgoingCallControls');
+            const timerEl = document.getElementById('callTimer');
+
+            // Сбрасываем таймер при любом открытии модалки
+            timerEl.textContent = '';
 
             if (status === 'calling') {
                 statusEl.textContent = 'Идет гудок...';
@@ -5427,6 +5522,7 @@
                 document.getElementById('endCallBtn').onclick = endCall;
                 document.getElementById('muteCallBtn').onclick = toggleMute;
                 document.getElementById('muteCallBtn').classList.remove('muted');
+                // Таймер запустится отдельно
             }
 
             callerNameEl.textContent = peerName || 'Пользователь';
