@@ -4610,31 +4610,36 @@
                 name: "Армейское",
                 items: cs2Items.common,
                 color: '#5e98d9',
-                price: Math.round(19 * 7)
+                price: Math.round(19 * 7),
+                image: 'images/1.jpeg'
             },
             2: {
                 name: "Запрещенное",
                 items: cs2Items.uncommon,
                 color: '#8847ff',
-                price: Math.round(68 * 7)
+                price: Math.round(68 * 7),
+                image: 'images/2.jpeg'
             },
             3: {
                 name: "Засекреченное",
                 items: cs2Items.rare,
                 color: '#d32ee6',
-                price: Math.round(188 * 7)
+                price: Math.round(188 * 7),
+                image: 'images/3.jpeg'
             },
             4: {
                 name: "Тайное",
                 items: cs2Items.mythical,
                 color: '#eb4b4b',
-                price: Math.round(450 * 7)
+                price: Math.round(450 * 7),
+                image: 'images/4.jpeg'
             },
             5: {
                 name: "Ножевой",
                 items: cs2Items.legendary.concat(cs2Items.ancient),
                 color: '#ffd700',
-                price: Math.round(1850 * 7)
+                price: Math.round(1850 * 7),
+                image: 'images/5.jpeg'
             }
         };
 
@@ -6817,7 +6822,7 @@
                 
                 const words = item.name.split(' ');
                 let displayName = '';
-                for (let i = 0; i <words.length; i++) {
+                for (let i = 0; i < words.length; i++) {
                     displayName += words[i] + (i % 3 === 2 ? '\n' : ' ');
                 }
                 
@@ -7796,12 +7801,16 @@
                 caseCard.style.borderColor = caseData.color;
                 
                 let caseImage;
-                switch(caseId) {
-                    case '1': caseImage = '<div class="case-army"></div>'; break;
-                    case '2': caseImage = '<div class="case-forbidden"></div>'; break;
-                    case '3': caseImage = '<div class="case-secret"></div>'; break;
-                    case '4': caseImage = '<div class="case-classified"></div>'; break;
-                    case '5': caseImage = '<div class="case-knife"></div>'; break;
+                if (caseData.image) {
+                    caseImage = `<img src="${caseData.image}" alt="${caseData.name}" style="max-width: 70%; max-height: 70%; object-fit: contain;">`;
+                } else {
+                    switch(caseId) {
+                        case '1': caseImage = '<div class="case-army"></div>'; break;
+                        case '2': caseImage = '<div class="case-forbidden"></div>'; break;
+                        case '3': caseImage = '<div class="case-secret"></div>'; break;
+                        case '4': caseImage = '<div class="case-classified"></div>'; break;
+                        case '5': caseImage = '<div class="case-knife"></div>'; break;
+                    }
                 }
                 
                 caseCard.innerHTML = `
