@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gates of Olympus — Демо</title>
+    <title>Gates of Olympus — Full Engine</title>
     <style>
         :root {
             --bg: #0a0a1a;
@@ -16,6 +16,8 @@
             --green-accent: #2ecc71;
             --btn-bg: #1a1a3e;
             --border: #2a2a5a;
+            --cell-size: 64px;
+            --gap: 4px;
         }
 
         * {
@@ -36,7 +38,6 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Фоновые частицы */
         .particles {
             position: fixed;
             top: 0;
@@ -46,12 +47,14 @@
             pointer-events: none;
             z-index: 0;
         }
+
         .particle {
             position: absolute;
             background: radial-gradient(circle, rgba(255, 215, 0, 0.6) 0%, transparent 70%);
             border-radius: 50%;
             animation: floatUp linear infinite;
         }
+
         @keyframes floatUp {
             0% {
                 transform: translateY(100vh) scale(0);
@@ -76,20 +79,17 @@
             background: var(--panel-bg);
             border-radius: 24px;
             padding: 20px 24px 24px;
-            box-shadow:
-                0 0 60px rgba(100, 80, 220, 0.3),
-                0 0 120px rgba(100, 80, 220, 0.1),
-                0 20px 60px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 60px rgba(100, 80, 220, 0.3), 0 0 120px rgba(100, 80, 220, 0.1), 0 20px 60px rgba(0, 0, 0, 0.6);
             border: 2px solid var(--border);
         }
 
-        /* Шапка */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
         }
+
         .logo {
             font-size: 22px;
             font-weight: 900;
@@ -98,9 +98,9 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            text-shadow: none;
             filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
         }
+
         .multiplier-display {
             background: linear-gradient(135deg, #2d1b69, #4a2d8f);
             border: 2px solid #6c5ce7;
@@ -113,7 +113,15 @@
             animation: pulseGlow 2s ease-in-out infinite;
             min-width: 80px;
             text-align: center;
+            transition: all 0.3s;
         }
+
+        .multiplier-display.bonus-active {
+            border-color: #ffd700;
+            box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+            animation: pulseGlowBonus 1s ease-in-out infinite;
+        }
+
         @keyframes pulseGlow {
             0%,
             100% {
@@ -123,8 +131,16 @@
                 box-shadow: 0 0 30px rgba(108, 92, 231, 0.9);
             }
         }
+        @keyframes pulseGlowBonus {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            }
+            50% {
+                box-shadow: 0 0 40px rgba(255, 215, 0, 1);
+            }
+        }
 
-        /* Игровое поле */
         .game-area {
             position: relative;
             background: linear-gradient(180deg, #0d0d2b 0%, #1a1040 50%, #0d0d2b 100%);
@@ -134,14 +150,18 @@
             border: 3px solid #2a2a5a;
             box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.5);
             overflow: hidden;
+            height: 370px;
         }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(6, 1fr);
             grid-template-rows: repeat(5, 1fr);
-            gap: 4px;
-            aspect-ratio: 6/5;
+            gap: var(--gap);
+            height: 100%;
+            position: relative;
         }
+
         .cell {
             position: relative;
             background: rgba(20, 20, 50, 0.8);
@@ -150,22 +170,26 @@
             align-items: center;
             justify-content: center;
             font-size: 36px;
-            cursor: default;
-            transition: transform 0.15s, background 0.3s;
-            overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.1s, background 0.3s, opacity 0.3s;
+            overflow: hidden;
+            cursor: default;
         }
+
         .cell.win {
             animation: winPop 0.5s ease-out;
-            background: rgba(255, 215, 0, 0.2);
-            border-color: rgba(255, 215, 0, 0.5);
+            background: rgba(255, 215, 0, 0.25);
+            border-color: rgba(255, 215, 0, 0.6);
             z-index: 2;
         }
+
         .cell.multiplier-cell {
-            animation: multGlow 1s ease-in-out infinite;
             border-color: #ff6b6b !important;
-            background: rgba(255, 100, 100, 0.25) !important;
+            background: rgba(255, 100, 100, 0.3) !important;
+            animation: multGlow 1s ease-in-out infinite;
+            z-index: 3;
         }
+
         .cell .mult-badge {
             position: absolute;
             top: 2px;
@@ -175,12 +199,30 @@
             color: #ff4444;
             text-shadow: 0 0 6px #ff0000;
         }
+
+        .cell.falling {
+            animation: fallIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .cell.exploding {
+            animation: explode 0.4s ease-out forwards;
+        }
+
+        .cell.zeus-strike {
+            animation: zeusStrike 0.2s ease-out;
+            border-color: #ffff00 !important;
+            box-shadow: 0 0 30px #ffff00 !important;
+        }
+
         @keyframes winPop {
             0% {
                 transform: scale(1);
             }
             30% {
-                transform: scale(1.25);
+                transform: scale(1.2);
+            }
+            60% {
+                transform: scale(0.95);
             }
             100% {
                 transform: scale(1);
@@ -189,33 +231,57 @@
         @keyframes multGlow {
             0%,
             100% {
-                box-shadow: 0 0 8px rgba(255, 80, 80, 0.6);
+                box-shadow: 0 0 10px rgba(255, 80, 80, 0.6);
             }
             50% {
-                box-shadow: 0 0 20px rgba(255, 80, 80, 1);
+                box-shadow: 0 0 25px rgba(255, 80, 80, 1);
             }
-        }
-        .cell.falling {
-            animation: fallIn 0.3s ease-out;
         }
         @keyframes fallIn {
             0% {
-                transform: translateY(-60px);
+                transform: translateY(-80px);
                 opacity: 0;
+            }
+            70% {
+                transform: translateY(5px);
+                opacity: 1;
+            }
+            85% {
+                transform: translateY(-3px);
             }
             100% {
                 transform: translateY(0);
                 opacity: 1;
             }
         }
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+                background: rgba(255, 215, 0, 0.6);
+            }
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+                background: rgba(255, 255, 255, 0.9);
+            }
+        }
+        @keyframes zeusStrike {
+            0% {
+                box-shadow: 0 0 0px #ffff00;
+                background: rgba(255, 255, 0, 0.6);
+            }
+            100% {
+                box-shadow: 0 0 30px #ffff00;
+                background: rgba(20, 20, 50, 0.8);
+            }
+        }
 
-        /* Затемнение при блокировке */
         .game-area.locked {
-            filter: brightness(0.6);
+            filter: brightness(0.7);
             pointer-events: none;
         }
 
-        /* Инфо панель */
         .info-row {
             display: flex;
             justify-content: space-between;
@@ -223,25 +289,8 @@
             margin-bottom: 12px;
             gap: 10px;
         }
-        .balance-box {
-            background: #0d0d25;
-            border: 2px solid #2a2a5a;
-            border-radius: 12px;
-            padding: 10px 16px;
-            flex: 1;
-            text-align: center;
-        }
-        .balance-label {
-            font-size: 11px;
-            color: #8888aa;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .balance-value {
-            font-size: 22px;
-            font-weight: 900;
-            color: #ffd700;
-        }
+
+        .balance-box,
         .bet-box {
             background: #0d0d25;
             border: 2px solid #2a2a5a;
@@ -250,23 +299,32 @@
             flex: 1;
             text-align: center;
         }
+
+        .balance-label,
         .bet-label {
             font-size: 11px;
             color: #8888aa;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
+        .balance-value,
         .bet-value {
             font-size: 22px;
             font-weight: 900;
+            color: #ffd700;
+        }
+        .bet-value {
             color: #ffffff;
         }
+
         .bet-controls {
             display: flex;
             gap: 6px;
             margin-top: 4px;
             justify-content: center;
         }
+
         .bet-btn {
             width: 30px;
             height: 30px;
@@ -281,23 +339,20 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            line-height: 1;
         }
+
         .bet-btn:hover {
             background: #2a2a5e;
             border-color: #ffd700;
             color: #ffd700;
         }
-        .bet-btn:active {
-            transform: scale(0.9);
-        }
 
-        /* Кнопки */
         .btn-row {
             display: flex;
             gap: 10px;
             margin-top: 4px;
         }
+
         .btn-spin {
             flex: 2;
             padding: 16px;
@@ -312,16 +367,14 @@
             color: #1a1a3e;
             box-shadow: 0 6px 20px rgba(212, 168, 67, 0.5);
             transition: all 0.2s;
-            position: relative;
-            overflow: hidden;
         }
+
         .btn-spin:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(212, 168, 67, 0.7);
         }
         .btn-spin:active {
             transform: scale(0.95);
-            box-shadow: 0 4px 12px rgba(212, 168, 67, 0.4);
         }
         .btn-spin:disabled {
             background: #555;
@@ -330,6 +383,7 @@
             box-shadow: none;
             transform: none;
         }
+
         .btn-bonus {
             flex: 1;
             padding: 16px 10px;
@@ -345,22 +399,41 @@
             transition: all 0.2s;
             white-space: nowrap;
         }
+
         .btn-bonus:hover {
             background: #3d2b79;
             border-color: #a78bfa;
             color: #fff;
             box-shadow: 0 0 25px rgba(108, 92, 231, 0.5);
         }
-        .btn-bonus:active {
-            transform: scale(0.95);
-        }
         .btn-bonus:disabled {
             opacity: 0.4;
             cursor: not-allowed;
-            box-shadow: none;
         }
 
-        /* Уведомление о выигрыше */
+        .btn-autospin {
+            flex: 1;
+            padding: 16px 10px;
+            border-radius: 50px;
+            border: 2px solid #4a4a7a;
+            background: #1a1a3e;
+            color: #999;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .btn-autospin:hover {
+            border-color: #ffd700;
+            color: #ffd700;
+        }
+        .btn-autospin.active {
+            border-color: #ffd700 !important;
+            color: #ffd700 !important;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+
         .win-notification {
             position: absolute;
             top: 50%;
@@ -378,24 +451,22 @@
         .win-notification.show {
             transform: translate(-50%, -50%) scale(1);
         }
-        .win-notification.hide {
-            transform: translate(-50%, -50%) scale(0);
-            opacity: 0;
-        }
 
-        /* Адаптив */
         @media (max-width: 500px) {
             .container {
                 width: 95vw;
-                padding: 14px 10px 16px;
+                padding: 12px 8px 14px;
                 border-radius: 16px;
             }
             .cell {
-                font-size: 24px;
+                font-size: 22px;
                 border-radius: 5px;
             }
             .grid {
                 gap: 2px;
+            }
+            .game-area {
+                height: 290px;
             }
             .balance-value,
             .bet-value {
@@ -403,14 +474,15 @@
             }
             .btn-spin {
                 font-size: 16px;
-                padding: 14px;
+                padding: 12px;
             }
-            .btn-bonus {
-                font-size: 11px;
-                padding: 14px 6px;
+            .btn-bonus,
+            .btn-autospin {
+                font-size: 10px;
+                padding: 12px 4px;
             }
             .logo {
-                font-size: 17px;
+                font-size: 16px;
             }
             .multiplier-display {
                 font-size: 16px;
@@ -421,23 +493,19 @@
 </head>
 <body>
 
-    <!-- Частицы фона -->
     <div class="particles" id="particles"></div>
 
     <div class="container">
-        <!-- Шапка -->
         <div class="header">
             <span class="logo">⚡ GATES OF OLYMPUS</span>
             <div class="multiplier-display" id="totalMultiplier">x1</div>
         </div>
 
-        <!-- Игровое поле -->
         <div class="game-area" id="gameArea">
             <div class="grid" id="grid"></div>
             <div class="win-notification" id="winNotification"></div>
         </div>
 
-        <!-- Инфо -->
         <div class="info-row">
             <div class="balance-box">
                 <div class="balance-label">💎 Баланс</div>
@@ -453,130 +521,105 @@
             </div>
         </div>
 
-        <!-- Кнопки -->
         <div class="btn-row">
             <button class="btn-spin" id="btnSpin">ВРАЩАТЬ</button>
             <button class="btn-bonus" id="btnBonus">КУПИТЬ БОНУС<br>100x</button>
+            <button class="btn-autospin" id="btnAuto">AUTO</button>
         </div>
     </div>
 
     <script>
         (function() {
-            // ============ КОНФИГУРАЦИЯ СИМВОЛОВ ============
-            const SYMBOLS = [
-                { id: 's1', emoji: '💎', name: 'Фиолетовый', minCount: 8, payouts: [0, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10,
-                        15, 20
-                    ], weight: 22 },
-                { id: 's2', emoji: '🟢', name: 'Зелёный', minCount: 8, payouts: [0, 0.2, 0.4, 0.6, 0.8, 1.5, 2, 4, 8, 12,
-                        16
-                    ], weight: 22 },
-                { id: 's3', emoji: '🔵', name: 'Синий', minCount: 8, payouts: [0, 0.15, 0.3, 0.45, 0.6, 1.2, 1.8, 3, 6, 9,
-                        12
-                    ], weight: 20 },
-                { id: 's4', emoji: '🟡', name: 'Жёлтый', minCount: 8, payouts: [0, 0.1, 0.25, 0.4, 0.5, 1, 1.5, 2.5, 5, 7,
-                        10
-                    ], weight: 20 },
-                { id: 's5', emoji: '🔴', name: 'Красный', minCount: 8, payouts: [0, 0.1, 0.2, 0.35, 0.45, 0.9, 1.3, 2, 4,
-                        6, 8
-                    ], weight: 18 },
-                { id: 's6', emoji: '🏆', name: 'Кубок', minCount: 6, payouts: [0, 0.5, 1, 1.5, 2, 3, 4, 5, 10, 15, 20, 30,
-                        40
-                    ], weight: 10 },
-                { id: 's7', emoji: '👑', name: 'Корона', minCount: 6, payouts: [0, 1, 2, 3, 4, 5, 10, 15, 25, 40, 50, 75,
-                        100
-                    ], weight: 6 },
-                { id: 's8', emoji: '💍', name: 'Кольцо', minCount: 6, payouts: [0, 1.5, 3, 5, 8, 12, 20, 30, 50, 75, 100,
-                        150, 200
-                    ], weight: 3 },
-                { id: 's9', emoji: '⚡', name: 'Зевс', minCount: 3, payouts: [0, 2, 5, 10, 20, 50, 100, 200, 500, 1000,
-                        2000, 5000, 10000
-                    ], weight: 1 },
-            ];
-
-            // Конфигурация множителей
-            const MULTIPLIER_VALUES = [2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 50, 100, 250, 500];
-            const MULTIPLIER_WEIGHTS = [30, 25, 20, 15, 12, 10, 8, 6, 5, 4, 3, 2, 1, 0.5];
-            const MULTIPLIER_CHANCE = 0.06; // 6% шанс, что символ станет множителем
-
-            // Нормализация весов множителей
-            const totalMultWeight = MULTIPLIER_WEIGHTS.reduce((a, b) => a + b, 0);
-
-            function getRandomMultiplier() {
-                let r = Math.random() * totalMultWeight;
-                for (let i = 0; i < MULTIPLIER_VALUES.length; i++) {
-                    r -= MULTIPLIER_WEIGHTS[i];
-                    if (r <= 0) return MULTIPLIER_VALUES[i];
-                }
-                return MULTIPLIER_VALUES[0];
-            }
-
-            // ============ СОСТОЯНИЕ ИГРЫ ============
+            // ==================== 1. СТРУКТУРА ДАННЫХ (JSON-подобная) ====================
             const COLS = 6;
             const ROWS = 5;
+
+            /**
+             * Ячейка сетки:
+             * {
+             *   symbolType: string,   // ID символа
+             *   isMultiplier: boolean,
+             *   multiplierValue: number | null,
+             *   x: number,            // колонка
+             *   y: number             // ряд (0 = верх)
+             * }
+             */
+
+            // ==================== 2. ТАБЛИЦА ВЫПЛАТ (PayTable) ====================
+            const SYMBOLS = [
+                { id: 'gem_purple', emoji: '💎', name: 'Фиолетовый', minCount: 8,
+                    payouts: [0, 0.25, 0.5, 0.75, 1, 2, 3, 5, 10, 15, 20], weight: 22, tier: 'low' },
+                { id: 'gem_green', emoji: '🟢', name: 'Зелёный', minCount: 8,
+                    payouts: [0, 0.2, 0.4, 0.6, 0.8, 1.5, 2, 4, 8, 12, 16], weight: 22, tier: 'low' },
+                { id: 'gem_blue', emoji: '🔵', name: 'Синий', minCount: 8,
+                    payouts: [0, 0.15, 0.3, 0.45, 0.6, 1.2, 1.8, 3, 6, 9, 12], weight: 20, tier: 'low' },
+                { id: 'gem_yellow', emoji: '🟡', name: 'Жёлтый', minCount: 8,
+                    payouts: [0, 0.1, 0.25, 0.4, 0.5, 1, 1.5, 2.5, 5, 7, 10], weight: 20, tier: 'low' },
+                { id: 'gem_red', emoji: '🔴', name: 'Красный', minCount: 8,
+                    payouts: [0, 0.1, 0.2, 0.35, 0.45, 0.9, 1.3, 2, 4, 6, 8], weight: 18, tier: 'low' },
+                { id: 'cup', emoji: '🏆', name: 'Кубок', minCount: 6,
+                    payouts: [0, 0.5, 1, 1.5, 2, 3, 4, 5, 10, 15, 20, 30, 40], weight: 10, tier: 'high' },
+                { id: 'ring', emoji: '💍', name: 'Кольцо', minCount: 6,
+                    payouts: [0, 1.5, 3, 5, 8, 12, 20, 30, 50, 75, 100, 150, 200], weight: 6, tier: 'high' },
+                { id: 'timer', emoji: '⏳', name: 'Часы', minCount: 6,
+                    payouts: [0, 2, 4, 6, 10, 18, 30, 50, 80, 120, 180, 250, 350], weight: 3, tier: 'high' },
+                { id: 'crown', emoji: '👑', name: 'Корона', minCount: 6,
+                    payouts: [0, 1, 2, 3, 4, 5, 10, 15, 25, 40, 50, 75, 100], weight: 6, tier: 'high' },
+                { id: 'scatter', emoji: '⚡', name: 'Scatter (Зевс)', minCount: 4,
+                    payouts: [0, 0, 0, 0, 3, 5, 10, 20, 50, 100], weight: 2, tier: 'scatter' },
+            ];
+
+            const MULTIPLIER_VALUES = [
+                { value: 2, weight: 30 }, { value: 3, weight: 25 }, { value: 4, weight: 20 },
+                { value: 5, weight: 15 }, { value: 6, weight: 12 }, { value: 8, weight: 10 },
+                { value: 10, weight: 8 }, { value: 15, weight: 6 }, { value: 20, weight: 4 },
+                { value: 25, weight: 3 }, { value: 50, weight: 2 }, { value: 100, weight: 1 },
+                { value: 250, weight: 0.5 }, { value: 500, weight: 0.3 },
+            ];
+            const totalMultWeight = MULTIPLIER_VALUES.reduce((s, m) => s + m.weight, 0);
+            const MULTIPLIER_SPAWN_CHANCE = 0.07; // 7% шанс на ячейку
+
             const BET_OPTIONS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
 
-            let grid = []; // grid[col][row] = { symbolId, isMultiplier, multiplierValue }
+            // ==================== 3. СОСТОЯНИЕ ИГРЫ ====================
+            let grid = []; // grid[col][row]
             let balance = 10000;
             let betAmount = 100;
-            let betIndex = 3; // индекс в BET_OPTIONS
-            let totalMultiplier = 1;
+            let betIndex = 3;
+            let spinMultiplier = 1; // Множитель текущего спина (сумма сфер в каскадах)
+            let globalBonusMultiplier = 1; // Глобальный множитель в бонусе
             let isSpinning = false;
-            let bonusActive = false;
+            let isBonusGame = false;
             let bonusSpinsRemaining = 0;
-            let cascadeInProgress = false;
+            let autoSpinsRemaining = 0;
+            let tumbleInProgress = false;
 
-            // ============ DOM ЭЛЕМЕНТЫ ============
+            // ==================== 4. DOM ЭЛЕМЕНТЫ ====================
             const gridEl = document.getElementById('grid');
             const balanceEl = document.getElementById('balance');
             const betEl = document.getElementById('bet');
             const totalMultEl = document.getElementById('totalMultiplier');
             const btnSpin = document.getElementById('btnSpin');
             const btnBonus = document.getElementById('btnBonus');
+            const btnAuto = document.getElementById('btnAuto');
             const gameArea = document.getElementById('gameArea');
             const winNotification = document.getElementById('winNotification');
             const betMinusBtn = document.getElementById('betMinus');
             const betPlusBtn = document.getElementById('betPlus');
 
-            // ============ ФУНКЦИИ ============
-
-            function formatNumber(n) {
-                if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            // ==================== 5. УТИЛИТЫ ====================
+            function fmt(n) {
+                if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
                 if (n >= 1000) return n.toLocaleString('ru-RU');
-                return n.toString();
+                return Math.floor(n).toString();
             }
 
-            function updateUI() {
-                balanceEl.textContent = formatNumber(Math.floor(balance));
-                betEl.textContent = formatNumber(betAmount);
-                totalMultEl.textContent = 'x' + totalMultiplier;
-
-                const bonusCost = betAmount * 100;
-                btnBonus.textContent = bonusActive ?
-                    `БОНУС (${bonusSpinsRemaining})` :
-                    `КУПИТЬ БОНУС\n${formatNumber(bonusCost)}`;
-
-                const canSpin = !isSpinning && balance >= betAmount && !bonusActive;
-                const canBuyBonus = !isSpinning && !bonusActive && balance >= bonusCost;
-
-                btnSpin.disabled = !canSpin;
-                btnBonus.disabled = !canBuyBonus;
-
-                if (bonusActive && bonusSpinsRemaining > 0 && !isSpinning) {
-                    btnSpin.disabled = false;
-                    btnSpin.textContent = `БОНУС (${bonusSpinsRemaining})`;
-                } else if (!bonusActive) {
-                    btnSpin.textContent = 'ВРАЩАТЬ';
-                }
-
-                if (isSpinning) {
-                    gameArea.classList.add('locked');
-                } else {
-                    gameArea.classList.remove('locked');
-                }
+            function getSymbolById(id) {
+                return SYMBOLS.find(s => s.id === id);
             }
 
-            function getRandomSymbol() {
-                const totalWeight = SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
+            function getRandomSymbolId() {
+                const totalWeight = SYMBOLS.reduce((s, sym) => s + sym.weight, 0);
                 let r = Math.random() * totalWeight;
                 for (const sym of SYMBOLS) {
                     r -= sym.weight;
@@ -585,165 +628,208 @@
                 return SYMBOLS[0].id;
             }
 
+            function getRandomMultiplierValue() {
+                let r = Math.random() * totalMultWeight;
+                for (const m of MULTIPLIER_VALUES) {
+                    r -= m.weight;
+                    if (r <= 0) return m.value;
+                }
+                return MULTIPLIER_VALUES[0].value;
+            }
+
+            // ==================== 6. ГЕНЕРАЦИЯ СЕТКИ ====================
             function generateGrid() {
                 grid = [];
                 for (let col = 0; col < COLS; col++) {
                     grid[col] = [];
                     for (let row = 0; row < ROWS; row++) {
-                        const symbolId = getRandomSymbol();
-                        const isMultiplier = Math.random() < MULTIPLIER_CHANCE;
+                        const sid = getRandomSymbolId();
+                        const isMult = Math.random() < MULTIPLIER_SPAWN_CHANCE;
                         grid[col][row] = {
-                            symbolId,
-                            isMultiplier,
-                            multiplierValue: isMultiplier ? getRandomMultiplier() : null,
+                            symbolType: sid,
+                            isMultiplier: isMult,
+                            multiplierValue: isMult ? getRandomMultiplierValue() : null,
+                            x: col,
+                            y: row,
                         };
                     }
                 }
             }
 
-            function getSymbolById(id) {
-                return SYMBOLS.find(s => s.id === id);
-            }
-
+            // ==================== 7. ОТРИСОВКА (updateUI) ====================
             function renderGrid(animateNew = false) {
                 gridEl.innerHTML = '';
                 for (let row = 0; row < ROWS; row++) {
                     for (let col = 0; col < COLS; col++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
-                        const cellData = grid[col][row];
-                        if (cellData) {
-                            const sym = getSymbolById(cellData.symbolId);
+                        cell.dataset.col = col;
+                        cell.dataset.row = row;
+                        const data = grid[col]?.[row];
+                        if (data) {
+                            const sym = getSymbolById(data.symbolType);
                             cell.textContent = sym ? sym.emoji : '❓';
-                            if (cellData.isMultiplier) {
+                            if (data.isMultiplier) {
                                 cell.classList.add('multiplier-cell');
                                 const badge = document.createElement('span');
                                 badge.className = 'mult-badge';
-                                badge.textContent = 'x' + cellData.multiplierValue;
+                                badge.textContent = 'x' + data.multiplierValue;
                                 cell.appendChild(badge);
                             }
                         }
                         if (animateNew) {
                             cell.classList.add('falling');
-                            cell.style.animationDelay = (col * 0.04 + row * 0.02) + 's';
+                            cell.style.animationDelay = (col * 0.03 + row * 0.015) + 's';
                         }
                         gridEl.appendChild(cell);
                     }
                 }
             }
 
-            function countSymbols() {
-                const counts = {};
-                const multiplierCells = [];
-
-                for (let col = 0; col < COLS; col++) {
-                    for (let row = 0; row < ROWS; row++) {
-                        const cell = grid[col][row];
-                        if (!cell) continue;
-                        const id = cell.symbolId;
-                        if (!counts[id]) counts[id] = { count: 0, positions: [] };
-                        counts[id].count++;
-                        counts[id].positions.push({ col, row });
-
-                        if (cell.isMultiplier && cell.multiplierValue) {
-                            multiplierCells.push({
-                                col,
-                                row,
-                                value: cell.multiplierValue,
-                                id: cell.symbolId,
-                            });
-                        }
-                    }
+            function updateUIState() {
+                balanceEl.textContent = fmt(balance);
+                betEl.textContent = fmt(betAmount);
+                const displayMult = isBonusGame ? globalBonusMultiplier : spinMultiplier;
+                totalMultEl.textContent = 'x' + displayMult;
+                if (isBonusGame) {
+                    totalMultEl.classList.add('bonus-active');
+                } else {
+                    totalMultEl.classList.remove('bonus-active');
                 }
-                return { counts, multiplierCells };
+
+                const bonusCost = betAmount * 100;
+                btnBonus.textContent = isBonusGame ?
+                    `БОНУС (${bonusSpinsRemaining})` :
+                    `КУПИТЬ БОНУС\n${fmt(bonusCost)}`;
+
+                const canSpin = !isSpinning && balance >= betAmount && !isBonusGame;
+                const canBuyBonus = !isSpinning && !isBonusGame && balance >= bonusCost;
+                btnSpin.disabled = !canSpin && !(isBonusGame && bonusSpinsRemaining > 0 && !isSpinning);
+                btnBonus.disabled = !canBuyBonus;
+
+                if (isBonusGame && bonusSpinsRemaining > 0 && !isSpinning) {
+                    btnSpin.disabled = false;
+                    btnSpin.textContent = `ФРИСПИН (${bonusSpinsRemaining})`;
+                } else if (!isBonusGame) {
+                    btnSpin.textContent = autoSpinsRemaining > 0 ?
+                        `AUTO (${autoSpinsRemaining})` : 'ВРАЩАТЬ';
+                }
+
+                if (autoSpinsRemaining > 0) {
+                    btnAuto.classList.add('active');
+                    btnAuto.textContent = `AUTO ${autoSpinsRemaining}`;
+                } else {
+                    btnAuto.classList.remove('active');
+                    btnAuto.textContent = 'AUTO';
+                }
+
+                if (isSpinning) gameArea.classList.add('locked');
+                else gameArea.classList.remove('locked');
             }
 
-            function findWinningSymbols(counts) {
+            // ==================== 8. ГЛАВНЫЙ ЦИКЛ: ПРОВЕРКА ВЫИГРЫША (checkWin) ====================
+            function checkWin(gridSnapshot) {
+                const counts = {}; // { symbolType: { count, positions: [] } }
+                for (let col = 0; col < COLS; col++) {
+                    for (let row = 0; row < ROWS; row++) {
+                        const cell = gridSnapshot[col]?.[row];
+                        if (!cell) continue;
+                        const id = cell.symbolType;
+                        if (!counts[id]) counts[id] = { count: 0, positions: [], symbolData: getSymbolById(id) };
+                        counts[id].count++;
+                        counts[id].positions.push({ x: col, y: row });
+                    }
+                }
+
                 const winners = [];
-                for (const [symId, data] of Object.entries(counts)) {
-                    const sym = getSymbolById(symId);
-                    if (!sym) continue;
-                    if (data.count >= sym.minCount) {
-                        const payoutIndex = data.count - sym.minCount;
-                        const payout = payoutIndex < sym.payouts.length ? sym.payouts[payoutIndex] : sym.payouts[sym
-                            .payouts.length - 1];
-                        if (payout > 0) {
+                for (const [id, data] of Object.entries(counts)) {
+                    if (!data.symbolData) continue;
+                    const minC = data.symbolData.minCount;
+                    if (data.count >= minC) {
+                        const idx = data.count - minC;
+                        const pay = idx < data.symbolData.payouts.length ? data.symbolData.payouts[idx] : data.symbolData
+                            .payouts[data.symbolData.payouts.length - 1];
+                        if (pay > 0) {
                             winners.push({
-                                symbolId: symId,
+                                symbolType: id,
                                 count: data.count,
-                                payout: payout,
+                                payoutMultiplier: pay,
                                 positions: data.positions,
+                                isScatter: data.symbolData.tier === 'scatter',
                             });
                         }
                     }
                 }
-                // Сортировка по выплате (большие сначала)
-                winners.sort((a, b) => b.payout - a.payout);
+                winners.sort((a, b) => b.payoutMultiplier - a.payoutMultiplier);
                 return winners;
             }
 
-            function highlightWinners(winners, allMultiplierPositions) {
+            // ==================== 9. СБОР МНОЖИТЕЛЕЙ С ПОЛЯ ====================
+            function collectMultipliersFromGrid(gridSnapshot) {
+                const mults = [];
+                for (let col = 0; col < COLS; col++) {
+                    for (let row = 0; row < ROWS; row++) {
+                        const cell = gridSnapshot[col]?.[row];
+                        if (cell && cell.isMultiplier && cell.multiplierValue) {
+                            mults.push({ x: col, y: row, value: cell.multiplierValue });
+                        }
+                    }
+                }
+                return mults;
+            }
+
+            // ==================== 10. АНИМАЦИЯ «УДАР ЗЕВСА» ====================
+            function triggerZeusStrike(positions) {
                 const cells = gridEl.querySelectorAll('.cell');
-                cells.forEach(c => {
-                    c.classList.remove('win');
-                });
-
-                const winningPositions = new Set();
-                winners.forEach(w => {
-                    w.positions.forEach(p => winningPositions.add(`${p.col},${p.row}`));
-                });
-                // Подсвечиваем также все множители
-                allMultiplierPositions.forEach(mp => winningPositions.add(`${mp.col},${mp.row}`));
-
-                cells.forEach((cellEl, index) => {
-                    const col = index % COLS;
-                    const row = Math.floor(index / COLS);
-                    if (winningPositions.has(`${col},${row}`)) {
-                        cellEl.classList.add('win');
+                cells.forEach(c => c.classList.remove('zeus-strike'));
+                positions.forEach(p => {
+                    const cell = gridEl.querySelector(`.cell[data-col="${p.x}"][data-row="${p.y}"]`);
+                    if (cell) {
+                        cell.classList.add('zeus-strike');
+                        setTimeout(() => cell.classList.remove('zeus-strike'), 250);
                     }
                 });
             }
 
-            function removeWinningSymbols(winners, multiplierCells) {
-                const positionsToRemove = new Set();
-                winners.forEach(w => {
-                    w.positions.forEach(p => positionsToRemove.add(`${p.col},${p.row}`));
+            // ==================== 11. АНИМАЦИЯ ВЫИГРЫША (winExplosion) ====================
+            function animateWinExplosion(positions, callback) {
+                const cells = gridEl.querySelectorAll('.cell');
+                cells.forEach(c => c.classList.remove('win', 'exploding'));
+                positions.forEach(p => {
+                    const cell = gridEl.querySelector(`.cell[data-col="${p.x}"][data-row="${p.y}"]`);
+                    if (cell) cell.classList.add('win');
                 });
-                // Также убираем все множители, которые были на поле
-                multiplierCells.forEach(mp => positionsToRemove.add(`${mp.col},${mp.row}`));
+                setTimeout(() => {
+                    positions.forEach(p => {
+                        const cell = gridEl.querySelector(`.cell[data-col="${p.x}"][data-row="${p.y}"]`);
+                        if (cell) cell.classList.add('exploding');
+                    });
+                    setTimeout(callback, 400); // winExplosion = 0.4s
+                }, 300);
+            }
 
-                for (const posStr of positionsToRemove) {
-                    const [col, row] = posStr.split(',').map(Number);
-                    grid[col][row] = null;
+            // ==================== 12. СИСТЕМА TUMBLE ====================
+            function removeWinningSymbols(positionsToRemove, multiplierPositions) {
+                const allRemove = new Set();
+                positionsToRemove.forEach(p => allRemove.add(`${p.x},${p.y}`));
+                multiplierPositions.forEach(p => allRemove.add(`${p.x},${p.y}`));
+                for (const key of allRemove) {
+                    const [x, y] = key.split(',').map(Number);
+                    if (grid[x] && grid[x][y]) grid[x][y] = null;
                 }
-
-                return positionsToRemove.size;
             }
 
             function applyGravity() {
                 let moved = false;
                 for (let col = 0; col < COLS; col++) {
-                    // Собираем все не-null ячейки в колонке
-                    const existing = [];
-                    for (let row = 0; row < ROWS; row++) {
-                        if (grid[col][row] !== null) {
-                            existing.push(grid[col][row]);
-                        }
-                    }
-                    // Заполняем снизу
+                    const existing = grid[col].filter(cell => cell !== null);
                     const newCol = [];
-                    const emptyCount = ROWS - existing.length;
-                    for (let i = 0; i < emptyCount; i++) {
-                        newCol.push(null);
-                    }
-                    for (const cell of existing) {
-                        newCol.push(cell);
-                    }
-                    // Проверяем, изменилось ли что-то
+                    for (let i = 0; i < ROWS - existing.length; i++) newCol.push(null);
+                    for (const cell of existing) newCol.push(cell);
                     for (let row = 0; row < ROWS; row++) {
-                        if (grid[col][row] !== newCol[row]) {
-                            moved = true;
-                        }
+                        if (grid[col][row] !== newCol[row]) moved = true;
+                        if (newCol[row]) { newCol[row].x = col;
+                            newCol[row].y = row; }
                     }
                     grid[col] = newCol;
                 }
@@ -753,232 +839,277 @@
             function fillEmptyCells() {
                 for (let col = 0; col < COLS; col++) {
                     for (let row = 0; row < ROWS; row++) {
-                        if (grid[col][row] === null) {
-                            const symbolId = getRandomSymbol();
-                            const isMultiplier = Math.random() < MULTIPLIER_CHANCE;
+                        if (!grid[col][row]) {
+                            const sid = getRandomSymbolId();
+                            const isMult = Math.random() < MULTIPLIER_SPAWN_CHANCE;
                             grid[col][row] = {
-                                symbolId,
-                                isMultiplier,
-                                multiplierValue: isMultiplier ? getRandomMultiplier() : null,
+                                symbolType: sid,
+                                isMultiplier: isMult,
+                                multiplierValue: isMult ? getRandomMultiplierValue() : null,
+                                x: col,
+                                y: row,
                             };
                         }
                     }
                 }
             }
 
+            // ==================== 13. ПОКАЗ УВЕДОМЛЕНИЯ ====================
+            let notifTimeout;
+
             function showWinNotification(amount) {
                 if (amount <= 0) return;
-                winNotification.textContent = '+ ' + formatNumber(Math.floor(amount));
-                winNotification.classList.remove('hide');
+                clearTimeout(notifTimeout);
+                winNotification.textContent = '+ ' + fmt(amount);
                 winNotification.classList.add('show');
-                setTimeout(() => {
-                    winNotification.classList.add('hide');
-                    winNotification.classList.remove('show');
-                }, 1200);
+                notifTimeout = setTimeout(() => winNotification.classList.remove('show'), 1500);
             }
 
-            async function processCascades() {
-                let totalWin = 0;
-                let accumulatedMultiplier = 1;
-                let cascadeCount = 0;
+            // ==================== 14. ОБРАБОТКА КАСКАДОВ (Tumble Sequence) ====================
+            async function processTumbles() {
+                let totalSequenceWin = 0;
+                let accumulatedSpinMult = 1;
+                let cascadeIndex = 0;
+                tumbleInProgress = true;
 
-                cascadeInProgress = true;
+                while (tumbleInProgress) {
+                    const multsBefore = collectMultipliersFromGrid(grid);
+                    const winners = checkWin(grid);
 
-                while (cascadeInProgress) {
-                    const { counts, multiplierCells } = countSymbols();
-                    const winners = findWinningSymbols(counts);
-
-                    // Собираем множители с текущего каскада
-                    let cascadeMultiplierAdd = 0;
-                    multiplierCells.forEach(mp => {
-                        cascadeMultiplierAdd += mp.value;
-                    });
-
-                    if (winners.length === 0 && cascadeCount === 0) {
-                        // Нет выигрышей в первом каскаде
-                        break;
+                    // Проверка Scatter'ов для бонуса (если не в бонусе)
+                    let scatterHit = null;
+                    if (!isBonusGame) {
+                        scatterHit = winners.find(w => w.isScatter && w.count >= 4);
                     }
 
-                    if (winners.length === 0 && cascadeCount > 0) {
-                        // Каскады закончились
-                        break;
+                    const hasWin = winners.length > 0;
+                    const hasMultipliers = multsBefore.length > 0;
+
+                    if (!hasWin && cascadeIndex === 0) break;
+                    if (!hasWin && cascadeIndex > 0) break;
+
+                    // Анимация молнии Зевса за 0.2s до появления множителей
+                    if (hasMultipliers && hasWin) {
+                        triggerZeusStrike(multsBefore);
+                        await sleep(200);
                     }
 
-                    // Добавляем множители этого каскада к общему
-                    if (multiplierCells.length > 0) {
-                        accumulatedMultiplier += cascadeMultiplierAdd;
-                        totalMultiplier = accumulatedMultiplier;
-                        updateUI();
+                    // Собираем множители этого шага
+                    let stepMultAdd = 0;
+                    multsBefore.forEach(m => stepMultAdd += m.value);
+                    if (stepMultAdd > 0) {
+                        accumulatedSpinMult += stepMultAdd;
+                        spinMultiplier = accumulatedSpinMult;
+                        if (isBonusGame) {
+                            globalBonusMultiplier += stepMultAdd;
+                        }
+                        updateUIState();
                     }
 
-                    // Считаем выигрыш этого каскада
-                    let cascadeWin = 0;
+                    // Считаем выигрыш
+                    let stepWin = 0;
+                    const allWinPositions = [];
                     winners.forEach(w => {
-                        cascadeWin += w.payout * betAmount;
+                        stepWin += w.payoutMultiplier * betAmount;
+                        w.positions.forEach(p => allWinPositions.push(p));
                     });
+                    totalSequenceWin += stepWin;
 
-                    if (cascadeWin > 0) {
-                        totalWin += cascadeWin;
-                    }
-
-                    // Подсветка
-                    highlightWinners(winners, multiplierCells);
-                    await sleep(400);
-
-                    // Удаляем выигрышные и множители
-                    removeWinningSymbols(winners, multiplierCells);
+                    // Анимация и удаление
+                    await new Promise(resolve => animateWinExplosion(allWinPositions, resolve));
+                    removeWinningSymbols(allWinPositions, multsBefore);
                     renderGrid(false);
-                    await sleep(250);
+                    await sleep(200);
 
                     // Гравитация
                     const moved = applyGravity();
                     if (moved) {
                         fillEmptyCells();
                         renderGrid(true);
-                        await sleep(350);
+                        await sleep(350); // dropSpeed ~0.35s
                     }
 
-                    cascadeCount++;
+                    cascadeIndex++;
+                    if (!hasWin || cascadeIndex > 40) break;
 
-                    // Если набрали множители, но нет новых выигрышей — выходим
-                    if (winners.length === 0) break;
-
-                    // Защита от бесконечного цикла
-                    if (cascadeCount > 30) break;
+                    // Если scatter бонус — запускаем после каскадов
+                    if (scatterHit && !isBonusGame) {
+                        // Откладываем запуск бонуса до конца всех каскадов
+                        window._pendingBonus = true;
+                    }
                 }
 
-                // Применяем накопленный множитель к общему выигрышу
-                const finalWin = totalWin * accumulatedMultiplier;
-                cascadeInProgress = false;
-                totalMultiplier = 1;
-                updateUI();
+                // Применяем множитель
+                const finalWin = totalSequenceWin * accumulatedSpinMult;
+                tumbleInProgress = false;
+                spinMultiplier = 1;
+                updateUIState();
 
-                return finalWin;
+                return { finalWin, bonusTriggered: window._pendingBonus || false };
             }
 
             function sleep(ms) {
-                return new Promise(resolve => setTimeout(resolve, ms));
+                return new Promise(r => setTimeout(r, ms));
             }
 
+            // ==================== 15. ГЛАВНАЯ ФУНКЦИЯ СПИНА ====================
             async function spin() {
                 if (isSpinning) return;
-                if (bonusActive && bonusSpinsRemaining <= 0) {
-                    bonusActive = false;
-                    updateUI();
+                if (isBonusGame && bonusSpinsRemaining <= 0) {
+                    endBonusGame();
                     return;
                 }
-
-                const cost = bonusActive ? 0 : betAmount;
-                if (!bonusActive && balance < cost) return;
+                if (!isBonusGame && balance < betAmount && autoSpinsRemaining === 0) return;
 
                 isSpinning = true;
-                if (!bonusActive) {
-                    balance -= cost;
-                }
-                totalMultiplier = 1;
-                updateUI();
-                gameArea.classList.add('locked');
+                window._pendingBonus = false;
+                if (!isBonusGame) balance -= betAmount;
+                spinMultiplier = 1;
+                updateUIState();
 
-                // Генерация нового поля
                 generateGrid();
                 renderGrid(true);
                 await sleep(400);
 
-                // Запуск каскадов
-                const winAmount = await processCascades();
+                const { finalWin, bonusTriggered } = await processTumbles();
 
-                if (winAmount > 0) {
-                    balance += winAmount;
-                    showWinNotification(winAmount);
+                if (finalWin > 0) {
+                    balance += finalWin;
+                    showWinNotification(finalWin);
                 }
 
-                if (bonusActive) {
+                // Обработка бонуса
+                if (bonusTriggered && !isBonusGame) {
+                    await sleep(500);
+                    startBonusGame();
+                    isSpinning = false;
+                    updateUIState();
+                    await sleep(600);
+                    spin(); // авто-запуск первого фриспина
+                    return;
+                }
+
+                if (isBonusGame) {
                     bonusSpinsRemaining--;
                     if (bonusSpinsRemaining <= 0) {
-                        bonusActive = false;
+                        endBonusGame();
                     }
                 }
 
-                // Сброс анимаций подсветки
-                const cells = gridEl.querySelectorAll('.cell');
-                cells.forEach(c => c.classList.remove('win', 'multiplier-cell'));
-
                 isSpinning = false;
-                totalMultiplier = 1;
-                updateUI();
-                gameArea.classList.remove('locked');
+                updateUIState();
 
-                // Автоспин бонуса
-                if (bonusActive && bonusSpinsRemaining > 0 && !isSpinning) {
+                // Автоспины
+                if (autoSpinsRemaining > 0 && !isBonusGame) {
+                    autoSpinsRemaining--;
+                    updateUIState();
+                    if (autoSpinsRemaining > 0 && balance >= betAmount) {
+                        await sleep(500);
+                        spin();
+                    } else {
+                        autoSpinsRemaining = 0;
+                        updateUIState();
+                    }
+                }
+
+                // Автоспины в бонусе
+                if (isBonusGame && bonusSpinsRemaining > 0 && !isSpinning) {
                     await sleep(600);
                     spin();
                 }
             }
 
+            // ==================== 16. БОНУСНЫЙ РАУНД ====================
+            function startBonusGame() {
+                isBonusGame = true;
+                bonusSpinsRemaining = 15;
+                globalBonusMultiplier = 1;
+                autoSpinsRemaining = 0;
+                updateUIState();
+                showWinNotification(0); // визуальный сброс
+                console.log('⚡ БОНУСНАЯ ИГРА АКТИВИРОВАНА! 15 фриспинов.');
+            }
+
+            function endBonusGame() {
+                console.log('🏁 Бонусная игра завершена. Global Multiplier: x' + globalBonusMultiplier);
+                isBonusGame = false;
+                bonusSpinsRemaining = 0;
+                globalBonusMultiplier = 1;
+                updateUIState();
+            }
+
             function buyBonus() {
-                if (isSpinning || bonusActive) return;
+                if (isSpinning || isBonusGame) return;
                 const cost = betAmount * 100;
                 if (balance < cost) return;
-
                 balance -= cost;
-                bonusActive = true;
-                bonusSpinsRemaining = 15;
-                updateUI();
-                showWinNotification(-cost);
-                // Автоматический первый спин бонуса
+                startBonusGame();
+                updateUIState();
                 setTimeout(() => spin(), 500);
             }
 
-            function changeBet(direction) {
+            // ==================== 17. УПРАВЛЕНИЕ СТАВКОЙ ====================
+            function changeBet(dir) {
                 if (isSpinning) return;
-                betIndex += direction;
-                if (betIndex < 0) betIndex = 0;
-                if (betIndex >= BET_OPTIONS.length) betIndex = BET_OPTIONS.length - 1;
+                betIndex = Math.max(0, Math.min(BET_OPTIONS.length - 1, betIndex + dir));
                 betAmount = BET_OPTIONS[betIndex];
-                updateUI();
+                updateUIState();
             }
 
-            // ============ ОБРАБОТЧИКИ СОБЫТИЙ ============
+            function toggleAutoSpin() {
+                if (isSpinning || isBonusGame) return;
+                if (autoSpinsRemaining > 0) {
+                    autoSpinsRemaining = 0;
+                    updateUIState();
+                    return;
+                }
+                const options = [10, 25, 50, 100];
+                const current = autoSpinsRemaining || 0;
+                const next = options.find(o => o > current) || options[0];
+                autoSpinsRemaining = next;
+                updateUIState();
+                if (balance >= betAmount) spin();
+            }
+
+            // ==================== 18. ОБРАБОТЧИКИ ====================
             btnSpin.addEventListener('click', spin);
             btnBonus.addEventListener('click', buyBonus);
+            btnAuto.addEventListener('click', toggleAutoSpin);
             betMinusBtn.addEventListener('click', () => changeBet(-1));
             betPlusBtn.addEventListener('click', () => changeBet(1));
-
-            // Пробел для спина
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && !isSpinning) {
-                    e.preventDefault();
-                    spin();
-                }
+            document.addEventListener('keydown', e => {
+                if (e.code === 'Space' && !isSpinning) { e.preventDefault();
+                    spin(); }
+                if (e.code === 'KeyB' && !isSpinning && !isBonusGame) { e.preventDefault();
+                    buyBonus(); }
+                if (e.code === 'KeyA' && !isSpinning) { e.preventDefault();
+                    toggleAutoSpin(); }
             });
 
-            // ============ ФОНОВЫЕ ЧАСТИЦЫ ============
+            // ==================== 19. ФОН ====================
             function createParticles() {
-                const container = document.getElementById('particles');
+                const c = document.getElementById('particles');
                 for (let i = 0; i < 35; i++) {
-                    const particle = document.createElement('div');
-                    particle.className = 'particle';
-                    const size = Math.random() * 4 + 2;
-                    particle.style.width = size + 'px';
-                    particle.style.height = size + 'px';
-                    particle.style.left = Math.random() * 100 + '%';
-                    particle.style.animationDuration = Math.random() * 8 + 6 + 's';
-                    particle.style.animationDelay = Math.random() * 8 + 's';
-                    container.appendChild(particle);
+                    const p = document.createElement('div');
+                    p.className = 'particle';
+                    const s = Math.random() * 4 + 2;
+                    p.style.width = s + 'px';
+                    p.style.height = s + 'px';
+                    p.style.left = Math.random() * 100 + '%';
+                    p.style.animationDuration = Math.random() * 8 + 6 + 's';
+                    p.style.animationDelay = Math.random() * 8 + 's';
+                    c.appendChild(p);
                 }
             }
             createParticles();
 
-            // ============ ИНИЦИАЛИЗАЦИЯ ============
+            // ==================== 20. ИНИЦИАЛИЗАЦИЯ ====================
             generateGrid();
             renderGrid(true);
-            updateUI();
-
-            console.log('⚡ Gates of Olympus Demo готов!');
-            console.log('💰 Баланс: 10 000');
-            console.log('🎯 Управление: ПРОБЕЛ = спин, кнопки +/- = ставка');
-            console.log('🌟 Покупка бонуса: 100x от ставки = 15 фриспинов');
-            console.log('📊 Множители: накапливаются за каскад!');
+            updateUIState();
+            console.log('⚡ Gates of Olympus Engine v2.0 Ready');
+            console.log('📋 Управление: SPACE=Spin, B=Buy Bonus, A=AutoSpin');
+            console.log('📐 Scatter Pays, Tumble, Progressive Multiplier, Free Spins — все механики активны');
         })();
     </script>
 </body>
