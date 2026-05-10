@@ -32,13 +32,19 @@
         }
 
         body.zeus-rage {
-            animation: rageBg 0.4s ease-in-out forwards;
+            animation: rageBg 0.6s ease-in-out forwards;
         }
 
         @keyframes rageBg {
-            0% { background: var(--bg); }
-            50% { background: #2d0a0a; }
-            100% { background: #1a0800; }
+            0% {
+                background: var(--bg);
+            }
+            50% {
+                background: #2d0a0a;
+            }
+            100% {
+                background: #1a0800;
+            }
         }
 
         .game-container {
@@ -89,8 +95,14 @@
         }
 
         @keyframes counterPulse {
-            0% { transform: scale(1.6); color: #fff; }
-            100% { transform: scale(1); color: #ffd700; }
+            0% {
+                transform: scale(1.6);
+                color: #fff;
+            }
+            100% {
+                transform: scale(1);
+                color: #ffd700;
+            }
         }
 
         /* ---- ОСНОВНОЕ ПОЛЕ ---- */
@@ -139,8 +151,13 @@
         }
 
         @keyframes badgeGlow {
-            0%, 100% { box-shadow: 0 0 15px rgba(230, 57, 70, 0.5); }
-            50% { box-shadow: 0 0 30px rgba(230, 57, 70, 0.9); }
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(230, 57, 70, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 30px rgba(230, 57, 70, 0.9);
+            }
         }
 
         .freespin-counter {
@@ -168,9 +185,9 @@
             border-color: #8b0000;
         }
 
-        /* ---- ПРАВАЯ ПАНЕЛЬ (Зевс) ---- */
+        /* ---- ПРАВАЯ ПАНЕЛЬ (Дед Зевс) ---- */
         .right-panel {
-            width: 120px;
+            width: 130px;
             position: relative;
             display: flex;
             align-items: flex-end;
@@ -180,95 +197,211 @@
         .zeus-container {
             position: relative;
             width: 100%;
-            height: 250px;
+            height: 280px;
         }
 
-        .zeus-body {
+        .zeus-figure {
             position: absolute;
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 90px;
-            height: 200px;
-            background: linear-gradient(180deg, #e8d5b7 0%, #c4a882 60%, #8b7355 100%);
-            border-radius: 25px 25px 5px 5px;
-            transition: transform 0.2s;
+            width: 100px;
+            transition: transform 0.3s;
         }
 
-        .zeus-head {
+        /* Тело Деда */
+        .zeus-body {
+            width: 70px;
+            height: 90px;
+            background: linear-gradient(180deg, #f5f0e8 0%, #e0d5c0 60%, #c4b5a0 100%);
+            border-radius: 20px 20px 5px 5px;
+            margin: 0 auto;
+            position: relative;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .zeus-toga {
             position: absolute;
-            top: -35px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 55px;
+            bottom: 0;
+            left: -5px;
+            right: -5px;
+            height: 50px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, #e8ddd0 100%);
+            border-radius: 0 0 10px 10px;
+            clip-path: polygon(0% 30%, 50% 0%, 100% 30%, 100% 100%, 0% 100%);
+        }
+
+        /* Голова */
+        .zeus-head {
+            width: 50px;
             height: 55px;
-            background: radial-gradient(circle, #f0e0c0 0%, #c4a882 100%);
+            background: radial-gradient(circle at 50% 40%, #f5e6d3 0%, #d4b896 100%);
             border-radius: 50%;
+            margin: -30px auto 0;
+            position: relative;
+            z-index: 2;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
+        /* Борода */
         .zeus-beard {
             position: absolute;
-            bottom: -15px;
+            bottom: -12px;
             left: 50%;
             transform: translateX(-50%);
-            width: 40px;
-            height: 25px;
-            background: #d4c4a8;
-            border-radius: 0 0 15px 15px;
+            width: 35px;
+            height: 30px;
+            background: linear-gradient(180deg, #e8d5c0 0%, #c4b5a0 100%);
+            border-radius: 0 0 20px 20px;
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
         }
 
+        /* Глаза */
+        .zeus-eyes {
+            position: absolute;
+            top: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+        }
+
+        .zeus-eye {
+            width: 6px;
+            height: 8px;
+            background: #1a1a3a;
+            border-radius: 50%;
+        }
+
+        /* Коронa */
         .zeus-crown {
             position: absolute;
-            top: -18px;
+            top: -15px;
             left: 50%;
             transform: translateX(-50%);
-            width: 40px;
-            height: 20px;
-            background: #ffd700;
-            clip-path: polygon(0% 100%, 10% 20%, 30% 0%, 50% 40%, 70% 0%, 90% 20%, 100% 100%);
+            width: 35px;
+            height: 18px;
+            background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
+            clip-path: polygon(0% 100%, 10% 30%, 30% 0%, 50% 50%, 70% 0%, 90% 30%, 100% 100%);
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            animation: crownGlow 2s ease-in-out infinite;
         }
 
-        .zeus-arm {
+        @keyframes crownGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 200, 0, 0.5);
+            }
+        }
+
+        /* Рука с молнией */
+        .zeus-arm-container {
             position: absolute;
-            top: 30px;
-            right: -35px;
-            width: 25px;
-            height: 70px;
-            background: linear-gradient(180deg, #e8d5b7, #c4a882);
-            border-radius: 10px;
-            transform-origin: top center;
-            transform: rotate(-30deg);
+            top: 15px;
+            right: -15px;
+            z-index: 10;
+            transform-origin: top left;
             transition: transform 0.4s ease-in-out;
         }
 
-        .zeus-arm.raised {
-            transform: rotate(-140deg);
+        .zeus-arm-container.raised {
+            transform: rotate(-130deg);
         }
 
+        .zeus-arm {
+            width: 20px;
+            height: 60px;
+            background: linear-gradient(180deg, #f5e6d3 0%, #d4b896 100%);
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .zeus-hand {
+            width: 16px;
+            height: 16px;
+            background: #f5e6d3;
+            border-radius: 50%;
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* Молния в руке */
         .zeus-lightning {
             position: absolute;
-            top: -10px;
-            right: -40px;
-            width: 6px;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
             height: 30px;
             background: #fff;
             border-radius: 3px;
             box-shadow: 0 0 20px #fff, 0 0 40px #ffd700, 0 0 60px #ff8c00;
             opacity: 0;
-            transition: opacity 0.1s;
+            transition: all 0.1s;
         }
 
         .zeus-lightning.active {
             opacity: 1;
-            animation: lightningFlash 0.2s ease-out;
+            animation: lightningFlash 0.3s ease-out;
         }
 
         @keyframes lightningFlash {
-            0% { opacity: 1; height: 30px; }
-            50% { opacity: 0.8; height: 80px; }
-            100% { opacity: 0; height: 10px; }
+            0% {
+                opacity: 1;
+                height: 25px;
+                box-shadow: 0 0 30px #fff, 0 0 60px #ffd700;
+            }
+            50% {
+                opacity: 1;
+                height: 70px;
+                box-shadow: 0 0 50px #fff, 0 0 80px #ffd700, 0 0 100px #ff8c00;
+            }
+            100% {
+                opacity: 0;
+                height: 10px;
+            }
+        }
+
+        /* Ноги */
+        .zeus-legs {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .zeus-leg {
+            width: 15px;
+            height: 35px;
+            background: linear-gradient(180deg, #e0d5c0 0%, #c4b5a0 100%);
+            border-radius: 0 0 8px 8px;
+        }
+
+        /* Сандалии */
+        .zeus-sandal {
+            width: 20px;
+            height: 12px;
+            background: #8b6914;
+            border-radius: 10px 10px 3px 3px;
+            margin: 0 auto;
+        }
+
+        /* Облако под ногами */
+        .zeus-cloud {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 25px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            filter: blur(8px);
         }
 
         /* ---- НИЖНЯЯ ПАНЕЛЬ ---- */
@@ -311,8 +444,14 @@
         }
 
         @keyframes winCount {
-            0% { transform: scale(1.15); color: #fff; }
-            100% { transform: scale(1); color: #ffd700; }
+            0% {
+                transform: scale(1.15);
+                color: #fff;
+            }
+            100% {
+                transform: scale(1);
+                color: #ffd700;
+            }
         }
 
         .bet-display {
@@ -379,17 +518,85 @@
         }
 
         @keyframes orbFloat {
-            0% { transform: scale(0); opacity: 0; }
-            30% { transform: scale(1.4); opacity: 1; }
-            70% { transform: scale(1); opacity: 0.9; }
-            100% { transform: scale(0.7); opacity: 0; }
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.4);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1);
+                opacity: 0.9;
+            }
+            100% {
+                transform: scale(0.7);
+                opacity: 0;
+            }
         }
 
-        /* ---- ЧАСТИЦЫ ---- */
-        .particle {
-            position: absolute;
+        /* ---- БОНУС-ЭКРАН (при входе в фриспины) ---- */
+        .bonus-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
             pointer-events: none;
-            z-index: 20;
+            transition: opacity 0.5s;
+        }
+
+        .bonus-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .bonus-popup {
+            background: linear-gradient(135deg, #1a1a4a, #2a1a3a);
+            border: 3px solid #ffd700;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 0 80px rgba(255, 215, 0, 0.5);
+            animation: bonusIn 0.5s ease-out;
+        }
+
+        @keyframes bonusIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .bonus-popup h2 {
+            color: #ffd700;
+            font-size: 36px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+        }
+
+        .bonus-popup .bonus-spins {
+            color: #fff;
+            font-size: 60px;
+            font-weight: 900;
+            text-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+        }
+
+        .bonus-popup .bonus-subtitle {
+            color: #ccc;
+            font-size: 16px;
+            margin-top: 10px;
         }
 
         @media (max-width: 768px) {
@@ -414,6 +621,16 @@
     </style>
 </head>
 <body>
+
+    <!-- Бонусный оверлей -->
+    <div class="bonus-overlay" id="bonusOverlay">
+        <div class="bonus-popup">
+            <h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2>
+            <div class="bonus-spins" id="bonusSpinsDisplay">15</div>
+            <div class="bonus-subtitle">FREE SPINS</div>
+            <div class="bonus-subtitle" style="margin-top: 5px; font-size: 13px;">Накопительный множитель активирован!</div>
+        </div>
+    </div>
 
     <div class="game-container">
         <!-- Левая панель: накопительный множитель (бонус) -->
@@ -444,17 +661,37 @@
             </div>
         </div>
 
-        <!-- Правая панель: Зевс -->
+        <!-- Правая панель: Дед Зевс -->
         <div class="right-panel">
             <div class="zeus-container" id="zeusContainer">
-                <div class="zeus-body">
+                <div class="zeus-figure">
                     <div class="zeus-head">
                         <div class="zeus-crown"></div>
+                        <div class="zeus-eyes">
+                            <div class="zeus-eye"></div>
+                            <div class="zeus-eye"></div>
+                        </div>
                         <div class="zeus-beard"></div>
                     </div>
-                    <div class="zeus-arm" id="zeusArm"></div>
+                    <div class="zeus-body">
+                        <div class="zeus-toga"></div>
+                        <div class="zeus-arm-container" id="zeusArmContainer">
+                            <div class="zeus-arm">
+                                <div class="zeus-hand"></div>
+                            </div>
+                            <div class="zeus-lightning" id="zeusLightning"></div>
+                        </div>
+                    </div>
+                    <div class="zeus-legs">
+                        <div class="zeus-leg">
+                            <div class="zeus-sandal"></div>
+                        </div>
+                        <div class="zeus-leg">
+                            <div class="zeus-sandal"></div>
+                        </div>
+                    </div>
+                    <div class="zeus-cloud"></div>
                 </div>
-                <div class="zeus-lightning" id="zeusLightning"></div>
             </div>
         </div>
     </div>
@@ -464,10 +701,9 @@
         const COLS = 6;
         const ROWS = 5;
         const CELL_SIZE = 80;
-        const PADDING = 10;
         const GRID_OFFSET_X = 40;
         const GRID_OFFSET_Y = 40;
-        const SYMBOL_SIZE = 55;
+        const SYMBOL_SIZE = 50;
 
         // Типы символов
         const SYMBOLS = {
@@ -476,8 +712,6 @@
             HIGH: ['hourglass', 'crown'],
             SCATTER: 'zeus_scatter'
         };
-
-        const ALL_SYMBOLS = [...SYMBOLS.LOW, ...SYMBOLS.MID, ...SYMBOLS.HIGH, SYMBOLS.SCATTER];
 
         // Таблица выплат (Scatter Pays: количество -> множитель ставки)
         const PAYTABLE = {
@@ -490,7 +724,7 @@
             ring: { 8: 5, 10: 12, 12: 25 },
             hourglass: { 8: 10, 10: 25, 12: 50 },
             crown: { 8: 15, 10: 40, 12: 100 },
-            zeus_scatter: { 4: 3, 5: 10, 6: 50 } // Скаттер от 4 штук
+            zeus_scatter: { 4: 3, 5: 10, 6: 50 }
         };
 
         // Множители для сфер
@@ -534,33 +768,26 @@
 
         class SlotEngine {
             constructor() {
-                // Сетка: grid[row][col] = { symbol, y, targetY, velocity, scale, opacity, isWinning, hasOrb, orbMultiplier }
                 this.grid = this.createEmptyGrid();
                 this.state = GameStateEnum.IDLE;
                 this.bet = 1.0;
                 this.totalWin = 0;
                 this.displayedWin = 0;
-                this.winAnimationId = null;
+                this.isProcessing = false; // Флаг для предотвращения повторных спинов
 
                 // Бонусный режим
                 this.isFreeSpins = false;
                 this.freeSpinsRemaining = 0;
-                this.totalMultiplier = 1; // Накопительный множитель
+                this.totalMultiplier = 1;
 
                 // Сферы на текущем поле
-                this.activeOrbs = []; // { row, col, multiplier, color }
-
-                // Для анимаций
-                this.tumbleDelay = 0;
-                this.tumbleCheckTimer = null;
-                this.spinAnimationFrame = null;
+                this.activeOrbs = [];
                 this.particles = [];
 
                 // Зевс
                 this.zeusArmRaised = false;
                 this.zeusLightningActive = false;
 
-                // Инициализация
                 this.initGrid();
             }
 
@@ -571,33 +798,36 @@
                     for (let c = 0; c < COLS; c++) {
                         grid[r][c] = {
                             symbol: null,
-                            y: -100 - r * 60, // Начало сверху
+                            y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
                             targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
                             velocity: 0,
                             scale: 1,
                             opacity: 1,
                             isWinning: false,
                             hasOrb: false,
-                            orbMultiplier: 1
+                            orbMultiplier: 1,
+                            bounceOffset: 0 // Для анимации отскока
                         };
                     }
                 }
                 return grid;
             }
 
-            // Заполнить сетку случайными символами (без начальной анимации)
             initGrid() {
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
                         this.grid[r][c].symbol = this.randomSymbol();
                         this.grid[r][c].y = this.grid[r][c].targetY;
+                        this.grid[r][c].velocity = 0;
                         this.grid[r][c].scale = 1;
                         this.grid[r][c].opacity = 1;
                         this.grid[r][c].isWinning = false;
                         this.grid[r][c].hasOrb = false;
                         this.grid[r][c].orbMultiplier = 1;
+                        this.grid[r][c].bounceOffset = 0;
                     }
                 }
+                this.clearOrbs();
             }
 
             randomSymbol() {
@@ -608,7 +838,6 @@
                 return SYMBOLS.LOW[Math.floor(Math.random() * SYMBOLS.LOW.length)];
             }
 
-            // Сброс всех орбов
             clearOrbs() {
                 this.activeOrbs = [];
                 for (let r = 0; r < ROWS; r++) {
@@ -640,14 +869,15 @@
                             visited[cr][cc] = true;
                             group.push({ r: cr, c: cc });
 
-                            // 4 направления
                             stack.push({ r: cr - 1, c: cc });
                             stack.push({ r: cr + 1, c: cc });
                             stack.push({ r: cr, c: cc - 1 });
                             stack.push({ r: cr, c: cc + 1 });
                         }
 
-                        if (group.length >= 8 || (symbol === SYMBOLS.SCATTER && group.length >= 4)) {
+                        // Скаттер: от 4 штук, остальные: от 8
+                        const minCount = symbol === SYMBOLS.SCATTER ? 4 : 8;
+                        if (group.length >= minCount) {
                             groups.push({
                                 symbol,
                                 cells: group,
@@ -663,7 +893,6 @@
             getPayout(symbol, count) {
                 const table = PAYTABLE[symbol];
                 if (!table) return 0;
-                // Найти ближайший порог
                 const thresholds = Object.keys(table).map(Number).sort((a, b) => a - b);
                 let payout = 0;
                 for (const threshold of thresholds) {
@@ -678,23 +907,21 @@
             applyGravity() {
                 let moved = false;
                 for (let c = 0; c < COLS; c++) {
-                    // Снизу вверх
                     for (let r = ROWS - 1; r >= 0; r--) {
                         if (this.grid[r][c].symbol === null) {
-                            // Ищем символ сверху
                             for (let above = r - 1; above >= 0; above--) {
                                 if (this.grid[above][c].symbol !== null) {
-                                    // Перемещаем символ вниз
                                     this.grid[r][c].symbol = this.grid[above][c].symbol;
                                     this.grid[r][c].hasOrb = this.grid[above][c].hasOrb;
                                     this.grid[r][c].orbMultiplier = this.grid[above][c].orbMultiplier;
-                                    this.grid[r][c].y = this.grid[above][c].y;
+                                    // НЕ меняем y — он будет анимирован отдельно
                                     this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
-                                    this.grid[r][c].scale = this.grid[above][c].scale;
-                                    this.grid[r][c].opacity = this.grid[above][c].opacity;
+                                    this.grid[r][c].velocity = 0;
+                                    this.grid[r][c].scale = 1;
+                                    this.grid[r][c].opacity = 1;
                                     this.grid[r][c].isWinning = false;
+                                    this.grid[r][c].bounceOffset = 0;
 
-                                    // Очищаем верхнюю ячейку
                                     this.grid[above][c].symbol = null;
                                     this.grid[above][c].hasOrb = false;
                                     this.grid[above][c].orbMultiplier = 1;
@@ -711,18 +938,14 @@
 
             fillEmptyCells() {
                 for (let c = 0; c < COLS; c++) {
-                    let emptyCount = 0;
+                    let emptyAbove = 0;
+                    // Считаем сколько пустых ячеек над каждой позицией
                     for (let r = 0; r < ROWS; r++) {
                         if (this.grid[r][c].symbol === null) {
-                            emptyCount++;
-                        }
-                    }
-                    // Заполняем сверху новыми символами
-                    let newSymbolIndex = 0;
-                    for (let r = 0; r < ROWS; r++) {
-                        if (this.grid[r][c].symbol === null) {
+                            emptyAbove++;
+                            // Создаем новый символ над экраном
                             this.grid[r][c].symbol = this.randomSymbol();
-                            this.grid[r][c].y = GRID_OFFSET_Y - (emptyCount - newSymbolIndex) * CELL_SIZE - 50;
+                            this.grid[r][c].y = GRID_OFFSET_Y - (emptyAbove) * CELL_SIZE - 20;
                             this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                             this.grid[r][c].velocity = 0;
                             this.grid[r][c].scale = 1;
@@ -730,7 +953,7 @@
                             this.grid[r][c].isWinning = false;
                             this.grid[r][c].hasOrb = false;
                             this.grid[r][c].orbMultiplier = 1;
-                            newSymbolIndex++;
+                            this.grid[r][c].bounceOffset = 0;
                         }
                     }
                 }
@@ -744,45 +967,36 @@
                         this.grid[cell.r][cell.c].isWinning = true;
                     }
                 }
-                // Создаем частицы для выигрышных символов
+                // Удаляем после анимации
                 for (const key of cellsToRemove) {
                     const [r, c] = key.split(',').map(Number);
                     this.spawnParticles(
                         GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
-                        this.grid[r][c].y,
+                        this.grid[r][c].y + this.grid[r][c].bounceOffset,
                         SYMBOL_COLORS[this.grid[r][c].symbol] || '#fff'
                     );
+                    this.grid[r][c].symbol = null;
+                    this.grid[r][c].hasOrb = false;
+                    this.grid[r][c].orbMultiplier = 1;
+                    this.grid[r][c].isWinning = false;
+                    this.grid[r][c].scale = 1;
+                    this.grid[r][c].bounceOffset = 0;
                 }
-                // Удаляем
-                setTimeout(() => {
-                    for (const key of cellsToRemove) {
-                        const [r, c] = key.split(',').map(Number);
-                        this.grid[r][c].symbol = null;
-                        this.grid[r][c].hasOrb = false;
-                        this.grid[r][c].orbMultiplier = 1;
-                        this.grid[r][c].isWinning = false;
-                        this.grid[r][c].scale = 1;
-                    }
-                    // Сдвиг и заполнение
-                    this.applyGravity();
-                    this.fillEmptyCells();
-                    this.state = GameStateEnum.TUMBLING;
-                }, 400); // Задержка на анимацию пульсации
             }
 
             spawnParticles(x, y, color) {
-                for (let i = 0; i < 8; i++) {
-                    const angle = (Math.PI * 2 / 8) * i;
-                    const speed = 2 + Math.random() * 4;
+                for (let i = 0; i < 10; i++) {
+                    const angle = (Math.PI * 2 / 10) * i + Math.random() * 0.5;
+                    const speed = 2 + Math.random() * 5;
                     this.particles.push({
                         x,
                         y,
                         vx: Math.cos(angle) * speed,
-                        vy: Math.sin(angle) * speed - 2,
+                        vy: Math.sin(angle) * speed - 3,
                         life: 1,
-                        decay: 0.02 + Math.random() * 0.04,
+                        decay: 0.015 + Math.random() * 0.03,
                         color,
-                        size: 2 + Math.random() * 3
+                        size: 2 + Math.random() * 4
                     });
                 }
             }
@@ -792,7 +1006,7 @@
                     const p = this.particles[i];
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.1; // Гравитация
+                    p.vy += 0.15;
                     p.life -= p.decay;
                     if (p.life <= 0) {
                         this.particles.splice(i, 1);
@@ -802,18 +1016,18 @@
 
             // ==================== СФЕРЫ ОТ ЗЕВСА ====================
             zeusThrowOrbs() {
-                // Зевс поднимает руку
+                if (this.zeusArmRaised) return; // Уже в процессе
+
                 this.zeusArmRaised = true;
-                document.getElementById('zeusArm').classList.add('raised');
+                const armContainer = document.getElementById('zeusArmContainer');
+                if (armContainer) armContainer.classList.add('raised');
 
                 setTimeout(() => {
-                    // Удар молнии
                     this.zeusLightningActive = true;
-                    document.getElementById('zeusLightning').classList.add('active');
+                    const lightning = document.getElementById('zeusLightning');
+                    if (lightning) lightning.classList.add('active');
 
-                    // Создаем сферы на случайных позициях
                     const orbCount = 2 + Math.floor(Math.random() * 4);
-                    const newOrbs = [];
                     const usedCells = new Set();
 
                     for (let i = 0; i < orbCount; i++) {
@@ -822,6 +1036,8 @@
                             r = Math.floor(Math.random() * ROWS);
                             c = Math.floor(Math.random() * COLS);
                         } while (usedCells.has(`${r},${c}`) && usedCells.size < ROWS * COLS);
+
+                        if (usedCells.size >= ROWS * COLS) break;
                         usedCells.add(`${r},${c}`);
 
                         const multiplier = ORB_MULTIPLIERS[Math.floor(Math.random() * ORB_MULTIPLIERS.length)];
@@ -830,19 +1046,16 @@
 
                         this.grid[r][c].hasOrb = true;
                         this.grid[r][c].orbMultiplier = multiplier;
-                        newOrbs.push({ r, c, multiplier, color });
                         this.activeOrbs.push({ r, c, multiplier, color });
 
-                        // Визуальный эффект
                         this.spawnOrbEffect(r, c, color, multiplier);
                     }
 
-                    // Сброс анимации Зевса
                     setTimeout(() => {
-                        this.zeusArmRaised = false;
                         this.zeusLightningActive = false;
-                        document.getElementById('zeusArm').classList.remove('raised');
-                        document.getElementById('zeusLightning').classList.remove('active');
+                        this.zeusArmRaised = false;
+                        if (armContainer) armContainer.classList.remove('raised');
+                        if (lightning) lightning.classList.remove('active');
                     }, 400);
 
                 }, 400);
@@ -857,69 +1070,60 @@
                 orbDiv.style.left = x + 'px';
                 orbDiv.style.top = y + 'px';
                 orbDiv.style.color = color;
-                document.getElementById('mainArea').appendChild(orbDiv);
+                const mainArea = document.getElementById('mainArea');
+                if (mainArea) mainArea.appendChild(orbDiv);
                 setTimeout(() => orbDiv.remove(), 1800);
             }
 
-            // Применение орбов к выигрышу
             applyOrbsToWin(baseWin) {
                 if (this.activeOrbs.length === 0) return baseWin;
+                if (baseWin <= 0) return 0;
 
-                let totalOrbMultiplier = 1;
+                let totalOrbMultiplier = 0;
                 for (const orb of this.activeOrbs) {
                     totalOrbMultiplier += orb.multiplier;
                 }
 
-                // В бонусном режиме добавляем накопительный множитель
-                if (this.isFreeSpins && baseWin > 0) {
-                    // Добавляем текущие орбы в накопительный счетчик
-                    for (const orb of this.activeOrbs) {
-                        this.totalMultiplier += orb.multiplier;
-                    }
-                    totalOrbMultiplier = this.totalMultiplier;
+                if (this.isFreeSpins) {
+                    // В бонусе: добавляем орбы в накопитель и применяем его
+                    this.totalMultiplier += totalOrbMultiplier;
+                    this.updateTotalMultiplierDisplay();
+                    return baseWin * this.totalMultiplier;
+                } else {
+                    // В обычной игре: просто суммируем орбы
+                    return baseWin * (1 + totalOrbMultiplier);
                 }
-
-                return baseWin * totalOrbMultiplier;
             }
 
-            // ==================== ОСНОВНОЙ ЦИКЛ ИГРЫ ====================
+            // ==================== ОСНОВНОЙ ЦИКЛ ====================
             async spin() {
-                if (this.state !== GameStateEnum.IDLE) return;
-
+                if (this.state !== GameStateEnum.IDLE || this.isProcessing) return;
+                this.isProcessing = true;
                 this.state = GameStateEnum.SPINNING;
                 this.totalWin = 0;
                 this.clearOrbs();
+                this.particles = [];
 
-                // Анимация падения новых символов
                 await this.animateInitialDrop();
+                await this.sleep(300);
 
-                // Проверка на выигрыш
+                // Цикл тамблов
                 await this.tumbleCycle();
 
-                // Зевс может бросить сферы
-                if (Math.random() < 0.4) {
-                    this.zeusThrowOrbs();
-                    // Ждем завершения анимации Зевса
-                    await this.sleep(1000);
-                }
-
-                // Применяем орбы к финальному выигрышу
                 const finalWin = this.applyOrbsToWin(this.totalWin);
                 this.totalWin = finalWin;
-
-                // Анимация счетчика выигрыша
                 await this.animateWinCounter(finalWin);
 
-                // Проверка на скаттеры для бонуса
+                // Проверка скаттеров
                 const scatterCount = this.countScatters();
                 if (scatterCount >= 4 && !this.isFreeSpins) {
                     await this.enterBonusGame(15);
                 } else if (scatterCount >= 3 && this.isFreeSpins) {
                     this.freeSpinsRemaining += 5;
                     this.updateFreespinDisplay();
+                    this.showRetriggerEffect();
                 }
 
-                // В бонусе уменьшаем счетчик
                 if (this.isFreeSpins) {
                     this.freeSpinsRemaining--;
                     this.updateFreespinDisplay();
@@ -929,15 +1133,16 @@
                 }
 
                 this.state = GameStateEnum.IDLE;
+                this.isProcessing = false;
                 this.updateSpinButton();
             }
 
             async animateInitialDrop() {
-                // Сброс всех символов наверх
+                // Поднимаем все символы наверх
                 for (let c = 0; c < COLS; c++) {
                     for (let r = 0; r < ROWS; r++) {
                         this.grid[r][c].symbol = this.randomSymbol();
-                        this.grid[r][c].y = -100 - r * 60 - c * 20;
+                        this.grid[r][c].y = -100 - r * 50 - c * 15;
                         this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                         this.grid[r][c].velocity = 0;
                         this.grid[r][c].scale = 1;
@@ -945,63 +1150,93 @@
                         this.grid[r][c].isWinning = false;
                         this.grid[r][c].hasOrb = false;
                         this.grid[r][c].orbMultiplier = 1;
+                        this.grid[r][c].bounceOffset = 0;
                     }
                 }
 
-                // Падение по столбцам с задержкой
-                const dropPromises = [];
+                // Падение по столбцам
+                const promises = [];
                 for (let c = 0; c < COLS; c++) {
-                    dropPromises.push(this.dropColumn(c, c * 50));
+                    promises.push(this.dropColumn(c, c * 50));
                 }
-                await Promise.all(dropPromises);
-                await this.sleep(300); // Пауза после остановки
+                await Promise.all(promises);
+                await this.sleep(300);
             }
 
             dropColumn(col, delay) {
                 return new Promise(resolve => {
                     setTimeout(() => {
+                        const GRAVITY = 1.2;
+                        const DAMPING = 0.35;
+                        const BOUNCE_HEIGHT = 8;
+                        let allSettled = false;
+                        let settleCount = 0;
+
                         const animate = () => {
-                            let allSettled = true;
+                            allSettled = true;
                             for (let r = 0; r < ROWS; r++) {
                                 const cell = this.grid[r][col];
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
-                                if (Math.abs(dy) > 0.5) {
+
+                                if (Math.abs(dy) > 0.3) {
                                     allSettled = false;
-                                    cell.velocity += 0.8; // Ускорение
-                                    cell.y += Math.min(cell.velocity, Math.abs(dy));
-                                    // Эффект отскока при достижении цели
+                                    cell.velocity += GRAVITY;
+                                    cell.y += Math.min(cell.velocity, Math.abs(dy) + 1);
+
                                     if (cell.y >= target) {
-                                        cell.y = target - 8; // Отскок вверх
-                                        cell.velocity = -cell.velocity * 0.3;
+                                        cell.y = target;
+                                        if (Math.abs(cell.velocity) > 1) {
+                                            cell.bounceOffset = -BOUNCE_HEIGHT;
+                                            cell.velocity = -cell.velocity * DAMPING;
+                                        } else {
+                                            cell.velocity = 0;
+                                            cell.bounceOffset = 0;
+                                        }
                                     }
                                 } else {
                                     cell.y = target;
                                     cell.velocity = 0;
+                                    // Затухание отскока
+                                    if (cell.bounceOffset < 0) {
+                                        cell.bounceOffset *= 0.7;
+                                        if (Math.abs(cell.bounceOffset) < 0.3) cell.bounceOffset = 0;
+                                    }
                                 }
                             }
+
                             if (!allSettled) {
                                 requestAnimationFrame(animate);
                             } else {
-                                // Финальный отскок
-                                setTimeout(() => {
+                                settleCount++;
+                                if (settleCount < 5) {
+                                    // Даем время на затухание отскоков
+                                    requestAnimationFrame(animate);
+                                } else {
+                                    // Финально фиксируем позиции
                                     for (let r = 0; r < ROWS; r++) {
                                         this.grid[r][col].y = this.grid[r][col].targetY;
+                                        this.grid[r][col].bounceOffset = 0;
+                                        this.grid[r][col].velocity = 0;
                                     }
                                     resolve();
-                                }, 50);
+                                }
                             }
                         };
-                        animate();
+                        requestAnimationFrame(animate);
                     }, delay);
                 });
             }
 
             async tumbleCycle() {
                 let hasWins = true;
-                while (hasWins) {
+                let iterations = 0;
+                const maxIterations = 20; // Защита от бесконечного цикла
+
+                while (hasWins && iterations < maxIterations) {
+                    iterations++;
                     this.state = GameStateEnum.TUMBLING;
-                    await this.sleep(300); // Пауза перед проверкой
+                    await this.sleep(300);
 
                     const groups = this.findGroups();
                     if (groups.length === 0) {
@@ -1009,29 +1244,28 @@
                         break;
                     }
 
-                    // Суммируем выигрыш
                     let cycleWin = 0;
                     for (const group of groups) {
                         cycleWin += group.payout;
                     }
                     this.totalWin += cycleWin;
 
-                    // Анимация выигрыша
                     this.state = GameStateEnum.WIN_ANIMATION;
                     await this.animateWinningSymbols(groups);
+                    await this.sleep(200);
 
-                    // Удаление и сдвиг
                     this.removeWinningSymbols(groups);
-                    await this.sleep(500); // Ждем завершения удаления
+                    await this.sleep(100);
 
-                    // Анимация падения новых/сдвинутых символов
+                    // Сдвиг и заполнение
+                    this.applyGravity();
+                    this.fillEmptyCells();
                     await this.animateGravityDrop();
                     await this.sleep(200);
                 }
             }
 
             async animateWinningSymbols(groups) {
-                // Пульсация выигрышных символов
                 const winningCells = [];
                 for (const group of groups) {
                     for (const cell of group.cells) {
@@ -1046,8 +1280,7 @@
                     const pulse = (time) => {
                         const elapsed = time - startTime;
                         const progress = Math.min(elapsed / duration, 1);
-                        // Эффект пульсации: увеличивается до 1.1, потом обратно
-                        const scale = 1 + Math.sin(progress * Math.PI * 2) * 0.1;
+                        const scale = 1 + Math.sin(progress * Math.PI * 3) * 0.12;
                         for (const cell of winningCells) {
                             cell.scale = scale;
                         }
@@ -1066,56 +1299,87 @@
 
             async animateGravityDrop() {
                 return new Promise(resolve => {
+                    const GRAVITY = 1.0;
+                    const DAMPING = 0.3;
+                    let allSettled = true;
+                    let settleCount = 0;
+
                     const animate = () => {
-                        let allSettled = true;
+                        allSettled = true;
                         for (let c = 0; c < COLS; c++) {
                             for (let r = 0; r < ROWS; r++) {
                                 const cell = this.grid[r][c];
                                 if (!cell.symbol) continue;
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
-                                if (Math.abs(dy) > 0.5) {
+
+                                if (Math.abs(dy) > 0.3) {
                                     allSettled = false;
-                                    cell.velocity += 0.6;
-                                    cell.y += Math.min(cell.velocity, Math.abs(dy));
+                                    cell.velocity += GRAVITY;
+                                    cell.y += Math.min(cell.velocity, Math.abs(dy) + 1);
+
                                     if (cell.y >= target) {
-                                        cell.y = target - 5;
-                                        cell.velocity = -cell.velocity * 0.25;
+                                        cell.y = target;
+                                        if (Math.abs(cell.velocity) > 0.5) {
+                                            cell.bounceOffset = -5;
+                                            cell.velocity = -cell.velocity * DAMPING;
+                                        } else {
+                                            cell.velocity = 0;
+                                            cell.bounceOffset = 0;
+                                        }
                                     }
                                 } else {
                                     cell.y = target;
                                     cell.velocity = 0;
+                                    if (cell.bounceOffset < 0) {
+                                        cell.bounceOffset *= 0.7;
+                                        if (Math.abs(cell.bounceOffset) < 0.3) cell.bounceOffset = 0;
+                                    }
                                 }
                             }
                         }
+
                         if (!allSettled) {
                             requestAnimationFrame(animate);
                         } else {
-                            resolve();
+                            settleCount++;
+                            if (settleCount < 4) {
+                                requestAnimationFrame(animate);
+                            } else {
+                                for (let c = 0; c < COLS; c++) {
+                                    for (let r = 0; r < ROWS; r++) {
+                                        const cell = this.grid[r][c];
+                                        cell.y = cell.targetY;
+                                        cell.bounceOffset = 0;
+                                        cell.velocity = 0;
+                                    }
+                                }
+                                resolve();
+                            }
                         }
                     };
-                    animate();
+                    requestAnimationFrame(animate);
                 });
             }
 
             async animateWinCounter(targetWin) {
-                return new Promise(resolve => {
-                    const startWin = this.displayedWin;
-                    const duration = 800;
-                    const startTime = performance.now();
+                const startWin = this.displayedWin;
+                const duration = 800;
+                const startTime = performance.now();
 
+                return new Promise(resolve => {
                     const count = (time) => {
                         const elapsed = time - startTime;
                         const progress = Math.min(elapsed / duration, 1);
-                        // Эффект быстрого счета в начале
                         const eased = 1 - Math.pow(1 - progress, 3);
-                        this.displayedWin = Math.round(startWin + (targetWin - startWin) * eased);
+                        this.displayedWin = Math.round((startWin + (targetWin - startWin) * eased) * 100) /
+                            100;
                         this.updateWinDisplay();
 
                         if (progress < 1) {
                             requestAnimationFrame(count);
                         } else {
-                            this.displayedWin = Math.round(targetWin);
+                            this.displayedWin = Math.round(targetWin * 100) / 100;
                             this.updateWinDisplay();
                             resolve();
                         }
@@ -1139,15 +1403,24 @@
                 this.isFreeSpins = true;
                 this.freeSpinsRemaining = spins;
                 this.totalMultiplier = 1;
+
                 document.getElementById('leftPanel').classList.remove('inactive');
                 document.getElementById('freespinBadge').classList.add('active');
                 this.updateFreespinDisplay();
                 this.updateTotalMultiplierDisplay();
 
-                // Эффект перехода
+                // Показываем оверлей
+                const overlay = document.getElementById('bonusOverlay');
+                const spinsDisplay = document.getElementById('bonusSpinsDisplay');
+                if (spinsDisplay) spinsDisplay.textContent = spins;
+                if (overlay) overlay.classList.add('active');
+
                 document.body.classList.add('zeus-rage');
-                await this.sleep(1500);
+                await this.sleep(2500);
                 document.body.classList.remove('zeus-rage');
+
+                if (overlay) overlay.classList.remove('active');
+                this.state = GameStateEnum.IDLE;
             }
 
             exitBonusGame() {
@@ -1159,31 +1432,46 @@
                 this.updateTotalMultiplierDisplay();
             }
 
-            // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
+            showRetriggerEffect() {
+                const overlay = document.getElementById('bonusOverlay');
+                const spinsDisplay = document.getElementById('bonusSpinsDisplay');
+                if (spinsDisplay) spinsDisplay.textContent = '+5 SPINS';
+                if (overlay) overlay.classList.add('active');
+                setTimeout(() => {
+                    if (overlay) overlay.classList.remove('active');
+                }, 1500);
+            }
+
             sleep(ms) {
                 return new Promise(resolve => setTimeout(resolve, ms));
             }
 
             updateWinDisplay() {
                 const el = document.getElementById('winDisplay');
-                el.textContent = this.displayedWin.toFixed(2);
-                el.classList.add('counting');
-                setTimeout(() => el.classList.remove('counting'), 100);
+                if (el) {
+                    el.textContent = this.displayedWin.toFixed(2);
+                    el.classList.add('counting');
+                    setTimeout(() => el.classList.remove('counting'), 100);
+                }
             }
 
             updateFreespinDisplay() {
-                document.getElementById('freespinCountDisplay').textContent = this.freeSpinsRemaining;
+                const el = document.getElementById('freespinCountDisplay');
+                if (el) el.textContent = this.freeSpinsRemaining;
             }
 
             updateTotalMultiplierDisplay() {
                 const el = document.getElementById('totalMultiplierDisplay');
-                el.textContent = this.totalMultiplier + 'x';
-                el.classList.add('pulse');
-                setTimeout(() => el.classList.remove('pulse'), 300);
+                if (el) {
+                    el.textContent = this.totalMultiplier + 'x';
+                    el.classList.add('pulse');
+                    setTimeout(() => el.classList.remove('pulse'), 300);
+                }
             }
 
             updateSpinButton() {
                 const btn = document.getElementById('btnSpin');
+                if (!btn) return;
                 if (this.isFreeSpins) {
                     btn.textContent = 'FREE';
                 } else {
@@ -1196,16 +1484,14 @@
             render(ctx) {
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-                // Сетка
+                // Фон сетки
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        const cell = this.grid[r][c];
                         const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
-                        const y = cell.y;
+                        const baseY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
 
-                        // Ячейка фона
-                        ctx.fillStyle = 'rgba(20, 20, 40, 0.6)';
-                        ctx.strokeStyle = 'rgba(100, 100, 150, 0.3)';
+                        ctx.fillStyle = 'rgba(15, 15, 35, 0.5)';
+                        ctx.strokeStyle = 'rgba(80, 80, 120, 0.25)';
                         ctx.lineWidth = 1;
                         ctx.beginPath();
                         ctx.roundRect(
@@ -1217,56 +1503,78 @@
                         );
                         ctx.fill();
                         ctx.stroke();
+                    }
+                }
 
+                // Символы
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        const cell = this.grid[r][c];
                         if (!cell.symbol) continue;
 
-                        // Свечение для выигрышных
-                        if (cell.isWinning) {
-                            ctx.shadowColor = '#ffd700';
-                            ctx.shadowBlur = 20;
-                        }
+                        const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
+                        const y = cell.y + cell.bounceOffset;
 
-                        // Сфера
-                        if (cell.hasOrb) {
-                            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
-                            ctx.beginPath();
-                            ctx.arc(x, y, SYMBOL_SIZE / 2 + 5, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-
-                        // Символ
                         ctx.save();
                         ctx.translate(x, y);
                         ctx.scale(cell.scale, cell.scale);
                         ctx.globalAlpha = cell.opacity;
 
+                        // Свечение выигрыша
+                        if (cell.isWinning) {
+                            ctx.shadowColor = '#ffd700';
+                            ctx.shadowBlur = 25;
+                        }
+
+                        // Ореол сферы
+                        if (cell.hasOrb) {
+                            ctx.shadowColor = '#ffd700';
+                            ctx.shadowBlur = 20;
+                            ctx.fillStyle = 'rgba(255, 215, 0, 0.25)';
+                            ctx.beginPath();
+                            ctx.arc(0, 0, SYMBOL_SIZE / 2 + 8, 0, Math.PI * 2);
+                            ctx.fill();
+                            ctx.shadowBlur = 0;
+                        }
+
                         // Круг символа
-                        const color = SYMBOL_COLORS[cell.symbol] || '#888';
-                        const gradient = ctx.createRadialGradient(0, -5, 5, 0, 0, SYMBOL_SIZE / 2);
-                        gradient.addColorStop(0, this.lightenColor(color, 40));
+                        const color = SYMBOL_COLORS[cell.symbol] || '#666';
+                        const gradient = ctx.createRadialGradient(-3, -8, 3, 0, 0, SYMBOL_SIZE / 2);
+                        gradient.addColorStop(0, this.lightenColor(color, 50));
                         gradient.addColorStop(1, color);
+
                         ctx.fillStyle = gradient;
                         ctx.beginPath();
                         ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
                         ctx.fill();
-                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+
+                        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
                         ctx.lineWidth = 2;
                         ctx.stroke();
 
-                        // Эмодзи
+                        // Эмодзи или иконка
                         ctx.shadowColor = 'transparent';
                         ctx.shadowBlur = 0;
-                        ctx.font = `${SYMBOL_SIZE * 0.6}px Arial`;
+                        ctx.font = `${SYMBOL_SIZE * 0.55}px Arial`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = '#fff';
-                        ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2);
+
+                        // Для скаттера рисуем лицо Деда
+                        if (cell.symbol === SYMBOLS.SCATTER) {
+                            this.drawZeusIcon(ctx, SYMBOL_SIZE);
+                        } else {
+                            ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2);
+                        }
 
                         // Множитель сферы
                         if (cell.hasOrb) {
-                            ctx.font = 'bold 14px Arial';
+                            ctx.font = 'bold 13px Arial';
                             ctx.fillStyle = '#ffd700';
-                            ctx.fillText(`x${cell.orbMultiplier}`, 0, -SYMBOL_SIZE / 2 - 10);
+                            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                            ctx.shadowBlur = 3;
+                            ctx.fillText(`x${cell.orbMultiplier}`, 0, -SYMBOL_SIZE / 2 - 12);
+                            ctx.shadowBlur = 0;
                         }
 
                         ctx.restore();
@@ -1276,7 +1584,9 @@
                 // Частицы
                 for (const p of this.particles) {
                     ctx.fillStyle = p.color;
-                    ctx.globalAlpha = p.life;
+                    ctx.globalAlpha = Math.max(0, p.life);
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 6;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -1284,6 +1594,58 @@
                 ctx.globalAlpha = 1;
                 ctx.shadowColor = 'transparent';
                 ctx.shadowBlur = 0;
+            }
+
+            drawZeusIcon(ctx, size) {
+                const s = size * 0.7;
+                // Голова
+                ctx.fillStyle = '#f5e6d3';
+                ctx.beginPath();
+                ctx.arc(0, -s * 0.1, s * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#c4a882';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Борода
+                ctx.fillStyle = '#e8d5c0';
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.25, s * 0.05);
+                ctx.quadraticCurveTo(0, s * 0.55, s * 0.25, s * 0.05);
+                ctx.quadraticCurveTo(0, s * 0.2, -s * 0.25, s * 0.05);
+                ctx.fill();
+                ctx.stroke();
+
+                // Корона
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.25, -s * 0.4);
+                ctx.lineTo(-s * 0.2, -s * 0.55);
+                ctx.lineTo(-s * 0.05, -s * 0.35);
+                ctx.lineTo(0, -s * 0.6);
+                ctx.lineTo(s * 0.05, -s * 0.35);
+                ctx.lineTo(s * 0.2, -s * 0.55);
+                ctx.lineTo(s * 0.25, -s * 0.4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#b8860b';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                // Глаза
+                ctx.fillStyle = '#1a1a3a';
+                ctx.beginPath();
+                ctx.arc(-s * 0.1, -s * 0.15, s * 0.05, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(s * 0.1, -s * 0.15, s * 0.05, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Молния (маленькая, на фоне)
+                ctx.fillStyle = '#ffd700';
+                ctx.font = `${s * 0.5}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText('⚡', 0, -s * 0.2);
             }
 
             lightenColor(hex, percent) {
@@ -1319,9 +1681,10 @@
             };
         }
 
-        // Обработчик кнопки Spin
         document.getElementById('btnSpin').addEventListener('click', () => {
-            engine.spin();
+            if (!engine.isProcessing && engine.state === GameStateEnum.IDLE) {
+                engine.spin();
+            }
         });
 
         // Главный цикл рендеринга
@@ -1330,23 +1693,27 @@
             engine.render(ctx);
             engine.updateSpinButton();
 
-            // Эффект ярости Зевса при больших множителях
+            // Zeus Rage при больших множителях
             if (engine.activeOrbs.some(o => o.multiplier >= 50)) {
-                document.body.classList.add('zeus-rage');
-                setTimeout(() => document.body.classList.remove('zeus-rage'), 2000);
+                if (!document.body.classList.contains('zeus-rage')) {
+                    document.body.classList.add('zeus-rage');
+                    setTimeout(() => document.body.classList.remove('zeus-rage'), 2000);
+                }
             }
 
             requestAnimationFrame(gameLoop);
         }
 
-        // Начальный рендеринг
         engine.initGrid();
         engine.updateWinDisplay();
         engine.updateSpinButton();
         gameLoop();
 
-        console.log('⚡ Zeus Thunder - Игровой автомат запущен!');
-        console.log('Механики: Tumble (падение + группы 8+), Scatter Pays, Сферы Зевса, Free Spins с накопительным множителем');
+        console.log('⚡ Zeus Thunder - Слот запущен!');
+        console.log('🎅 Скаттер: Дед Зевс (от 4 шт. — бонус, от 3 шт. в бонусе — +5 спинов)');
+        console.log('💎 Tumble: группы от 8 символов');
+        console.log('🌩️ Сферы: множители 2x-500x от Зевса');
+        console.log('🔄 Free Spins: накопительный множитель');
     </script>
 </body>
 </html>
