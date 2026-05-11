@@ -768,7 +768,6 @@
             BONUS_TRANSITION: 'BONUS_TRANSITION'
         };
 
-        // ==================== ГЕНЕРАЦИЯ ИСКР ====================
         function createFireSparks() {
             const container = document.getElementById('fireSparks');
             if (!container) return;
@@ -786,7 +785,6 @@
             }
         }
 
-        // ==================== ОТРИСОВКА ЗЕВСА ====================
         function drawZeusFigure(zctx, armRaised, lightningActive) {
             const w = 150,
                 h = 400;
@@ -1049,7 +1047,7 @@
                     hasOrb: false,
                     orbMultiplier: 1,
                     bounceOffset: 0,
-                    rowPosition: r
+                    removed: false
                 };
             }
 
@@ -1085,30 +1083,34 @@
             findGroups() {
                 const visited = Array.from({ length: ROWS }, () => Array(COLS).fill(false));
                 const groups = [];
+
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
                         if (visited[r][c]) continue;
-                        if (!this.grid[r] || !this.grid[r][c]) continue;
                         const cell = this.grid[r][c];
-                        if (!cell.symbol || cell.isExploding || cell.scale < 0.1) continue;
+                        if (!cell || cell.removed || !cell.symbol) continue;
+
                         const symbol = cell.symbol;
                         const group = [];
                         const stack = [{ r, c }];
+
                         while (stack.length > 0) {
                             const { r: cr, c: cc } = stack.pop();
                             if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
                             if (visited[cr][cc]) continue;
-                            if (!this.grid[cr] || !this.grid[cr][cc]) continue;
                             const checkCell = this.grid[cr][cc];
-                            if (!checkCell.symbol || checkCell.symbol !== symbol) continue;
-                            if (checkCell.isExploding || checkCell.scale < 0.1) continue;
+                            if (!checkCell || checkCell.removed || !checkCell.symbol) continue;
+                            if (checkCell.symbol !== symbol) continue;
+
                             visited[cr][cc] = true;
                             group.push({ r: cr, c: cc });
-                            if (cr - 1 >= 0) stack.push({ r: cr - 1, c: cc });
-                            if (cr + 1 < ROWS) stack.push({ r: cr + 1, c: cc });
-                            if (cc - 1 >= 0) stack.push({ r: cr, c: cc - 1 });
-                            if (cc + 1 < COLS) stack.push({ r: cr, c: cc + 1 });
+
+                            stack.push({ r: cr - 1, c: cc });
+                            stack.push({ r: cr + 1, c: cc });
+                            stack.push({ r: cr, c: cc - 1 });
+                            stack.push({ r: cr, c: cc + 1 });
                         }
+
                         const minCount = symbol === SYMBOLS.ZEUS_SCATTER ? 4 : 8;
                         if (group.length >= minCount) {
                             const payout = this.getPayoutForCount(symbol, group.length);
@@ -1123,32 +1125,31 @@
                 let moved = false;
                 for (let c = 0; c < COLS; c++) {
                     for (let r = ROWS - 1; r >= 0; r--) {
-                        if (!this.grid[r]) this.grid[r] = [];
-                        if (!this.grid[r][c]) this.grid[r][c] = this.createCell(r, c, null);
                         const cell = this.grid[r][c];
-                        if (cell.symbol === null || cell.isExploding || cell.scale < 0.1) {
+                        if (!cell || cell.removed || !cell.symbol) {
                             for (let above = r - 1; above >= 0; above--) {
-                                if (this.grid[above] && this.grid[above][c] && this.grid[above][c].symbol !== null &&
-                                    !this.grid[above][c].isExploding && this.grid[above][c].scale > 0.1) {
-                                    const from = this.grid[above][c];
-                                    cell.symbol = from.symbol;
-                                    cell.hasOrb = from.hasOrb;
-                                    cell.orbMultiplier = from.orbMultiplier;
-                                    cell.y = from.y;
-                                    cell.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
-                                    cell.velocity = 0;
-                                    cell.scale = 1;
-                                    cell.opacity = 1;
-                                    cell.isWinning = false;
-                                    cell.isExploding = false;
-                                    cell.bounceOffset = 0;
-                                    cell.rowPosition = r;
-                                    from.symbol = null;
-                                    from.hasOrb = false;
-                                    from.orbMultiplier = 1;
-                                    from.isWinning = false;
-                                    from.isExploding = false;
-                                    from.scale = 0;
+                                const aboveCell = this.grid[above][c];
+                                if (aboveCell && !aboveCell.removed && aboveCell.symbol) {
+                                    if (!this.grid[r][c]) this.grid[r][c] = this.createCell(r, c, null);
+                                    const to = this.grid[r][c];
+                                    to.symbol = aboveCell.symbol;
+                                    to.hasOrb = aboveCell.hasOrb;
+                                    to.orbMultiplier = aboveCell.orbMultiplier;
+                                    to.y = aboveCell.y;
+                                    to.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
+                                    to.velocity = 0;
+                                    to.scale = 1;
+                                    to.opacity = 1;
+                                    to.isWinning = false;
+                                    to.isExploding = false;
+                                    to.bounceOffset = 0;
+                                    to.removed = false;
+                                    aboveCell.symbol = null;
+                                    aboveCell.hasOrb = false;
+                                    aboveCell.orbMultiplier = 1;
+                                    aboveCell.isWinning = false;
+                                    aboveCell.isExploding = false;
+                                    aboveCell.removed = true;
                                     moved = true;
                                     break;
                                 }
@@ -1163,29 +1164,27 @@
                 for (let c = 0; c < COLS; c++) {
                     let emptyCount = 0;
                     for (let r = 0; r < ROWS; r++) {
-                        if (!this.grid[r]) this.grid[r] = [];
-                        if (!this.grid[r][c]) this.grid[r][c] = this.createCell(r, c, null);
-                        if (this.grid[r][c].symbol === null || this.grid[r][c].isExploding || this.grid[r][c].scale <
-                            0.1) emptyCount++;
+                        const cell = this.grid[r][c];
+                        if (!cell || cell.removed || !cell.symbol) emptyCount++;
                     }
                     let added = 0;
                     for (let r = 0; r < ROWS; r++) {
-                        if (!this.grid[r]) this.grid[r] = [];
-                        if (!this.grid[r][c]) this.grid[r][c] = this.createCell(r, c, null);
-                        if (this.grid[r][c].symbol === null || this.grid[r][c].isExploding || this.grid[r][c].scale <
-                            0.1) {
-                            this.grid[r][c].symbol = this.getRandomSymbolByProbability();
-                            this.grid[r][c].y = GRID_OFFSET_Y - (emptyCount - added) * CELL_SIZE - 30;
-                            this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
-                            this.grid[r][c].velocity = 0;
-                            this.grid[r][c].scale = 1;
-                            this.grid[r][c].opacity = 1;
-                            this.grid[r][c].isWinning = false;
-                            this.grid[r][c].isExploding = false;
-                            this.grid[r][c].hasOrb = false;
-                            this.grid[r][c].orbMultiplier = 1;
-                            this.grid[r][c].bounceOffset = 0;
-                            this.grid[r][c].rowPosition = r;
+                        const cell = this.grid[r][c];
+                        if (!cell || cell.removed || !cell.symbol) {
+                            if (!this.grid[r][c]) this.grid[r][c] = this.createCell(r, c, null);
+                            const newCell = this.grid[r][c];
+                            newCell.symbol = this.getRandomSymbolByProbability();
+                            newCell.y = GRID_OFFSET_Y - (emptyCount - added) * CELL_SIZE - 30;
+                            newCell.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
+                            newCell.velocity = 0;
+                            newCell.scale = 1;
+                            newCell.opacity = 1;
+                            newCell.isWinning = false;
+                            newCell.isExploding = false;
+                            newCell.hasOrb = false;
+                            newCell.orbMultiplier = 1;
+                            newCell.bounceOffset = 0;
+                            newCell.removed = false;
                             added++;
                         }
                     }
@@ -1238,9 +1237,10 @@
                         const multiplier = this.getRandomOrbMultiplier(this.isFreeSpins);
                         const colors = ['#2ecc71', '#3498db', '#e91e90', '#ffd700'];
                         const color = colors[Math.floor(Math.random() * colors.length)];
-                        if (this.grid[r] && this.grid[r][c] && this.grid[r][c].symbol && !this.grid[r][c].isExploding) {
-                            this.grid[r][c].hasOrb = true;
-                            this.grid[r][c].orbMultiplier = multiplier;
+                        const cell = this.grid[r] && this.grid[r][c];
+                        if (cell && !cell.removed && cell.symbol) {
+                            cell.hasOrb = true;
+                            cell.orbMultiplier = multiplier;
                             this.activeOrbs.push({ r, c, multiplier, color });
                             this.spawnOrbEffect(r, c, color, multiplier);
                         }
@@ -1297,7 +1297,7 @@
                 }
 
                 await this.animateInitialCascade();
-                await this.sleep(400);
+                await this.sleep(500);
                 await this.cascadeCycle();
 
                 const finalWin = this.applyOrbsToWin(this.totalWin);
@@ -1349,7 +1349,7 @@
                         cell.hasOrb = false;
                         cell.orbMultiplier = 1;
                         cell.bounceOffset = 0;
-                        cell.rowPosition = r;
+                        cell.removed = false;
                     }
                 }
                 const promises = [];
@@ -1368,8 +1368,8 @@
                         const animate = () => {
                             let allSettled = true;
                             for (let r = 0; r < ROWS; r++) {
-                                if (!this.grid[r] || !this.grid[r][col]) continue;
-                                const cell = this.grid[r][col];
+                                const cell = this.grid[r] && this.grid[r][col];
+                                if (!cell) continue;
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
                                 if (Math.abs(dy) > 0.5) {
@@ -1398,10 +1398,11 @@
                                 settleFrames++;
                                 if (settleFrames < 8) { requestAnimationFrame(animate); } else {
                                     for (let r = 0; r < ROWS; r++) {
-                                        if (this.grid[r] && this.grid[r][col]) {
-                                            this.grid[r][col].y = this.grid[r][col].targetY;
-                                            this.grid[r][col].bounceOffset = 0;
-                                            this.grid[r][col].velocity = 0;
+                                        const cell = this.grid[r] && this.grid[r][col];
+                                        if (cell) {
+                                            cell.y = cell.targetY;
+                                            cell.bounceOffset = 0;
+                                            cell.velocity = 0;
                                         }
                                     }
                                     resolve();
@@ -1423,8 +1424,18 @@
                     await this.sleep(CASCADE_DELAY);
 
                     const groups = this.findGroups();
-                    console.log(`[Cascade ${iterations}] Найдено групп: ${groups.length}`);
-                    if (groups.length === 0) { hasWins = false; break; }
+                    console.log(`[Каскад ${iterations}] Найдено групп: ${groups.length}`);
+                    if (groups.length === 0) {
+                        console.log(`[Каскад ${iterations}] Групп не найдено, завершаем`);
+                        hasWins = false;
+                        break;
+                    }
+
+                    groups.forEach(g => {
+                        console.log(
+                            `  Группа: ${g.symbol} x${g.count} = ${g.payout.toFixed(0)} (${(g.payout/this.bet*100).toFixed(1)}% ставки)`
+                            );
+                    });
 
                     this.state = GameStateEnum.WIN_ANIMATION;
                     this.highlightWinningCells(groups);
@@ -1432,16 +1443,12 @@
                     await this.sleep(600);
 
                     let cycleWin = 0;
-                    for (const group of groups) {
-                        cycleWin += group.payout;
-                        console.log(
-                            `  Группа: ${group.symbol} x${group.count} = ${group.payout} (${(group.payout/this.bet*100).toFixed(1)}% ставки)`
-                            );
-                    }
+                    for (const group of groups) cycleWin += group.payout;
                     this.totalWin += cycleWin;
-                    console.log(`  Выигрыш за цикл: ${cycleWin}, общий: ${this.totalWin}`);
+                    console.log(`  Выигрыш за цикл: ${cycleWin.toFixed(0)}, общий: ${this.totalWin.toFixed(0)}`);
 
                     if (Math.random() < (this.isFreeSpins ? 0.25 : 0.07)) {
+                        console.log('  Зевс бросает сферы!');
                         this.zeusThrowOrbs();
                     }
 
@@ -1458,9 +1465,8 @@
             highlightWinningCells(groups) {
                 for (const group of groups) {
                     for (const cell of group.cells) {
-                        if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
-                            this.grid[cell.r][cell.c].isWinning = true;
-                        }
+                        const c = this.grid[cell.r] && this.grid[cell.r][cell.c];
+                        if (c) c.isWinning = true;
                     }
                 }
             }
@@ -1474,17 +1480,15 @@
                         const s = 1 + Math.sin(progress * Math.PI * 4) * 0.18;
                         for (const group of groups) {
                             for (const cell of group.cells) {
-                                if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
-                                    this.grid[cell.r][cell.c].scale = s;
-                                }
+                                const c = this.grid[cell.r] && this.grid[cell.r][cell.c];
+                                if (c && !c.removed) c.scale = s;
                             }
                         }
                         if (progress < 1) { requestAnimationFrame(animate); } else {
                             for (const group of groups) {
                                 for (const cell of group.cells) {
-                                    if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
-                                        this.grid[cell.r][cell.c].scale = 1.25;
-                                    }
+                                    const c = this.grid[cell.r] && this.grid[cell.r][cell.c];
+                                    if (c && !c.removed) c.scale = 1.25;
                                 }
                             }
                             resolve();
@@ -1503,8 +1507,8 @@
                         const s = 1.25 + progress * 0.5;
                         for (const group of groups) {
                             for (const cell of group.cells) {
-                                if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
-                                    const c = this.grid[cell.r][cell.c];
+                                const c = this.grid[cell.r] && this.grid[cell.r][cell.c];
+                                if (c && !c.removed) {
                                     c.scale = s;
                                     c.opacity = 1 - progress;
                                     c.isExploding = true;
@@ -1520,8 +1524,8 @@
             removeExplodedSymbols(groups) {
                 for (const group of groups) {
                     for (const cell of group.cells) {
-                        if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
-                            const gc = this.grid[cell.r][cell.c];
+                        const gc = this.grid[cell.r] && this.grid[cell.r][cell.c];
+                        if (gc && !gc.removed) {
                             this.spawnParticles(
                                 GRID_OFFSET_X + cell.c * CELL_SIZE + CELL_SIZE / 2,
                                 gc.y + gc.bounceOffset,
@@ -1533,9 +1537,10 @@
                             gc.orbMultiplier = 1;
                             gc.isWinning = false;
                             gc.isExploding = false;
-                            gc.scale = 0;
+                            gc.scale = 1;
                             gc.opacity = 1;
                             gc.bounceOffset = 0;
+                            gc.removed = true;
                         }
                     }
                 }
@@ -1550,9 +1555,8 @@
                         let allSettled = true;
                         for (let c = 0; c < COLS; c++) {
                             for (let r = 0; r < ROWS; r++) {
-                                if (!this.grid[r] || !this.grid[r][c]) continue;
-                                const cell = this.grid[r][c];
-                                if (!cell.symbol || cell.scale < 0.1) continue;
+                                const cell = this.grid[r] && this.grid[r][c];
+                                if (!cell || cell.removed || !cell.symbol) continue;
                                 cell.scale = Math.min(1, cell.scale + 0.15);
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
@@ -1584,12 +1588,12 @@
                             if (settleFrames < 6) { requestAnimationFrame(animate); } else {
                                 for (let c = 0; c < COLS; c++) {
                                     for (let r = 0; r < ROWS; r++) {
-                                        if (this.grid[r] && this.grid[r][c]) {
-                                            const cell = this.grid[r][c];
+                                        const cell = this.grid[r] && this.grid[r][c];
+                                        if (cell && !cell.removed) {
                                             cell.y = cell.targetY;
                                             cell.bounceOffset = 0;
                                             cell.velocity = 0;
-                                            if (cell.symbol) cell.scale = 1;
+                                            cell.scale = 1;
                                         }
                                     }
                                 }
@@ -1626,10 +1630,8 @@
                 let count = 0;
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        if (this.grid[r] && this.grid[r][c] && this.grid[r][c].symbol === SYMBOLS.ZEUS_SCATTER &&
-                            !this.grid[r][c].isExploding && this.grid[r][c].scale > 0.1) {
-                            count++;
-                        }
+                        const cell = this.grid[r] && this.grid[r][c];
+                        if (cell && !cell.removed && cell.symbol === SYMBOLS.ZEUS_SCATTER) count++;
                     }
                 }
                 return count;
@@ -1664,7 +1666,7 @@
                 this.bonusBalance += finalBonusWin;
                 this.updateBalanceDisplay();
                 await this.animateWinCounter(finalBonusWin);
-                console.log(`Бонус завершен! Бонусный выигрыш: ${this.bonusTotalWin} x ${this.totalMultiplier} = ${finalBonusWin}`);
+                console.log(`Бонус завершен! ${this.bonusTotalWin.toFixed(0)} x ${this.totalMultiplier} = ${finalBonusWin.toFixed(0)}`);
                 this.isFreeSpins = false;
                 this.freeSpinsRemaining = 0;
                 this.totalMultiplier = 1;
@@ -1764,14 +1766,13 @@
                 }
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        if (!this.grid[r] || !this.grid[r][c]) continue;
-                        const cell = this.grid[r][c];
-                        if (!cell.symbol || cell.scale < 0.05) continue;
+                        const cell = this.grid[r] && this.grid[r][c];
+                        if (!cell || cell.removed || !cell.symbol) continue;
                         const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
                         const y = cell.y + cell.bounceOffset;
                         ctx.save();
                         ctx.translate(x, y);
-                        const s = Math.max(0.05, cell.scale);
+                        const s = Math.max(0.1, cell.scale);
                         ctx.scale(s, s);
                         ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity));
                         if (cell.isWinning && !cell.isExploding) { ctx.shadowColor = '#ffd700';
@@ -1904,20 +1905,7 @@
             };
         }
         if (!zctx.roundRect) {
-            zctx.roundRect = function(x, y, w, h, r) {
-                if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
-                ctx.beginPath();
-                ctx.moveTo(x + r.tl, y);
-                ctx.lineTo(x + w - r.tr, y);
-                ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
-                ctx.lineTo(x + w, y + h - r.br);
-                ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
-                ctx.lineTo(x + r.bl, y + h);
-                ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
-                ctx.lineTo(x, y + r.tl);
-                ctx.quadraticCurveTo(x, y, x + r.tl, y);
-                ctx.closePath();
-            };
+            zctx.roundRect = ctx.roundRect;
         }
 
         createFireSparks();
@@ -1958,11 +1946,10 @@
         drawZeusFigure(zctx, false, false);
         gameLoop();
 
-        console.log('⚡ Zeus Thunder - Запущен!');
-        console.log('💰 Начальный баланс: 10,000 монет');
-        console.log('🎯 Поиск групп 8+ по всему полю работает');
-        console.log('🌟 Бонус: шанс иксов увеличен в 5 раз');
-        console.log('🏦 Бонусный баланс отдельно, переводится на основной после завершения');
+        console.log('⚡ Zeus Thunder - ИГРА ЗАПУЩЕНА!');
+        console.log('🎯 Группы 8+ должны находиться и взрываться');
+        console.log('📊 Следите за консолью — там логи поиска групп');
+        console.log('💰 Баланс: 10,000 | Ставка: 100');
     </script>
 </body>
 </html>
