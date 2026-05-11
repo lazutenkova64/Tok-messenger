@@ -5,100 +5,634 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zeus Thunder - Pay Anywhere Cascade Slot</title>
     <style>
-        :root { --bg: #0a0a1a; --gold: #ffd700; --red: #e63946; --dark-gold: #b8860b; --cell-size: 85px; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a1a;
+            --gold: #ffd700;
+            --red: #e63946;
+            --dark-gold: #b8860b;
+            --cell-size: 85px;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
-            background: #1a0a00; display: flex; justify-content: center; align-items: center; min-height: 100vh;
-            font-family: 'Segoe UI', 'Arial', sans-serif; overflow: hidden; transition: background-color 0.5s ease;
-            user-select: none; -webkit-user-select: none;
-            background-image:
-                radial-gradient(ellipse at 50% 0%, rgba(255,180,0,0.2) 0%, transparent 60%),
-                radial-gradient(ellipse at 50% 100%, rgba(255,100,0,0.3) 0%, transparent 50%),
-                radial-gradient(ellipse at 20% 80%, rgba(255,200,50,0.15) 0%, transparent 40%),
-                radial-gradient(ellipse at 80% 80%, rgba(255,200,50,0.15) 0%, transparent 40%),
-                linear-gradient(180deg, #1a0800 0%, #2d1500 20%, #3d1a00 40%, #2d1000 60%, #1a0500 80%, #0d0200 100%);
+            background: #1a0a00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            overflow: hidden;
+            transition: background-color 0.5s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            background-image: radial-gradient(ellipse at 50% 0%, rgba(255, 180, 0, 0.2) 0%, transparent 60%), radial-gradient(ellipse at 50% 100%, rgba(255, 100, 0, 0.3) 0%, transparent 50%), radial-gradient(ellipse at 20% 80%, rgba(255, 200, 50, 0.15) 0%, transparent 40%), radial-gradient(ellipse at 80% 80%, rgba(255, 200, 50, 0.15) 0%, transparent 40%), linear-gradient(180deg, #1a0800 0%, #2d1500 20%, #3d1a00 40%, #2d1000 60%, #1a0500 80%, #0d0200 100%);
             background-attachment: fixed;
         }
-        body::before, body::after { content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-        body::before { background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255,150,0,0.03) 3px, rgba(255,150,0,0.03) 4px), radial-gradient(circle at 50% 30%, rgba(255,200,50,0.08) 0%, transparent 70%), radial-gradient(circle at 30% 70%, rgba(255,180,0,0.05) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(255,180,0,0.05) 0%, transparent 50%); }
-        body::after { background: radial-gradient(circle at 50% 15%, rgba(255,215,0,0.2) 0%, transparent 40%), radial-gradient(circle at 50% 50%, rgba(255,140,0,0.05) 0%, transparent 60%); }
-        body.zeus-rage { animation: rageBg 0.6s ease-in-out forwards; }
-        @keyframes rageBg { 0% { background: #1a0a00; } 50% { background: #3d0a0a; } 100% { background: #2a0500; } }
-        .golden-gates { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 800px; height: 300px; pointer-events: none; z-index: 0; opacity: 0.6; }
-        .golden-gates .gate-left, .golden-gates .gate-right { position: absolute; width: 50px; height: 280px; background: linear-gradient(180deg, rgba(255,215,0,0.4) 0%, rgba(180,130,0,0.35) 30%, rgba(255,215,0,0.4) 60%, rgba(180,130,0,0.35) 100%); border-radius: 10px; box-shadow: 0 0 40px rgba(255,200,0,0.4), 0 0 80px rgba(255,150,0,0.2); }
-        .golden-gates .gate-left { left: 100px; border-right: 3px solid rgba(255,215,0,0.6); }
-        .golden-gates .gate-right { right: 100px; border-left: 3px solid rgba(255,215,0,0.6); }
-        .golden-gates .gate-arch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 400px; height: 200px; border: 8px solid rgba(255,215,0,0.5); border-radius: 200px 200px 0 0; border-bottom: none; box-shadow: 0 0 60px rgba(255,200,0,0.5), 0 0 100px rgba(255,150,0,0.3); }
-        .fire-sparks { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-        .fire-spark { position: absolute; width: 3px; height: 3px; background: #ffd700; border-radius: 50%; animation: sparkFloat 3s ease-in-out infinite; box-shadow: 0 0 6px #ffd700, 0 0 12px #ff8c00; }
-        @keyframes sparkFloat { 0%,100% { transform: translateY(0) translateX(0); opacity: 0; } 20% { opacity: 1; } 50% { transform: translateY(-60px) translateX(20px); opacity: 0.7; } 80% { opacity: 0.3; } }
-        .game-container { position: relative; display: flex; gap: 20px; align-items: stretch; padding: 20px; z-index: 1; }
-        .left-panel { width: 85px; background: linear-gradient(180deg, rgba(30,15,0,0.9) 0%, rgba(20,8,0,0.95) 100%); border: 2px solid rgba(180,130,0,0.6); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px 10px; transition: all 0.3s; box-shadow: 0 0 20px rgba(255,150,0,0.2); }
-        .left-panel.inactive { opacity: 0.3; border-color: rgba(100,70,0,0.4); }
-        .left-panel .panel-label { color: #cca300; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
-        .left-panel .multiplier-counter { color: #ffd700; font-size: 28px; font-weight: 900; text-shadow: 0 0 20px rgba(255,215,0,0.7); transition: all 0.2s; }
-        .left-panel .multiplier-counter.pulse { animation: counterPulse 0.3s ease-out; }
-        @keyframes counterPulse { 0% { transform: scale(1.6); color: #fff; } 100% { transform: scale(1); color: #ffd700; } }
-        .main-area { position: relative; display: flex; flex-direction: column; align-items: center; gap: 15px; z-index: 1; }
-        .game-header { display: flex; align-items: center; gap: 20px; width: 100%; justify-content: space-between; padding: 0 10px; }
-        .game-title { font-size: 38px; font-weight: 900; background: linear-gradient(180deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 3px; filter: drop-shadow(0 0 15px rgba(255,200,0,0.5)); }
-        .freespin-badge { background: linear-gradient(135deg, #e63946, #ff4500); color: white; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; letter-spacing: 1px; animation: badgeGlow 1.5s ease-in-out infinite; display: none; box-shadow: 0 0 20px rgba(255,50,0,0.5); }
-        .freespin-badge.active { display: block; }
-        @keyframes badgeGlow { 0%,100% { box-shadow: 0 0 15px rgba(255,50,0,0.5); } 50% { box-shadow: 0 0 35px rgba(255,80,0,0.9); } }
-        canvas#gameCanvas { border: 3px solid rgba(180,130,0,0.6); border-radius: 15px; background: linear-gradient(180deg, rgba(10,5,0,0.85) 0%, rgba(20,10,0,0.9) 100%); box-shadow: 0 0 50px rgba(255,150,0,0.3), 0 0 100px rgba(255,100,0,0.15), inset 0 0 80px rgba(0,0,0,0.5); transition: box-shadow 0.3s; }
-        body.zeus-rage canvas#gameCanvas { box-shadow: 0 0 80px rgba(255,30,0,0.7), 0 0 120px rgba(200,30,0,0.4), inset 0 0 100px rgba(200,20,0,0.3); border-color: #8b0000; }
-        .right-panel { width: 160px; position: relative; display: flex; align-items: center; justify-content: center; }
-        .zeus-canvas-container { width: 150px; height: 400px; position: relative; }
-        #zeusCanvas { width: 150px; height: 400px; border: none; background: transparent; box-shadow: none; border-radius: 0; }
-        .bottom-panel { display: flex; align-items: center; gap: 20px; background: linear-gradient(180deg, rgba(30,15,0,0.9), rgba(20,8,0,0.95)); border: 2px solid rgba(180,130,0,0.5); border-radius: 40px; padding: 14px 28px; box-shadow: 0 0 30px rgba(255,150,0,0.2); }
-        .win-display { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .win-label { color: #cca300; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; }
-        .win-amount { color: #ffd700; font-size: 34px; font-weight: 900; text-shadow: 0 0 25px rgba(255,215,0,0.6); transition: all 0.1s; min-width: 140px; text-align: center; }
-        .win-amount.counting { animation: winCount 0.1s ease-out; }
-        @keyframes winCount { 0% { transform: scale(1.15); color: #fff; } 100% { transform: scale(1); color: #ffd700; } }
-        .balance-display { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .balance-label { color: #cca300; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        .balance-amount { color: #fff; font-size: 16px; font-weight: 700; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
-        .bet-controls { display: flex; align-items: center; gap: 8px; }
-        .bet-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ffd700; background: rgba(0,0,0,0.5); color: #ffd700; font-size: 18px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .bet-btn:hover { background: rgba(255,215,0,0.2); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
-        .bet-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .bet-amount { color: #fff; font-size: 19px; font-weight: 700; min-width: 70px; text-align: center; }
-        .bet-label-small { color: #cca300; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-spin { width: 95px; height: 95px; border-radius: 50%; border: 4px solid #ffd700; background: linear-gradient(135deg, #e63946, #c0392b); color: #fff; font-size: 19px; font-weight: 900; letter-spacing: 2px; cursor: pointer; transition: all 0.2s; box-shadow: 0 0 35px rgba(230,57,70,0.5); text-transform: uppercase; }
-        .btn-spin:hover { transform: scale(1.05); box-shadow: 0 0 50px rgba(230,57,70,0.8); }
-        .btn-spin:active { transform: scale(0.95); }
-        .btn-spin:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: 0 0 15px rgba(230,57,70,0.2); }
-        .btn-buy-bonus { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #1a0500; border: 2px solid #ffd700; padding: 8px 15px; border-radius: 20px; font-weight: 700; font-size: 12px; cursor: pointer; letter-spacing: 1px; box-shadow: 0 0 15px rgba(255,200,0,0.4); transition: all 0.2s; }
-        .btn-buy-bonus:hover { box-shadow: 0 0 25px rgba(255,200,0,0.7); transform: scale(1.03); }
-        .btn-buy-bonus:disabled { opacity: 0.4; cursor: not-allowed; }
-        .orb-popup { position: absolute; font-size: 24px; font-weight: 900; pointer-events: none; animation: orbFloat 1.8s ease-out forwards; z-index: 10; text-shadow: 0 0 15px rgba(255,215,0,0.9); }
-        @keyframes orbFloat { 0% { transform: scale(0); opacity: 0; } 25% { transform: scale(1.5); opacity: 1; } 70% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(0.6); opacity: 0; } }
-        .bonus-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.5s; }
-        .bonus-overlay.active { opacity: 1; pointer-events: all; }
-        .bonus-popup { background: linear-gradient(135deg, #2a1500, #3d1a00); border: 3px solid #ffd700; border-radius: 22px; padding: 45px; text-align: center; box-shadow: 0 0 90px rgba(255,215,0,0.6); animation: bonusIn 0.5s ease-out; }
-        @keyframes bonusIn { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-        .bonus-popup h2 { color: #ffd700; font-size: 38px; margin-bottom: 12px; text-shadow: 0 0 40px rgba(255,215,0,0.9); }
-        .bonus-popup .bonus-spins { color: #fff; font-size: 65px; font-weight: 900; text-shadow: 0 0 50px rgba(255,255,255,0.6); }
-        .bonus-popup .bonus-subtitle { color: #e0c080; font-size: 17px; margin-top: 12px; }
-        @media (max-width: 768px) { .game-container { flex-direction: column; gap: 10px; padding: 10px; } .left-panel { width: 100%; flex-direction: row; height: 65px; padding: 10px; } .right-panel { display: none; } canvas#gameCanvas { width: 100%; height: auto; } .golden-gates { display: none; } }
+        body::before,
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        body::before {
+            background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(255, 150, 0, 0.03) 3px, rgba(255, 150, 0, 0.03) 4px), radial-gradient(circle at 50% 30%, rgba(255, 200, 50, 0.08) 0%, transparent 70%), radial-gradient(circle at 30% 70%, rgba(255, 180, 0, 0.05) 0%, transparent 50%), radial-gradient(circle at 70% 70%, rgba(255, 180, 0, 0.05) 0%, transparent 50%);
+        }
+        body::after {
+            background: radial-gradient(circle at 50% 15%, rgba(255, 215, 0, 0.2) 0%, transparent 40%), radial-gradient(circle at 50% 50%, rgba(255, 140, 0, 0.05) 0%, transparent 60%);
+        }
+        body.zeus-rage {
+            animation: rageBg 0.6s ease-in-out forwards;
+        }
+        @keyframes rageBg {
+            0% {
+                background: #1a0a00;
+            }
+            50% {
+                background: #3d0a0a;
+            }
+            100% {
+                background: #2a0500;
+            }
+        }
+        .golden-gates {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 300px;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.6;
+        }
+        .golden-gates .gate-left,
+        .golden-gates .gate-right {
+            position: absolute;
+            width: 50px;
+            height: 280px;
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.4) 0%, rgba(180, 130, 0, 0.35) 30%, rgba(255, 215, 0, 0.4) 60%, rgba(180, 130, 0, 0.35) 100%);
+            border-radius: 10px;
+            box-shadow: 0 0 40px rgba(255, 200, 0, 0.4), 0 0 80px rgba(255, 150, 0, 0.2);
+        }
+        .golden-gates .gate-left {
+            left: 100px;
+            border-right: 3px solid rgba(255, 215, 0, 0.6);
+        }
+        .golden-gates .gate-right {
+            right: 100px;
+            border-left: 3px solid rgba(255, 215, 0, 0.6);
+        }
+        .golden-gates .gate-arch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            height: 200px;
+            border: 8px solid rgba(255, 215, 0, 0.5);
+            border-radius: 200px 200px 0 0;
+            border-bottom: none;
+            box-shadow: 0 0 60px rgba(255, 200, 0, 0.5), 0 0 100px rgba(255, 150, 0, 0.3);
+        }
+        .fire-sparks {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .fire-spark {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #ffd700;
+            border-radius: 50%;
+            animation: sparkFloat 3s ease-in-out infinite;
+            box-shadow: 0 0 6px #ffd700, 0 0 12px #ff8c00;
+        }
+        @keyframes sparkFloat {
+            0%,
+            100% {
+                transform: translateY(0) translateX(0);
+                opacity: 0;
+            }
+            20% {
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(-60px) translateX(20px);
+                opacity: 0.7;
+            }
+            80% {
+                opacity: 0.3;
+            }
+        }
+        .game-container {
+            position: relative;
+            display: flex;
+            gap: 20px;
+            align-items: stretch;
+            padding: 20px;
+            z-index: 1;
+        }
+        .left-panel {
+            width: 85px;
+            background: linear-gradient(180deg, rgba(30, 15, 0, 0.9) 0%, rgba(20, 8, 0, 0.95) 100%);
+            border: 2px solid rgba(180, 130, 0, 0.6);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px 10px;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 150, 0, 0.2);
+        }
+        .left-panel.inactive {
+            opacity: 0.3;
+            border-color: rgba(100, 70, 0, 0.4);
+        }
+        .left-panel .panel-label {
+            color: #cca300;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .left-panel .multiplier-counter {
+            color: #ffd700;
+            font-size: 28px;
+            font-weight: 900;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            transition: all 0.2s;
+        }
+        .left-panel .multiplier-counter.pulse {
+            animation: counterPulse 0.3s ease-out;
+        }
+        @keyframes counterPulse {
+            0% {
+                transform: scale(1.6);
+                color: #fff;
+            }
+            100% {
+                transform: scale(1);
+                color: #ffd700;
+            }
+        }
+        .main-area {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 1;
+        }
+        .game-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            width: 100%;
+            justify-content: space-between;
+            padding: 0 10px;
+        }
+        .game-title {
+            font-size: 38px;
+            font-weight: 900;
+            background: linear-gradient(180deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 3px;
+            filter: drop-shadow(0 0 15px rgba(255, 200, 0, 0.5));
+        }
+        .freespin-badge {
+            background: linear-gradient(135deg, #e63946, #ff4500);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1px;
+            animation: badgeGlow 1.5s ease-in-out infinite;
+            display: none;
+            box-shadow: 0 0 20px rgba(255, 50, 0, 0.5);
+        }
+        .freespin-badge.active {
+            display: block;
+        }
+        @keyframes badgeGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 15px rgba(255, 50, 0, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(255, 80, 0, 0.9);
+            }
+        }
+        canvas#gameCanvas {
+            border: 3px solid rgba(180, 130, 0, 0.6);
+            border-radius: 15px;
+            background: linear-gradient(180deg, rgba(10, 5, 0, 0.85) 0%, rgba(20, 10, 0, 0.9) 100%);
+            box-shadow: 0 0 50px rgba(255, 150, 0, 0.3), 0 0 100px rgba(255, 100, 0, 0.15), inset 0 0 80px rgba(0, 0, 0, 0.5);
+            transition: box-shadow 0.3s;
+        }
+        body.zeus-rage canvas#gameCanvas {
+            box-shadow: 0 0 80px rgba(255, 30, 0, 0.7), 0 0 120px rgba(200, 30, 0, 0.4), inset 0 0 100px rgba(200, 20, 0, 0.3);
+            border-color: #8b0000;
+        }
+        .right-panel {
+            width: 160px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zeus-canvas-container {
+            width: 150px;
+            height: 400px;
+            position: relative;
+        }
+        #zeusCanvas {
+            width: 150px;
+            height: 400px;
+            border: none;
+            background: transparent;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .bottom-panel {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: linear-gradient(180deg, rgba(30, 15, 0, 0.9), rgba(20, 8, 0, 0.95));
+            border: 2px solid rgba(180, 130, 0, 0.5);
+            border-radius: 40px;
+            padding: 14px 22px;
+            box-shadow: 0 0 30px rgba(255, 150, 0, 0.2);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .win-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .win-label {
+            color: #cca300;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .win-amount {
+            color: #ffd700;
+            font-size: 34px;
+            font-weight: 900;
+            text-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            transition: all 0.1s;
+            min-width: 120px;
+            text-align: center;
+        }
+        .win-amount.counting {
+            animation: winCount 0.1s ease-out;
+        }
+        @keyframes winCount {
+            0% {
+                transform: scale(1.15);
+                color: #fff;
+            }
+            100% {
+                transform: scale(1);
+                color: #ffd700;
+            }
+        }
+        .balance-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+        .balance-label {
+            color: #cca300;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .balance-amount {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+        .bet-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .bet-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffd700;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .bet-btn:hover {
+            background: rgba(255, 215, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+        .bet-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .bet-amount {
+            color: #fff;
+            font-size: 19px;
+            font-weight: 700;
+            min-width: 60px;
+            text-align: center;
+        }
+        .bet-label-small {
+            color: #cca300;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-spin {
+            width: 85px;
+            height: 85px;
+            border-radius: 50%;
+            border: 4px solid #ffd700;
+            background: linear-gradient(135deg, #e63946, #c0392b);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 0 35px rgba(230, 57, 70, 0.5);
+            text-transform: uppercase;
+        }
+        .btn-spin:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 50px rgba(230, 57, 70, 0.8);
+        }
+        .btn-spin:active {
+            transform: scale(0.95);
+        }
+        .btn-spin:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 0 15px rgba(230, 57, 70, 0.2);
+        }
+        .btn-buy-bonus {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a0500;
+            border: 2px solid #ffd700;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            box-shadow: 0 0 15px rgba(255, 200, 0, 0.4);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .btn-buy-bonus:hover {
+            box-shadow: 0 0 25px rgba(255, 200, 0, 0.7);
+            transform: scale(1.03);
+        }
+        .btn-buy-bonus:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-fast {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffd700;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-fast:hover {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        .btn-fast.active {
+            background: #ffd700;
+            color: #1a0500;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+        }
+        .btn-auto {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #ffd700;
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffd700;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-auto:hover {
+            background: rgba(255, 215, 0, 0.3);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        .btn-auto.active {
+            background: #ffd700;
+            color: #1a0500;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+        }
+        .auto-spins-select {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, rgba(30, 15, 0, 0.95), rgba(20, 8, 0, 0.95));
+            border: 2px solid #ffd700;
+            border-radius: 15px;
+            padding: 10px;
+            display: none;
+            z-index: 10;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 180px;
+            box-shadow: 0 0 30px rgba(255, 150, 0, 0.4);
+        }
+        .auto-spins-select.show {
+            display: flex;
+        }
+        .auto-spin-option {
+            background: rgba(0, 0, 0, 0.5);
+            color: #ffd700;
+            border: 1px solid #ffd700;
+            padding: 5px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .auto-spin-option:hover {
+            background: #ffd700;
+            color: #1a0500;
+        }
+        .orb-popup {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 900;
+            pointer-events: none;
+            animation: orbFloat 1.8s ease-out forwards;
+            z-index: 10;
+            text-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
+        }
+        @keyframes orbFloat {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            25% {
+                transform: scale(1.5);
+                opacity: 1;
+            }
+            70% {
+                transform: scale(1);
+                opacity: 0.9;
+            }
+            100% {
+                transform: scale(0.6);
+                opacity: 0;
+            }
+        }
+        .bonus-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        .bonus-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .bonus-popup {
+            background: linear-gradient(135deg, #2a1500, #3d1a00);
+            border: 3px solid #ffd700;
+            border-radius: 22px;
+            padding: 45px;
+            text-align: center;
+            box-shadow: 0 0 90px rgba(255, 215, 0, 0.6);
+            animation: bonusIn 0.5s ease-out;
+            cursor: pointer;
+        }
+        @keyframes bonusIn {
+            0% {
+                transform: scale(0.4);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .bonus-popup h2 {
+            color: #ffd700;
+            font-size: 38px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 40px rgba(255, 215, 0, 0.9);
+        }
+        .bonus-popup .bonus-spins {
+            color: #fff;
+            font-size: 65px;
+            font-weight: 900;
+            text-shadow: 0 0 50px rgba(255, 255, 255, 0.6);
+        }
+        .bonus-popup .bonus-subtitle {
+            color: #e0c080;
+            font-size: 17px;
+            margin-top: 12px;
+        }
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                gap: 10px;
+                padding: 10px;
+            }
+            .left-panel {
+                width: 100%;
+                flex-direction: row;
+                height: 65px;
+                padding: 10px;
+            }
+            .right-panel {
+                display: none;
+            }
+            canvas#gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+            .golden-gates {
+                display: none;
+            }
+            .bottom-panel {
+                gap: 8px;
+                padding: 10px 14px;
+            }
+            .btn-spin {
+                width: 65px;
+                height: 65px;
+                font-size: 14px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="golden-gates"><div class="gate-left"></div><div class="gate-right"></div><div class="gate-arch"></div></div>
     <div class="fire-sparks" id="fireSparks"></div>
     <div class="bonus-overlay" id="bonusOverlay">
-        <div class="bonus-popup"><h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2><div class="bonus-spins" id="bonusSpinsDisplay">15</div><div class="bonus-subtitle">FREE SPINS</div><div class="bonus-subtitle" style="margin-top:6px;font-size:14px;">Накопительный множитель активирован!</div></div>
+        <div class="bonus-popup" id="bonusPopup"><h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2><div class="bonus-spins" id="bonusSpinsDisplay">15</div><div class="bonus-subtitle">FREE SPINS</div><div class="bonus-subtitle" style="margin-top:6px;font-size:14px;">Нажмите для запуска</div></div>
     </div>
     <div class="game-container">
         <div class="left-panel inactive" id="leftPanel"><div class="panel-label">Total<br>Multiplier</div><div class="multiplier-counter" id="totalMultiplierDisplay">1x</div></div>
         <div class="main-area" id="mainArea">
             <div class="game-header"><div class="game-title">⚡ ZEUS THUNDER ⚡</div><div class="freespin-badge" id="freespinBadge">FREE SPINS <span id="freespinCountDisplay">15</span></div></div>
             <canvas id="gameCanvas" width="630" height="525"></canvas>
+            <div class="auto-spins-select" id="autoSpinsSelect">
+                <span class="auto-spin-option" data-spins="5">5</span><span class="auto-spin-option" data-spins="10">10</span><span class="auto-spin-option" data-spins="20">20</span><span class="auto-spin-option" data-spins="40">40</span><span class="auto-spin-option" data-spins="50">50</span><span class="auto-spin-option" data-spins="100">100</span>
+            </div>
             <div class="bottom-panel">
                 <div class="win-display"><div class="win-label">Выигрыш</div><div class="win-amount" id="winDisplay">0</div></div>
                 <div class="balance-display"><div class="balance-label">Баланс</div><div class="balance-amount" id="balanceDisplay">10000</div></div>
                 <div class="bet-controls"><div><div class="bet-label-small">Ставка</div><div style="display:flex;align-items:center;gap:10px;"><button class="bet-btn" id="betDown">−</button><span class="bet-amount" id="betDisplay">100</span><button class="bet-btn" id="betUp">+</button></div></div></div>
+                <button class="btn-fast" id="btnFast" title="Быстрый режим">⚡</button>
+                <button class="btn-auto" id="btnAuto" title="Автоигра">A</button>
                 <button class="btn-buy-bonus" id="btnBuyBonus">BUY BONUS</button>
                 <button class="btn-spin" id="btnSpin">SPIN</button>
             </div>
@@ -106,12 +640,18 @@
         <div class="right-panel"><div class="zeus-canvas-container"><canvas id="zeusCanvas" width="150" height="400"></canvas></div></div>
     </div>
     <script>
-        // ==================== КОНСТАНТЫ ====================
-        const COLS = 6, ROWS = 5, TOTAL_CELLS = 30;
-        const CELL_SIZE = 85, GRID_OFFSET_X = 45, GRID_OFFSET_Y = 45, SYMBOL_SIZE = 52;
-        const CASCADE_DELAY = 2000, BET_OPTIONS = [50, 100, 200, 300, 400, 500, 1000, 2000, 5000], INITIAL_BALANCE = 10000;
+        const COLS = 6,
+            ROWS = 5,
+            TOTAL_CELLS = 30;
+        const CELL_SIZE = 90,
+            GRID_OFFSET_X = 40,
+            GRID_OFFSET_Y = 40,
+            SYMBOL_SIZE = 56;
+        const CASCADE_DELAY_BASE = 700;
+        const BET_OPTIONS = [50, 100, 200, 300, 400, 500, 1000, 2000, 5000],
+            INITIAL_BALANCE = 10000;
         const MAX_WIN_MULTIPLIER = 5000;
-        const SYMBOLS = { BLUE_CRYSTAL: 'blue_crystal', GREEN_CRYSTAL: 'green_crystal', YELLOW_CRYSTAL: 'yellow_crystal', PURPLE_CRYSTAL: 'purple_crystal', RED_CRYSTAL: 'red_crystal', CUP: 'cup', RING: 'ring', HOURGLASS: 'hourglass', CROWN: 'crown', ZEUS_SCATTER: 'zeus_scatter' };
+        const SYMBOLS = { BLUE_CRYSTAL: 'blue_crystal', GREEN_CRYSTAL: 'green_crystal', YELLOW_CRYSTAL: 'yellow_crystal', PURPLE_CRYSTAL: 'purple_crystal', RED_CRYSTAL: 'red_crystal', CUP: 'cup', RING: 'ring', HOURGLASS: 'hourglass', CROWN: 'crown', ZEUS_SCATTER: 'zeus_scatter', ORB_MULTIPLIER: 'orb_multiplier' };
         const SYMBOL_PROBABILITIES = [
             { symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 },
             { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 },
@@ -121,63 +661,86 @@
         const PAYTABLE_MAX = { blue_crystal: 2, green_crystal: 4, yellow_crystal: 5, purple_crystal: 8, red_crystal: 10, cup: 12, ring: 15, hourglass: 25, crown: 50, zeus_scatter: 100 };
         const ORB_TIERS = [{ min: 2, max: 5, prob: 70 }, { min: 6, max: 15, prob: 20 }, { min: 20, max: 50, prob: 8 }, { min: 100, max: 500, prob: 2 }];
         const ORB_TIERS_BONUS = [{ min: 2, max: 15, prob: 55 }, { min: 20, max: 75, prob: 25 }, { min: 100, max: 250, prob: 15 }, { min: 300, max: 500, prob: 5 }];
-        const SYMBOL_COLORS = { blue_crystal: '#3498db', green_crystal: '#2ecc71', yellow_crystal: '#f1c40f', purple_crystal: '#9b59b6', red_crystal: '#e74c3c', cup: '#1abc9c', ring: '#e67e22', hourglass: '#f39c12', crown: '#e74c3c', zeus_scatter: '#ffd700' };
-        const SYMBOL_EMOJIS = { blue_crystal: '💎', green_crystal: '💚', yellow_crystal: '💛', purple_crystal: '💜', red_crystal: '❤️', cup: '🏆', ring: '💍', hourglass: '⏳', crown: '👑', zeus_scatter: '⚡' };
+        const SYMBOL_COLORS = { blue_crystal: '#3498db', green_crystal: '#2ecc71', yellow_crystal: '#f1c40f', purple_crystal: '#9b59b6', red_crystal: '#e74c3c', cup: '#1abc9c', ring: '#e67e22', hourglass: '#f39c12', crown: '#e74c3c', zeus_scatter: '#ffd700', orb_multiplier: '#ffd700' };
+        const SYMBOL_EMOJIS = { blue_crystal: '💎', green_crystal: '💚', yellow_crystal: '💛', purple_crystal: '💜', red_crystal: '❤️', cup: '🏆', ring: '💍', hourglass: '⏳', crown: '👑', zeus_scatter: '⚡', orb_multiplier: '✖️' };
         const GameStateEnum = { IDLE: 'IDLE', SPINNING: 'SPINNING', CASCADING: 'CASCADING', WIN_ANIMATION: 'WIN_ANIMATION', BONUS_TRANSITION: 'BONUS_TRANSITION' };
 
-        function createFireSparks() {
-            const c = document.getElementById('fireSparks'); if (!c) return; c.innerHTML = '';
-            for (let i = 0; i < 30; i++) { const s = document.createElement('div');
+        function createFireSparks() { const c = document.getElementById('fireSparks'); if (!c) return;
+            c.innerHTML = ''; for (let i = 0; i < 30; i++) { const s = document.createElement('div');
                 s.className = 'fire-spark';
                 s.style.cssText = `left:${Math.random()*100}%;top:${Math.random()*100}%;animation-delay:${Math.random()*5}s;animation-duration:${2+Math.random()*4}s;width:${2+Math.random()*4}px;height:${2+Math.random()*4}px;`;
-                c.appendChild(s); }
-        }
+                c.appendChild(s); } }
 
-        function drawZeusFigure(zctx, armRaised, lightningActive) {
-            const w = 150, h = 400; zctx.clearRect(0, 0, w, h);
-            zctx.fillStyle = 'rgba(255,255,255,0.12)'; zctx.beginPath();
-            zctx.ellipse(75, 380, 55, 18, 0, 0, Math.PI * 2); zctx.fill();
-            zctx.fillStyle = '#c4956a'; zctx.fillRect(52, 340, 18, 35); zctx.fillRect(80, 340, 18, 35);
-            zctx.fillStyle = '#8B6914'; zctx.beginPath();
-            zctx.roundRect(48, 368, 26, 12, 6); zctx.fill(); zctx.beginPath();
-            zctx.roundRect(76, 368, 26, 12, 6); zctx.fill();
-            const bg = zctx.createLinearGradient(60, 230, 90, 340);
+        function drawZeusFigure(zctx, armRaised, lightningActive) { const w = 150,
+                h = 400;
+            zctx.clearRect(0, 0, w, h);
+            zctx.fillStyle = 'rgba(255,255,255,0.12)';
+            zctx.beginPath();
+            zctx.ellipse(75, 380, 55, 18, 0, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.fillStyle = '#c4956a';
+            zctx.fillRect(52, 340, 18, 35);
+            zctx.fillRect(80, 340, 18, 35);
+            zctx.fillStyle = '#8B6914';
+            zctx.beginPath();
+            zctx.roundRect(48, 368, 26, 12, 6);
+            zctx.fill();
+            zctx.beginPath();
+            zctx.roundRect(76, 368, 26, 12, 6);
+            zctx.fill(); const bg = zctx.createLinearGradient(60, 230, 90, 340);
             bg.addColorStop(0, '#ffd700');
             bg.addColorStop(0.3, '#daa520');
             bg.addColorStop(0.6, '#b8860b');
             bg.addColorStop(1, '#8b6914');
-            zctx.fillStyle = bg; zctx.beginPath();
-            zctx.roundRect(48, 230, 54, 115, 15); zctx.fill();
+            zctx.fillStyle = bg;
+            zctx.beginPath();
+            zctx.roundRect(48, 230, 54, 115, 15);
+            zctx.fill();
             zctx.strokeStyle = '#5c3d0a';
-            zctx.lineWidth = 2; zctx.stroke();
-            [{ x: 62, y: 250 }, { x: 88, y: 250 }, { x: 55, y: 290 }, { x: 75, y: 280 }, { x: 95, y: 290 }, { x: 62, y: 325 }, { x: 88, y: 325 }].forEach(p => { const gg = zctx.createRadialGradient(p.x - 1, p.y - 1, 1, p.x, p.y, 8);
+            zctx.lineWidth = 2;
+            zctx.stroke();[{ x: 62, y: 250 }, { x: 88, y: 250 }, { x: 55, y: 290 }, { x: 75, y: 280 }, { x: 95, y: 290 }, { x: 62, y: 325 }, { x: 88, y: 325 }].forEach(p => { const gg = zctx.createRadialGradient(p.x - 1, p.y - 1, 1, p.x, p.y, 8);
                 gg.addColorStop(0, '#87CEEB');
                 gg.addColorStop(0.5, '#4169E1');
                 gg.addColorStop(1, '#000080');
-                zctx.fillStyle = gg; zctx.beginPath();
-                zctx.arc(p.x, p.y, 7, 0, Math.PI * 2); zctx.fill();
+                zctx.fillStyle = gg;
+                zctx.beginPath();
+                zctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+                zctx.fill();
                 zctx.strokeStyle = '#ffd700';
-                zctx.lineWidth = 1.5; zctx.stroke(); });
-            zctx.fillStyle = '#8b0000'; zctx.beginPath();
+                zctx.lineWidth = 1.5;
+                zctx.stroke(); });
+            zctx.fillStyle = '#8b0000';
+            zctx.beginPath();
             zctx.moveTo(48, 240);
             zctx.lineTo(25, 350);
             zctx.lineTo(35, 360);
-            zctx.lineTo(48, 330); zctx.fill(); zctx.beginPath();
+            zctx.lineTo(48, 330);
+            zctx.fill();
+            zctx.beginPath();
             zctx.moveTo(102, 240);
             zctx.lineTo(125, 350);
             zctx.lineTo(115, 360);
-            zctx.lineTo(102, 330); zctx.fill();
-            zctx.fillStyle = '#daa520'; zctx.beginPath();
-            zctx.roundRect(40, 245, 12, 40, 6); zctx.fill();
+            zctx.lineTo(102, 330);
+            zctx.fill();
+            zctx.fillStyle = '#daa520';
+            zctx.beginPath();
+            zctx.roundRect(40, 245, 12, 40, 6);
+            zctx.fill();
             zctx.strokeStyle = '#5c3d0a';
-            zctx.lineWidth = 1.5; zctx.stroke(); zctx.save(); if (armRaised) { zctx.translate(105, 245);
+            zctx.lineWidth = 1.5;
+            zctx.stroke();
+            zctx.save(); if (armRaised) { zctx.translate(105, 245);
                 zctx.rotate(-2.2);
-                zctx.fillStyle = '#daa520'; zctx.beginPath();
-                zctx.roundRect(0, 0, 12, 55, 6); zctx.fill();
+                zctx.fillStyle = '#daa520';
+                zctx.beginPath();
+                zctx.roundRect(0, 0, 12, 55, 6);
+                zctx.fill();
                 zctx.strokeStyle = '#5c3d0a';
-                zctx.lineWidth = 1.5; zctx.stroke(); if (lightningActive) { zctx.fillStyle = '#fff';
+                zctx.lineWidth = 1.5;
+                zctx.stroke(); if (lightningActive) { zctx.fillStyle = '#fff';
                     zctx.shadowColor = '#ffd700';
-                    zctx.shadowBlur = 25; zctx.beginPath();
+                    zctx.shadowBlur = 25;
+                    zctx.beginPath();
                     zctx.moveTo(6, -30);
                     zctx.lineTo(-4, -55);
                     zctx.lineTo(2, -58);
@@ -185,20 +748,28 @@
                     zctx.lineTo(8, -65);
                     zctx.lineTo(4, -60);
                     zctx.lineTo(10, -45);
-                    zctx.closePath(); zctx.fill();
-                    zctx.shadowBlur = 0; } } else { zctx.fillStyle = '#daa520'; zctx.beginPath();
-                zctx.roundRect(98, 250, 12, 40, 6); zctx.fill();
+                    zctx.closePath();
+                    zctx.fill();
+                    zctx.shadowBlur = 0; } } else { zctx.fillStyle = '#daa520';
+                zctx.beginPath();
+                zctx.roundRect(98, 250, 12, 40, 6);
+                zctx.fill();
                 zctx.strokeStyle = '#5c3d0a';
-                zctx.lineWidth = 1.5; zctx.stroke(); } zctx.restore();
-            const hg = zctx.createRadialGradient(72, 200, 5, 75, 210, 35);
+                zctx.lineWidth = 1.5;
+                zctx.stroke(); }
+            zctx.restore(); const hg = zctx.createRadialGradient(72, 200, 5, 75, 210, 35);
             hg.addColorStop(0, '#f5e6d3');
             hg.addColorStop(0.7, '#d4b896');
             hg.addColorStop(1, '#b8956a');
-            zctx.fillStyle = hg; zctx.beginPath();
-            zctx.arc(75, 210, 30, 0, Math.PI * 2); zctx.fill();
+            zctx.fillStyle = hg;
+            zctx.beginPath();
+            zctx.arc(75, 210, 30, 0, Math.PI * 2);
+            zctx.fill();
             zctx.strokeStyle = '#8b6914';
-            zctx.lineWidth = 2; zctx.stroke();
-            zctx.fillStyle = '#ffd700'; zctx.beginPath();
+            zctx.lineWidth = 2;
+            zctx.stroke();
+            zctx.fillStyle = '#ffd700';
+            zctx.beginPath();
             zctx.moveTo(50, 185);
             zctx.lineTo(55, 165);
             zctx.lineTo(63, 178);
@@ -206,42 +777,65 @@
             zctx.lineTo(87, 178);
             zctx.lineTo(95, 165);
             zctx.lineTo(100, 185);
-            zctx.closePath(); zctx.fill();
+            zctx.closePath();
+            zctx.fill();
             zctx.strokeStyle = '#b8860b';
-            zctx.lineWidth = 2; zctx.stroke();[60, 75, 90].forEach(cx => { const gg = zctx.createRadialGradient(cx - 1, 176, 1, cx, 176, 5);
+            zctx.lineWidth = 2;
+            zctx.stroke();[60, 75, 90].forEach(cx => { const gg = zctx.createRadialGradient(cx - 1, 176, 1, cx, 176, 5);
                 gg.addColorStop(0, '#87CEEB');
                 gg.addColorStop(0.5, '#4169E1');
                 gg.addColorStop(1, '#000080');
-                zctx.fillStyle = gg; zctx.beginPath();
-                zctx.arc(cx, 176, 5, 0, Math.PI * 2); zctx.fill(); });
-            zctx.fillStyle = '#e8d5c0'; zctx.beginPath();
+                zctx.fillStyle = gg;
+                zctx.beginPath();
+                zctx.arc(cx, 176, 5, 0, Math.PI * 2);
+                zctx.fill(); });
+            zctx.fillStyle = '#e8d5c0';
+            zctx.beginPath();
             zctx.moveTo(55, 225);
             zctx.quadraticCurveTo(60, 265, 75, 270);
             zctx.quadraticCurveTo(90, 265, 95, 225);
             zctx.quadraticCurveTo(85, 235, 75, 238);
-            zctx.quadraticCurveTo(65, 235, 55, 225); zctx.fill();
+            zctx.quadraticCurveTo(65, 235, 55, 225);
+            zctx.fill();
             zctx.strokeStyle = '#c4a882';
-            zctx.lineWidth = 1.5; zctx.stroke();
-            zctx.fillStyle = '#fff'; zctx.beginPath();
-            zctx.arc(66, 208, 6, 0, Math.PI * 2); zctx.fill(); zctx.beginPath();
-            zctx.arc(84, 208, 6, 0, Math.PI * 2); zctx.fill();
-            zctx.fillStyle = '#1a1a3a'; zctx.beginPath();
-            zctx.arc(67, 207, 3, 0, Math.PI * 2); zctx.fill(); zctx.beginPath();
-            zctx.arc(85, 207, 3, 0, Math.PI * 2); zctx.fill();
-            zctx.fillStyle = '#fff'; zctx.beginPath();
-            zctx.arc(66, 206, 1, 0, Math.PI * 2); zctx.fill(); zctx.beginPath();
-            zctx.arc(84, 206, 1, 0, Math.PI * 2); zctx.fill();
+            zctx.lineWidth = 1.5;
+            zctx.stroke();
+            zctx.fillStyle = '#fff';
+            zctx.beginPath();
+            zctx.arc(66, 208, 6, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.beginPath();
+            zctx.arc(84, 208, 6, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.fillStyle = '#1a1a3a';
+            zctx.beginPath();
+            zctx.arc(67, 207, 3, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.beginPath();
+            zctx.arc(85, 207, 3, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.fillStyle = '#fff';
+            zctx.beginPath();
+            zctx.arc(66, 206, 1, 0, Math.PI * 2);
+            zctx.fill();
+            zctx.beginPath();
+            zctx.arc(84, 206, 1, 0, Math.PI * 2);
+            zctx.fill();
             zctx.strokeStyle = '#8b7355';
-            zctx.lineWidth = 2.5; zctx.beginPath();
+            zctx.lineWidth = 2.5;
+            zctx.beginPath();
             zctx.moveTo(60, 200);
-            zctx.quadraticCurveTo(66, 196, 72, 200); zctx.stroke(); zctx.beginPath();
+            zctx.quadraticCurveTo(66, 196, 72, 200);
+            zctx.stroke();
+            zctx.beginPath();
             zctx.moveTo(78, 200);
-            zctx.quadraticCurveTo(84, 196, 90, 200); zctx.stroke();
-            zctx.fillStyle = '#d4b896'; zctx.beginPath();
-            zctx.ellipse(75, 215, 5, 3, 0, 0, Math.PI * 2); zctx.fill();
-        }
+            zctx.quadraticCurveTo(84, 196, 90, 200);
+            zctx.stroke();
+            zctx.fillStyle = '#d4b896';
+            zctx.beginPath();
+            zctx.ellipse(75, 215, 5, 3, 0, 0, Math.PI * 2);
+            zctx.fill(); }
 
-        // ==================== ДВИЖОК СЛОТА ====================
         class SlotEngine {
             constructor() {
                 this.grid = [];
@@ -262,129 +856,58 @@
                 this.zeusLightningActive = false;
                 this.spinWinTotal = 0;
                 this.maxWinCap = 0;
+                this.fastMode = false;
+                this.autoSpinsRemaining = 0;
+                this.autoSpinsTotal = 0;
                 this.initGrid();
             }
-
-            getRandomSymbolByProbability() {
+            get speedMult() { return this.fastMode ? 0.35 : 1; }
+            get cascadeDelay() { return CASCADE_DELAY_BASE * this.speedMult; }
+            getRandomSymbol(forCascade = false) {
+                if (forCascade && Math.random() < (this.isFreeSpins ? 0.14 : 0.06)) return SYMBOLS.ORB_MULTIPLIER;
                 const rand = Math.random() * 100;
                 let cum = 0;
                 for (const e of SYMBOL_PROBABILITIES) { cum += e.prob; if (rand <= cum) return e.symbol; }
                 return SYMBOLS.BLUE_CRYSTAL;
             }
-
-            getRandomOrbMultiplier(bonusMode = false) {
-                const tiers = bonusMode ? ORB_TIERS_BONUS : ORB_TIERS;
-                const rand = Math.random() * 100;
-                let cum = 0;
-                for (const t of tiers) { cum += t.prob; if (rand <= cum) { const step = t.max <= 15 ? 1 : (t.max <= 75 ? 5 : (t.max <= 250 ? 25 : 50));
-                        const steps = Math.floor((t.max - t.min) / step) + 1; return t.min + Math.floor(Math.random() * steps) * step; } }
-                return 2;
-            }
-
-            initGrid() { this.grid = []; for (let r = 0; r < ROWS; r++) { this.grid[r] = []; for (let c = 0; c < COLS; c++) { this.grid[r][c] = this.makeCell(r, c, this.getRandomSymbolByProbability());
+            getOrbValue() { const tiers = this.isFreeSpins ? ORB_TIERS_BONUS : ORB_TIERS; const rand = Math.random() * 100; let cum = 0; for (const t of tiers) { cum += t.prob; if (rand <= cum) { const step = t.max <= 15 ? 1 : (t.max <= 75 ? 5 : (t.max <= 250 ? 25 : 50)); const steps = Math.floor((t.max - t.min) / step) + 1; return t.min + Math.floor(Math.random() * steps) * step; } } return 2; }
+            initGrid() { this.grid = []; for (let r = 0; r < ROWS; r++) { this.grid[r] = []; for (let c = 0; c < COLS; c++) { this.grid[r][c] = this.makeCell(r, c, this.getRandomSymbol());
                         this.grid[r][c].y = this.grid[r][c].targetY;
                         this.grid[r][c].alive = true; } } this.clearOrbs(); }
-
-            makeCell(r, c, symbol) { return { symbol, y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, hasOrb: false, orbMultiplier: 1, bounceOffset: 0, alive: true }; }
-
+            makeCell(r, c, symbol) { return { symbol, y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, hasOrb: false, orbMultiplier: 1, bounceOffset: 0, alive: true, isOrb: symbol === SYMBOLS.ORB_MULTIPLIER, orbValue: symbol === SYMBOLS.ORB_MULTIPLIER ? this.getOrbValue() : 1 }; }
             clearOrbs() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (cell) { cell.hasOrb = false;
-                        cell.orbMultiplier = 1; } } }
-
-            getPayoutForCount(symbol, count) {
-                if (symbol === SYMBOLS.ZEUS_SCATTER) { if (count >= 6) return PAYTABLE_MAX.zeus_scatter * this.bet; if (count >= 4) return 3 * this.bet; return 0; }
-                const minPay = PAYTABLE_MIN[symbol] || 0,
-                    maxPay = PAYTABLE_MAX[symbol] || 0;
-                if (count < 8) return 0; if (count >= 12) return maxPay * this.bet;
-                const ratio = (count - 8) / 4; return (minPay + (maxPay - minPay) * ratio) * this.bet;
-            }
-
-            // ===== PAY ANYWHERE: считаем ВСЕ символы на поле =====
-            findGroupsPayAnywhere() {
-                const counts = {};
-                const cellMap = {};
-                for (let r = 0; r < ROWS; r++) {
-                    for (let c = 0; c < COLS; c++) {
-                        const cell = this.grid[r][c];
-                        if (!cell || !cell.alive || !cell.symbol) continue;
-                        const sym = cell.symbol;
-                        if (!counts[sym]) { counts[sym] = 0;
-                            cellMap[sym] = []; }
-                        counts[sym]++;
-                        cellMap[sym].push({ r, c });
-                    }
-                }
-                const groups = [];
-                for (const [sym, count] of Object.entries(counts)) {
-                    const minCount = sym === SYMBOLS.ZEUS_SCATTER ? 4 : 8;
-                    if (count >= minCount) {
-                        const payout = this.getPayoutForCount(sym, count);
-                        groups.push({ symbol: sym, cells: cellMap[sym], count, payout });
-                    }
-                }
-                return groups;
-            }
-
-            applyCascadeGravity() {
-                let moved = false;
-                for (let c = 0; c < COLS; c++) {
-                    for (let r = ROWS - 1; r >= 0; r--) {
-                        const cell = this.grid[r][c];
-                        if (!cell || !cell.alive) {
-                            for (let above = r - 1; above >= 0; above--) {
-                                const aboveCell = this.grid[above][c];
-                                if (aboveCell && aboveCell.alive && aboveCell.symbol) {
-                                    if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null);
-                                    const to = this.grid[r][c];
-                                    to.symbol = aboveCell.symbol;
-                                    to.hasOrb = aboveCell.hasOrb;
-                                    to.orbMultiplier = aboveCell.orbMultiplier;
-                                    to.y = aboveCell.y;
-                                    to.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
-                                    to.velocity = 0;
-                                    to.scale = 1;
-                                    to.opacity = 1;
-                                    to.isWinning = false;
-                                    to.isExploding = false;
-                                    to.bounceOffset = 0;
-                                    to.alive = true;
-                                    aboveCell.alive = false;
-                                    aboveCell.symbol = null;
-                                    moved = true; break;
-                                }
-                            }
-                        }
-                    }
-                }
-                return moved;
-            }
-
-            fillEmptyCells() {
-                for (let c = 0; c < COLS; c++) {
-                    let emptyAbove = 0;
-                    for (let r = 0; r < ROWS; r++) { if (!this.grid[r][c] || !this.grid[r][c].alive || !this.grid[r][c].symbol) emptyAbove++; }
-                    let added = 0;
-                    for (let r = 0; r < ROWS; r++) {
-                        if (!this.grid[r][c] || !this.grid[r][c].alive || !this.grid[r][c].symbol) {
-                            if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null);
-                            const cell = this.grid[r][c];
-                            cell.symbol = this.getRandomSymbolByProbability();
-                            cell.y = GRID_OFFSET_Y - (emptyAbove - added) * CELL_SIZE - 30;
-                            cell.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
-                            cell.velocity = 0;
-                            cell.scale = 1;
-                            cell.opacity = 1;
-                            cell.isWinning = false;
-                            cell.isExploding = false;
-                            cell.hasOrb = false;
-                            cell.orbMultiplier = 1;
-                            cell.bounceOffset = 0;
-                            cell.alive = true;
-                            added++;
-                        }
-                    }
-                }
-            }
-
+                        cell.orbMultiplier = 1;
+                        cell.isOrb = false;
+                        cell.orbValue = 1; } } }
+            getPayoutForCount(symbol, count) { if (symbol === SYMBOLS.ZEUS_SCATTER) { if (count >= 6) return PAYTABLE_MAX.zeus_scatter * this.bet; if (count >= 4) return 3 * this.bet; return 0; } const minPay = PAYTABLE_MIN[symbol] || 0,
+                    maxPay = PAYTABLE_MAX[symbol] || 0; if (count < 8) return 0; if (count >= 12) return maxPay * this.bet; const ratio = (count - 8) / 4; return (minPay + (maxPay - minPay) * ratio) * this.bet; }
+            findGroupsPayAnywhere() { const counts = {},
+                    cellMap = {}; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol || cell.isOrb) continue; const sym = cell.symbol; if (!counts[sym]) { counts[sym] = 0;
+                            cellMap[sym] = []; } counts[sym]++;
+                        cellMap[sym].push({ r, c }); } } const groups = []; for (const [sym, count] of Object.entries(counts)) { const minCount = sym === SYMBOLS.ZEUS_SCATTER ? 4 : 8; if (count >= minCount) { const payout = this.getPayoutForCount(sym, count);
+                        groups.push({ symbol: sym, cells: cellMap[sym], count, payout }); } } return groups; }
+            collectOrbsFromGrid() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb && cell.symbol === SYMBOLS.ORB_MULTIPLIER) { this.activeOrbs.push({ r, c, multiplier: cell.orbValue, color: '#ffd700' }); } } } }
+            applyCascadeGravity() { let moved = false; for (let c = 0; c < COLS; c++) { for (let r = ROWS - 1; r >= 0; r--) { const cell = this.grid[r][c]; if (!cell || !cell.alive) { for (let above = r - 1; above >= 0; above--) { const aboveCell = this.grid[above][c]; if (aboveCell && aboveCell.alive && aboveCell.symbol) { if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null); const to = this.grid[r][c];
+                                Object.assign(to, { symbol: aboveCell.symbol, hasOrb: aboveCell.hasOrb, orbMultiplier: aboveCell.orbMultiplier, isOrb: aboveCell.isOrb, orbValue: aboveCell.orbValue, y: aboveCell.y, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, bounceOffset: 0, alive: true });
+                                aboveCell.alive = false;
+                                aboveCell.symbol = null;
+                                aboveCell.isOrb = false;
+                                moved = true; break; } } } } } return moved; }
+            fillEmptyCells() { for (let c = 0; c < COLS; c++) { let emptyAbove = 0; for (let r = 0; r < ROWS; r++) { if (!this.grid[r][c] || !this.grid[r][c].alive || !this.grid[r][c].symbol) emptyAbove++; } let added = 0; for (let r = 0; r < ROWS; r++) { if (!this.grid[r][c] || !this.grid[r][c].alive || !this.grid[r][c].symbol) { if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null); const cell = this.grid[r][c];
+                        cell.symbol = this.getRandomSymbol(true);
+                        cell.isOrb = cell.symbol === SYMBOLS.ORB_MULTIPLIER;
+                        cell.orbValue = cell.isOrb ? this.getOrbValue() : 1;
+                        cell.y = GRID_OFFSET_Y - (emptyAbove - added) * CELL_SIZE - 30;
+                        cell.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
+                        cell.velocity = 0;
+                        cell.scale = 1;
+                        cell.opacity = 1;
+                        cell.isWinning = false;
+                        cell.isExploding = false;
+                        cell.hasOrb = false;
+                        cell.bounceOffset = 0;
+                        cell.alive = true;
+                        added++; } } } }
             spawnParticles(x, y, color, count = 15) { for (let i = 0; i < count; i++) { const a = (Math.PI * 2 / count) * i + Math.random() * 0.5,
                         s = 3 + Math.random() * 7; this.particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 4, life: 1, decay: 0.01 + Math.random() * 0.03, color, size: 2 + Math.random() * 6 }); } }
             updateParticles() { for (let i = this.particles.length - 1; i >= 0; i--) { const p = this.particles[i];
@@ -392,29 +915,15 @@
                     p.y += p.vy;
                     p.vy += 0.1;
                     p.life -= p.decay; if (p.life <= 0) this.particles.splice(i, 1); } }
-
-            zeusThrowOrbs() { if (this.zeusArmRaised) return;
-                this.zeusArmRaised = true; setTimeout(() => { this.zeusLightningActive = true; const n = 1 + Math.floor(Math.random() * 4); const used = new Set(); for (let i = 0; i < n; i++) { let r, c,
-                            att = 0; do { r = Math.floor(Math.random() * ROWS);
-                            c = Math.floor(Math.random() * COLS);
-                            att++; } while (used.has(`${r},${c}`) && att < 100); if (att >= 100) break;
-                        used.add(`${r},${c}`); const mult = this.getRandomOrbMultiplier(this.isFreeSpins); const cols = ['#2ecc71', '#3498db', '#e91e90', '#ffd700']; const col = cols[Math.floor(Math.random() * cols.length)]; const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol) { cell.hasOrb = true;
-                            cell.orbMultiplier = mult;
-                            this.activeOrbs.push({ r, c, multiplier: mult, color: col });
-                            this.spawnOrbEffect(r, c, col, mult); } } setTimeout(() => { this.zeusLightningActive = false;
-                        this.zeusArmRaised = false; }, 400); }, 400); }
-
             spawnOrbEffect(r, c, color, mult) { const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
                     y = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2; const d = document.createElement('div');
                 d.className = 'orb-popup';
                 d.textContent = `${mult}x`;
                 d.style.cssText = `left:${x}px;top:${y}px;color:${color}`;
-                document.getElementById('mainArea')?.appendChild(d); setTimeout(() => d.remove(), 1800); }
-
+                document.getElementById('mainArea')?.appendChild(d); setTimeout(() => d.remove(), 1800 * this.speedMult); }
             applyOrbsToWin(baseWin) { if (this.activeOrbs.length === 0 || baseWin <= 0) return baseWin; let totalOrb = 0; for (const o of this.activeOrbs) totalOrb += o.multiplier; if (this.isFreeSpins) { this.totalMultiplier += totalOrb;
                     this.updateTotalMultiplierDisplay();
                     this.bonusTotalWin += baseWin; return 0; } return baseWin * (1 + totalOrb); }
-
             async spin() { if (this.state !== GameStateEnum.IDLE || this.isProcessing) return; if (this.balance < this.bet && !this.isFreeSpins) return;
                 this.isProcessing = true;
                 this.state = GameStateEnum.SPINNING;
@@ -427,25 +936,29 @@
                 this.particles = []; if (!this.isFreeSpins) { this.balance -= this.bet;
                     this.updateBalanceDisplay(); }
                 await this.animateInitialCascade();
-                await this.sleep(500);
-                await this.cascadeCycle(); let finalWin = this.applyOrbsToWin(this.totalWin);
+                await this.sleep(300 * this.speedMult);
+                await this.cascadeCycle();
+                this.collectOrbsFromGrid(); let finalWin = this.applyOrbsToWin(this.totalWin);
                 finalWin = Math.min(finalWin, this.maxWinCap - this.spinWinTotal); if (finalWin < 0) finalWin = 0;
                 this.totalWin = finalWin;
                 this.spinWinTotal += finalWin; if (!this.isFreeSpins) { this.balance += finalWin;
                     this.updateBalanceDisplay(); }
-                await this.animateWinCounter(finalWin); if (this.spinWinTotal >= this.maxWinCap) { console.log('🏆 ДОСТИГНУТ МАКСИМАЛЬНЫЙ ВЫИГРЫШ x5000!'); if (this.isFreeSpins) { this.balance += this.maxWinCap;
+                await this.animateWinCounter(finalWin); if (this.spinWinTotal >= this.maxWinCap) { console.log('🏆 MAX WIN x5000!'); if (this.isFreeSpins) { this.balance += this.maxWinCap;
                         this.updateBalanceDisplay();
-                        this.freeSpinsRemaining = 0; } }
-                const scatterCount = this.countScatters(); if (scatterCount >= 4 && !this.isFreeSpins) { await this.enterBonusGame(15); } else if (scatterCount >= 3 && this.isFreeSpins) { this.freeSpinsRemaining += 5;
+                        this.freeSpinsRemaining = 0; } } const scatterCount = this.countScatters(); if (scatterCount >= 4 && !this.isFreeSpins) { await this.enterBonusGame(15); } else if (scatterCount >= 3 && this.isFreeSpins) { this.freeSpinsRemaining += 5;
                     this.updateFreespinDisplay();
                     this.showRetriggerEffect(); } if (this.isFreeSpins && this.spinWinTotal < this.maxWinCap) { this.freeSpinsRemaining--;
                     this.updateFreespinDisplay(); if (this.freeSpinsRemaining <= 0) await this.finishBonusGame(); } else if (this.isFreeSpins && this.spinWinTotal >= this.maxWinCap) { await this.finishBonusGame(); }
                 this.state = GameStateEnum.IDLE;
                 this.isProcessing = false;
-                this.updateSpinButton(); }
-
+                this.updateSpinButton(); if (this.autoSpinsRemaining > 0 && !this.isFreeSpins) { this.autoSpinsRemaining--;
+                    this.updateAutoSpinDisplay(); if (this.autoSpinsRemaining > 0) { await this.sleep(200);
+                        this.spin(); } else { this.stopAutoSpins(); } } else if (this.isFreeSpins && this.freeSpinsRemaining > 0 && this.spinWinTotal < this.maxWinCap) { await this.sleep(300 * this.speedMult);
+                    this.spin(); } }
             async animateInitialCascade() { for (let c = 0; c < COLS; c++) { for (let r = 0; r < ROWS; r++) { if (!this.grid[r]) this.grid[r] = []; if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null); const cell = this.grid[r][c];
-                        cell.symbol = this.getRandomSymbolByProbability();
+                        cell.symbol = this.getRandomSymbol();
+                        cell.isOrb = cell.symbol === SYMBOLS.ORB_MULTIPLIER;
+                        cell.orbValue = cell.isOrb ? this.getOrbValue() : 1;
                         cell.y = -150 - r * 50 - c * 10;
                         cell.targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                         cell.velocity = 0;
@@ -454,9 +967,7 @@
                         cell.alive = true;
                         cell.isWinning = false;
                         cell.isExploding = false;
-                        cell.hasOrb = false;
-                        cell.orbMultiplier = 1; } } const proms = []; for (let c = 0; c < COLS; c++) proms.push(this.dropColumn(c, c * 55)); await Promise.all(proms); }
-
+                        cell.hasOrb = false; } } const proms = []; for (let c = 0; c < COLS; c++) proms.push(this.dropColumn(c, c * 40 * this.speedMult)); await Promise.all(proms); }
             dropColumn(col, delay) { return new Promise(r => { setTimeout(() => { const G = 0.95,
                             D = 0.3; let sf = 0; const anim = () => { let all = true; for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][col]; if (!cell || !cell.alive) continue; const t = cell.targetY,
                                     dy = t - cell.y; if (Math.abs(dy) > 0.5) { all = false;
@@ -465,48 +976,38 @@
                                             cell.velocity = -cell.velocity * D; } else { cell.velocity = 0;
                                             cell.bounceOffset = 0; } } } else { cell.y = t;
                                     cell.velocity = 0; if (cell.bounceOffset < 0) { cell.bounceOffset *= 0.7; if (Math.abs(cell.bounceOffset) < 0.3) cell.bounceOffset = 0; } } } if (!all) { sf = 0;
-                                    requestAnimationFrame(anim); } else { sf++; if (sf < 8) requestAnimationFrame(anim); else { for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][col]; if (cell) { cell.y = cell.targetY;
+                                    requestAnimationFrame(anim); } else { sf++; if (sf < 6) requestAnimationFrame(anim); else { for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][col]; if (cell) { cell.y = cell.targetY;
                                                 cell.bounceOffset = 0;
                                                 cell.velocity = 0; } } r(); } } };
                             requestAnimationFrame(anim); }, delay); }); }
-
             async cascadeCycle() { let hasWins = true,
                     iter = 0; while (hasWins && iter < 30 && this.spinWinTotal < this.maxWinCap) { iter++;
-                    this.state = GameStateEnum.CASCADING; await this.sleep(CASCADE_DELAY); const groups = this.findGroupsPayAnywhere();
-                    console.log(`[Каскад ${iter}] Найдено групп: ${groups.length}`); if (groups.length === 0) { hasWins = false; break; }
-                    groups.forEach(g => console.log(`  ${g.symbol} x${g.count} = ${g.payout.toFixed(0)}`));
+                    this.state = GameStateEnum.CASCADING; await this.sleep(this.cascadeDelay); const groups = this.findGroupsPayAnywhere(); if (groups.length === 0) { hasWins = false; break; }
                     this.state = GameStateEnum.WIN_ANIMATION;
-                    this.highlightWinningCells(groups); await this.animateWinningHighlight(groups); await this.sleep(600); let cycWin = 0; for (const g of groups) cycWin += g.payout;
-                    this.totalWin += cycWin;
-                    console.log(`  Выигрыш цикла: ${cycWin.toFixed(0)}, общий: ${this.totalWin.toFixed(0)}`); if (Math.random() < (this.isFreeSpins ? 0.3 : 0.08)) { console.log('  Зевс бросает сферы!');
-                        this.zeusThrowOrbs(); } await this.animateExplosion(groups); await this.sleep(300);
+                    this.highlightWinningCells(groups); await this.animateWinningHighlight(groups); await this.sleep(400 * this.speedMult); let cycWin = 0; for (const g of groups) cycWin += g.payout;
+                    this.totalWin += cycWin; await this.animateExplosion(groups); await this.sleep(200 * this.speedMult);
                     this.removeExplodedSymbols(groups);
                     this.applyCascadeGravity();
-                    this.fillEmptyCells(); await this.animateCascadeDrop(); await this.sleep(400); } }
-
+                    this.fillEmptyCells(); await this.animateCascadeDrop(); await this.sleep(300 * this.speedMult); } }
             highlightWinningCells(groups) { for (const g of groups) for (const cell of g.cells) { const c = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (c && c.alive) c.isWinning = true; } }
-
             async animateWinningHighlight(groups) { return new Promise(r => { const st = performance.now(),
-                        dur = 1200; const anim = (t) => { const p = Math.min((t - st) / dur, 1),
+                        dur = 900 * this.speedMult; const anim = (t) => { const p = Math.min((t - st) / dur, 1),
                             s = 1 + Math.sin(p * Math.PI * 4) * 0.2; for (const g of groups) for (const cell of g.cells) { const c = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (c && c.alive) c.scale = s; } if (p < 1) requestAnimationFrame(anim); else { for (const g of groups) for (const cell of g.cells) { const c = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (c && c.alive) c.scale = 1.3; } r(); } };
                     requestAnimationFrame(anim); }); }
-
             async animateExplosion(groups) { return new Promise(r => { const st = performance.now(),
-                        dur = 500; const anim = (t) => { const p = Math.min((t - st) / dur, 1),
+                        dur = 350 * this.speedMult; const anim = (t) => { const p = Math.min((t - st) / dur, 1),
                             s = 1.3 + p * 0.5; for (const g of groups) for (const cell of g.cells) { const c = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (c && c.alive) { c.scale = s;
                                 c.opacity = 1 - p;
                                 c.isExploding = true; } } if (p < 1) requestAnimationFrame(anim); else r(); };
                     requestAnimationFrame(anim); }); }
-
-            removeExplodedSymbols(groups) { for (const g of groups) for (const cell of g.cells) { const gc = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (gc && gc.alive) { this.spawnParticles(GRID_OFFSET_X + cell.c * CELL_SIZE + CELL_SIZE / 2, gc.y + gc.bounceOffset, SYMBOL_COLORS[gc.symbol] || '#fff', 15);
+            removeExplodedSymbols(groups) { for (const g of groups) for (const cell of g.cells) { const gc = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (gc && gc.alive) { this.spawnParticles(GRID_OFFSET_X + cell.c * CELL_SIZE + CELL_SIZE / 2, gc.y + gc.bounceOffset, gc.isOrb ? '#ffd700' : (SYMBOL_COLORS[gc.symbol] || '#fff'), 15);
                         gc.alive = false;
                         gc.symbol = null;
-                        gc.hasOrb = false;
+                        gc.isOrb = false;
                         gc.isWinning = false;
                         gc.isExploding = false;
                         gc.scale = 1;
                         gc.opacity = 1; } } }
-
             async animateCascadeDrop() { return new Promise(r => { const G = 0.9,
                         D = 0.3; let sf = 0; const anim = () => { let all = true; for (let c = 0; c < COLS; c++) { for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][c]; if (!cell || !cell.alive || !cell.symbol) continue;
                                 cell.scale = Math.min(1, cell.scale + 0.15); const t = cell.targetY,
@@ -516,23 +1017,20 @@
                                             cell.velocity = -cell.velocity * D; } else { cell.velocity = 0;
                                             cell.bounceOffset = 0; } } } else { cell.y = t;
                                     cell.velocity = 0; if (cell.bounceOffset < 0) { cell.bounceOffset *= 0.7; if (Math.abs(cell.bounceOffset) < 0.3) cell.bounceOffset = 0; } } } } if (!all) { sf = 0;
-                                    requestAnimationFrame(anim); } else { sf++; if (sf < 6) requestAnimationFrame(anim); else { for (let c = 0; c < COLS; c++) for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][c]; if (cell && cell.alive) { cell.y = cell.targetY;
+                                    requestAnimationFrame(anim); } else { sf++; if (sf < 5) requestAnimationFrame(anim); else { for (let c = 0; c < COLS; c++) for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][c]; if (cell && cell.alive) { cell.y = cell.targetY;
                                                 cell.bounceOffset = 0;
                                                 cell.velocity = 0;
                                                 cell.scale = 1; } } r(); } } };
                             requestAnimationFrame(anim); }); }
-
             async animateWinCounter(targetWin) { const sw = this.displayedWin,
-                    dur = 900,
+                    dur = 600 * this.speedMult,
                     st = performance.now(); return new Promise(r => { const anim = (t) => { const p = Math.min((t - st) / dur, 1),
                             e = 1 - Math.pow(1 - p, 3); this.displayedWin = Math.round((sw + (targetWin - sw) * e) * 100) / 100;
                         this.updateWinDisplay(); if (p < 1) requestAnimationFrame(anim); else { this.displayedWin = Math.round(targetWin * 100) / 100;
                             this.updateWinDisplay();
                             r(); } };
                     requestAnimationFrame(anim); }); }
-
             countScatters() { let count = 0; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol === SYMBOLS.ZEUS_SCATTER) count++; } return count; }
-
             async enterBonusGame(spins) { this.state = GameStateEnum.BONUS_TRANSITION;
                 this.isFreeSpins = true;
                 this.freeSpinsRemaining = spins;
@@ -545,15 +1043,16 @@
                 this.updateFreespinDisplay();
                 this.updateTotalMultiplierDisplay(); const ov = document.getElementById('bonusOverlay'),
                     sd = document.getElementById('bonusSpinsDisplay'); if (sd) sd.textContent = spins; if (ov) ov.classList.add('active');
-                document.body.classList.add('zeus-rage'); await this.sleep(2500);
+                document.body.classList.add('zeus-rage'); await this.waitForBonusClick();
                 document.body.classList.remove('zeus-rage'); if (ov) ov.classList.remove('active');
-                this.state = GameStateEnum.IDLE; }
-
-            async finishBonusGame() { const finalBonusWin = Math.min(this.bonusTotalWin * this.totalMultiplier, this.maxWinCap - this.spinWinTotal + this.bonusTotalWin * this.totalMultiplier > 0 ? this.bonusTotalWin * this.totalMultiplier : this.maxWinCap);
+                this.state = GameStateEnum.IDLE;
+                this.spin(); }
+            waitForBonusClick() { return new Promise(r => { const ov = document.getElementById('bonusOverlay'); const popup = document.getElementById('bonusPopup'); const handler = () => { if (popup) popup.removeEventListener('click', handler); if (ov) ov.removeEventListener('click', handler);
+                        r(); }; if (popup) popup.addEventListener('click', handler); if (ov) ov.addEventListener('click', handler); }); }
+            async finishBonusGame() { const finalBonusWin = Math.min(this.bonusTotalWin * this.totalMultiplier, this.maxWinCap);
                 this.totalWin = finalBonusWin;
                 this.balance += finalBonusWin;
                 this.updateBalanceDisplay(); await this.animateWinCounter(finalBonusWin);
-                console.log(`Бонус завершен! ${this.bonusTotalWin.toFixed(0)} x ${this.totalMultiplier} = ${finalBonusWin.toFixed(0)}`);
                 this.isFreeSpins = false;
                 this.freeSpinsRemaining = 0;
                 this.totalMultiplier = 1;
@@ -563,18 +1062,26 @@
                 this.updateTotalMultiplierDisplay(); const ov = document.getElementById('bonusOverlay'),
                     sd = document.getElementById('bonusSpinsDisplay'),
                     h2 = ov?.querySelector('h2'),
-                    sub = ov?.querySelector('.bonus-subtitle'); if (sd) sd.textContent = finalBonusWin.toFixed(0); if (h2) h2.textContent = '🏆 БОНУС ЗАВЕРШЕН! 🏆'; if (sub) sub.textContent = 'Общий выигрыш:'; if (ov) ov.classList.add('active'); await this.sleep(3000); if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; if (sub) sub.textContent = 'FREE SPINS'; }
-
+                    sub = ov?.querySelector('.bonus-subtitle'); if (sd) sd.textContent = finalBonusWin.toFixed(0); if (h2) h2.textContent = '🏆 БОНУС ЗАВЕРШЕН! 🏆'; if (sub) sub.textContent = 'Общий выигрыш:'; if (ov) ov.classList.add('active'); await this.sleep(2500); if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; if (sub) sub.textContent = 'FREE SPINS'; }
             showRetriggerEffect() { const ov = document.getElementById('bonusOverlay'),
                     sd = document.getElementById('bonusSpinsDisplay'),
-                    h2 = ov?.querySelector('h2'); if (sd) sd.textContent = '+5 SPINS'; if (h2) h2.textContent = '⚡ РЕТРИГГЕР! ⚡'; if (ov) ov.classList.add('active'); setTimeout(() => { if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; }, 1500); }
-
+                    h2 = ov?.querySelector('h2'); if (sd) sd.textContent = '+5 SPINS'; if (h2) h2.textContent = '⚡ РЕТРИГГЕР! ⚡'; if (ov) ov.classList.add('active'); setTimeout(() => { if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; }, 1200); }
+            toggleFastMode() { this.fastMode = !this.fastMode; const btn = document.getElementById('btnFast'); if (btn) { if (this.fastMode) btn.classList.add('active'); else btn.classList.remove('active'); } }
+            startAutoSpins(count) { if (this.isProcessing || this.isFreeSpins) return;
+                this.autoSpinsRemaining = count;
+                this.autoSpinsTotal = count;
+                this.updateAutoSpinDisplay(); const btn = document.getElementById('btnAuto'); if (btn) btn.classList.add('active');
+                document.getElementById('autoSpinsSelect').classList.remove('show');
+                this.spin(); }
+            stopAutoSpins() { this.autoSpinsRemaining = 0;
+                this.autoSpinsTotal = 0; const btn = document.getElementById('btnAuto'); if (btn) btn.classList.remove('active');
+                this.updateAutoSpinDisplay(); }
+            updateAutoSpinDisplay() { const btn = document.getElementById('btnAuto'); if (btn && this.autoSpinsRemaining > 0) { btn.textContent = this.autoSpinsRemaining; } else if (btn) { btn.textContent = 'A'; } }
             buyBonus() { if (this.state !== GameStateEnum.IDLE || this.isProcessing || this.isFreeSpins) return; const cost = this.bet * 100; if (this.balance < cost) return;
                 this.balance -= cost;
                 this.updateBalanceDisplay();
                 this.isProcessing = true;
                 this.enterBonusGame(15).then(() => { this.isProcessing = false; }); }
-
             setBet(i) { if (i < 0 || i >= BET_OPTIONS.length) return;
                 this.betIndex = i;
                 this.bet = BET_OPTIONS[i];
@@ -593,69 +1100,71 @@
                     setTimeout(() => el.classList.remove('pulse'), 300); } }
             updateSpinButton() { const btn = document.getElementById('btnSpin'); if (!btn) return;
                 btn.textContent = this.isFreeSpins ? 'FREE' : 'SPIN';
-                btn.disabled = this.state !== GameStateEnum.IDLE || (this.balance < this.bet && !this.isFreeSpins); }
-
-            render(ctx) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { ctx.fillStyle = 'rgba(15,8,0,0.6)';
-                    ctx.strokeStyle = 'rgba(180,130,0,0.25)';
-                    ctx.lineWidth = 1; ctx.beginPath();
-                    ctx.roundRect(GRID_OFFSET_X + c * CELL_SIZE + 4, GRID_OFFSET_Y + r * CELL_SIZE + 4, CELL_SIZE - 8, CELL_SIZE - 8, 10);
-                    ctx.fill();
-                    ctx.stroke(); }
-                for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol) continue; const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
+                btn.disabled = this.state !== GameStateEnum.IDLE || (this.balance < this.bet && !this.isFreeSpins) || this.autoSpinsRemaining > 0; }
+            render(ctx) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); for (let c = 0; c < COLS; c++) { ctx.strokeStyle = 'rgba(180,130,0,0.15)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([4, 12]);
+                    ctx.beginPath();
+                    ctx.moveTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y);
+                    ctx.lineTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y + ROWS * CELL_SIZE);
+                    ctx.stroke();
+                    ctx.setLineDash([]); } for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol) continue; const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
                         y = cell.y + cell.bounceOffset;
                     ctx.save();
                     ctx.translate(x, y); const s = Math.max(0.1, cell.scale);
                     ctx.scale(s, s);
                     ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity)); if (cell.isWinning && !cell.isExploding) { ctx.shadowColor = '#ffd700';
                         ctx.shadowBlur = 35; } if (cell.isExploding) { ctx.shadowColor = '#fff';
-                        ctx.shadowBlur = 45; } if (cell.hasOrb && !cell.isExploding) { ctx.shadowColor = '#ffd700';
-                        ctx.shadowBlur = 25;
-                        ctx.fillStyle = 'rgba(255,215,0,0.3)'; ctx.beginPath();
-                        ctx.arc(0, 0, SYMBOL_SIZE / 2 + 10, 0, Math.PI * 2);
+                        ctx.shadowBlur = 45; } if (cell.isOrb) { ctx.fillStyle = '#ffd700';
+                        ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 20;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, SYMBOL_SIZE / 2 + 4, 0, Math.PI * 2);
                         ctx.fill();
-                        ctx.shadowBlur = 0; } const color = SYMBOL_COLORS[cell.symbol] || '#555'; const grad = ctx.createRadialGradient(-4, -9, 4, 0, 0, SYMBOL_SIZE / 2);
-                    grad.addColorStop(0, this.lightenColor(color, 55));
-                    grad.addColorStop(1, color);
-                    ctx.fillStyle = grad; ctx.beginPath();
-                    ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
-                    ctx.shadowColor = 'transparent';
-                    ctx.shadowBlur = 0;
-                    ctx.font = `${SYMBOL_SIZE*0.5}px Arial`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillStyle = '#fff'; if (cell.symbol === SYMBOLS.ZEUS_SCATTER) this.drawZeusIcon(ctx, SYMBOL_SIZE); else ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2); if (cell.hasOrb && !cell.isExploding) { ctx.font = 'bold 14px Arial';
-                        ctx.fillStyle = '#ffd700';
-                        ctx.shadowColor = 'rgba(0,0,0,0.9)';
-                        ctx.shadowBlur = 4;
-                        ctx.fillText(`x${cell.orbMultiplier}`, 0, -SYMBOL_SIZE / 2 - 14);
-                        ctx.shadowBlur = 0; }
-                    ctx.restore(); }
-                for (const p of this.particles) { ctx.fillStyle = p.color;
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = '#1a0500';
+                        ctx.font = 'bold 16px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(`x${cell.orbValue}`, 0, 0); } else { const color = SYMBOL_COLORS[cell.symbol] || '#555'; const grad = ctx.createRadialGradient(-4, -9, 4, 0, 0, SYMBOL_SIZE / 2);
+                        grad.addColorStop(0, this.lightenColor(color, 55));
+                        grad.addColorStop(1, color);
+                        ctx.fillStyle = grad;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                        ctx.shadowColor = 'transparent';
+                        ctx.shadowBlur = 0;
+                        ctx.font = `${SYMBOL_SIZE*0.5}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillStyle = '#fff'; if (cell.symbol === SYMBOLS.ZEUS_SCATTER) this.drawZeusIcon(ctx, SYMBOL_SIZE); else ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2); }
+                    ctx.restore(); } } for (const p of this.particles) { ctx.fillStyle = p.color;
                     ctx.globalAlpha = Math.max(0, p.life);
                     ctx.shadowColor = p.color;
-                    ctx.shadowBlur = 8; ctx.beginPath();
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fill(); }
                 ctx.globalAlpha = 1;
                 ctx.shadowColor = 'transparent';
-                ctx.shadowBlur = 0;
-            }
+                ctx.shadowBlur = 0; }
             drawZeusIcon(ctx, size) { const s = size * 0.6;
-                ctx.fillStyle = '#f5e6d3'; ctx.beginPath();
+                ctx.fillStyle = '#f5e6d3';
+                ctx.beginPath();
                 ctx.arc(0, -s * 0.05, s * 0.35, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#e8d5c0'; ctx.beginPath();
+                ctx.fillStyle = '#e8d5c0';
+                ctx.beginPath();
                 ctx.moveTo(-s * 0.2, s * 0.08);
                 ctx.quadraticCurveTo(0, s * 0.5, s * 0.2, s * 0.08);
                 ctx.quadraticCurveTo(0, s * 0.2, -s * 0.2, s * 0.08);
                 ctx.fill();
-                ctx.fillStyle = '#ffd700'; ctx.beginPath();
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
                 ctx.moveTo(-s * 0.2, -s * 0.35);
                 ctx.lineTo(-s * 0.15, -s * 0.5);
                 ctx.lineTo(-s * 0.02, -s * 0.3);
@@ -665,9 +1174,11 @@
                 ctx.lineTo(s * 0.2, -s * 0.35);
                 ctx.closePath();
                 ctx.fill();
-                ctx.fillStyle = '#1a1a3a'; ctx.beginPath();
+                ctx.fillStyle = '#1a1a3a';
+                ctx.beginPath();
                 ctx.arc(-s * 0.08, -s * 0.12, s * 0.04, 0, Math.PI * 2);
-                ctx.fill(); ctx.beginPath();
+                ctx.fill();
+                ctx.beginPath();
                 ctx.arc(s * 0.08, -s * 0.12, s * 0.04, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#ffd700';
@@ -700,14 +1211,18 @@
         document.getElementById('betUp').addEventListener('click', () => engine.increaseBet());
         document.getElementById('betDown').addEventListener('click', () => engine.decreaseBet());
         document.getElementById('btnBuyBonus').addEventListener('click', () => engine.buyBonus());
+        document.getElementById('btnFast').addEventListener('click', () => engine.toggleFastMode());
+        document.getElementById('btnAuto').addEventListener('click', () => { const sel = document.getElementById('autoSpinsSelect');
+            sel.classList.toggle('show'); });
+        document.querySelectorAll('.auto-spin-option').forEach(el => { el.addEventListener('click', () => { const spins = parseInt(el.dataset.spins); if (spins > 0) engine.startAutoSpins(spins); }); });
 
         function gameLoop() { engine.updateParticles();
             engine.render(ctx);
             drawZeusFigure(zctx, engine.zeusArmRaised, engine.zeusLightningActive);
             engine.updateSpinButton();
-            document.getElementById('betUp').disabled = engine.betIndex >= BET_OPTIONS.length - 1 || engine.isProcessing;
-            document.getElementById('betDown').disabled = engine.betIndex <= 0 || engine.isProcessing;
-            document.getElementById('btnBuyBonus').disabled = engine.isProcessing || engine.isFreeSpins || engine.balance < engine.bet * 100; if (engine.activeOrbs.some(o => o.multiplier >= 50)) { if (!document.body.classList.contains('zeus-rage')) { document.body.classList.add('zeus-rage');
+            document.getElementById('betUp').disabled = engine.betIndex >= BET_OPTIONS.length - 1 || engine.isProcessing || engine.autoSpinsRemaining > 0;
+            document.getElementById('betDown').disabled = engine.betIndex <= 0 || engine.isProcessing || engine.autoSpinsRemaining > 0;
+            document.getElementById('btnBuyBonus').disabled = engine.isProcessing || engine.isFreeSpins || engine.balance < engine.bet * 100 || engine.autoSpinsRemaining > 0; if (engine.activeOrbs.some(o => o.multiplier >= 50)) { if (!document.body.classList.contains('zeus-rage')) { document.body.classList.add('zeus-rage');
                     setTimeout(() => document.body.classList.remove('zeus-rage'), 2500); } }
             requestAnimationFrame(gameLoop); }
         engine.updateBetDisplay();
@@ -716,10 +1231,12 @@
         engine.updateSpinButton();
         drawZeusFigure(zctx, false, false);
         gameLoop();
-        console.log('⚡ ZEUS THUNDER - Pay Anywhere!');
-        console.log('🎯 8+ одинаковых символов В ЛЮБОМ МЕСТЕ = сыгровка');
-        console.log('🌩️ Множители суммируются и применяются к общему выигрышу');
-        console.log('💰 Максимальный выигрыш: x5000 от ставки');
+        console.log('⚡ ZEUS THUNDER - Готов к игре!');
+        console.log('🎯 Pay Anywhere: 8+ символов в любых местах');
+        console.log('✖️ Иксы выпадают как символы на поле');
+        console.log('⚡ Кнопка молнии - быстрый режим x3');
+        console.log('🅰️ Кнопка A - автоигра (5-100 спинов)');
+        console.log('🎰 Бонус: автоматический прогон фриспинов');
     </script>
 </body>
 </html>
