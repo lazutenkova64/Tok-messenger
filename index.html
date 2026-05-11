@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zeus Thunder - Tumble Slot</title>
+    <title>Zeus Thunder - Cascade Slot</title>
     <style>
         :root {
             --bg: #0a0a1a;
             --gold: #ffd700;
             --red: #e63946;
             --dark-gold: #b8860b;
+            --cell-size: 85px;
         }
 
         * {
@@ -52,11 +53,12 @@
             display: flex;
             gap: 20px;
             align-items: stretch;
+            padding: 20px;
         }
 
-        /* ---- ЛЕВАЯ ПАНЕЛЬ (счетчик множителя в бонусе) ---- */
+        /* ---- ЛЕВАЯ ПАНЕЛЬ ---- */
         .left-panel {
-            width: 80px;
+            width: 85px;
             background: linear-gradient(180deg, #1a1a3a 0%, #0d0d2b 100%);
             border: 2px solid #3a3a6a;
             border-radius: 15px;
@@ -124,7 +126,7 @@
         }
 
         .game-title {
-            font-size: 36px;
+            font-size: 38px;
             font-weight: 900;
             background: linear-gradient(180deg, #ffd700 0%, #ff8c00 100%);
             -webkit-background-clip: text;
@@ -137,7 +139,7 @@
         .freespin-badge {
             background: linear-gradient(135deg, #e63946, #ff6b6b);
             color: white;
-            padding: 6px 18px;
+            padding: 8px 20px;
             border-radius: 20px;
             font-weight: 700;
             font-size: 14px;
@@ -168,7 +170,7 @@
 
         .freespin-counter span {
             color: #fff;
-            font-size: 24px;
+            font-size: 26px;
         }
 
         /* ---- Canvas ---- */
@@ -185,9 +187,9 @@
             border-color: #8b0000;
         }
 
-        /* ---- ПРАВАЯ ПАНЕЛЬ (Дед Зевс) ---- */
+        /* ---- ПРАВАЯ ПАНЕЛЬ ---- */
         .right-panel {
-            width: 130px;
+            width: 135px;
             position: relative;
             display: flex;
             align-items: flex-end;
@@ -197,7 +199,7 @@
         .zeus-container {
             position: relative;
             width: 100%;
-            height: 280px;
+            height: 300px;
         }
 
         .zeus-figure {
@@ -205,16 +207,15 @@
             bottom: 0;
             left: 50%;
             transform: translateX(-50%);
-            width: 100px;
+            width: 105px;
             transition: transform 0.3s;
         }
 
-        /* Тело Деда */
         .zeus-body {
-            width: 70px;
-            height: 90px;
+            width: 75px;
+            height: 95px;
             background: linear-gradient(180deg, #f5f0e8 0%, #e0d5c0 60%, #c4b5a0 100%);
-            border-radius: 20px 20px 5px 5px;
+            border-radius: 22px 22px 5px 5px;
             margin: 0 auto;
             position: relative;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
@@ -223,124 +224,118 @@
         .zeus-toga {
             position: absolute;
             bottom: 0;
-            left: -5px;
-            right: -5px;
-            height: 50px;
-            background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, #e8ddd0 100%);
-            border-radius: 0 0 10px 10px;
-            clip-path: polygon(0% 30%, 50% 0%, 100% 30%, 100% 100%, 0% 100%);
+            left: -6px;
+            right: -6px;
+            height: 55px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, #e8ddd0 100%);
+            border-radius: 0 0 12px 12px;
+            clip-path: polygon(0% 25%, 50% 0%, 100% 25%, 100% 100%, 0% 100%);
         }
 
-        /* Голова */
         .zeus-head {
-            width: 50px;
-            height: 55px;
+            width: 55px;
+            height: 58px;
             background: radial-gradient(circle at 50% 40%, #f5e6d3 0%, #d4b896 100%);
             border-radius: 50%;
-            margin: -30px auto 0;
+            margin: -32px auto 0;
             position: relative;
             z-index: 2;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
-        /* Борода */
         .zeus-beard {
             position: absolute;
-            bottom: -12px;
+            bottom: -14px;
             left: 50%;
             transform: translateX(-50%);
-            width: 35px;
-            height: 30px;
+            width: 38px;
+            height: 32px;
             background: linear-gradient(180deg, #e8d5c0 0%, #c4b5a0 100%);
-            border-radius: 0 0 20px 20px;
-            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            border-radius: 0 0 22px 22px;
+            clip-path: polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
         }
 
-        /* Глаза */
         .zeus-eyes {
             position: absolute;
-            top: 18px;
+            top: 19px;
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 8px;
+            gap: 9px;
         }
 
         .zeus-eye {
-            width: 6px;
-            height: 8px;
+            width: 7px;
+            height: 9px;
             background: #1a1a3a;
             border-radius: 50%;
         }
 
-        /* Коронa */
         .zeus-crown {
             position: absolute;
-            top: -15px;
+            top: -16px;
             left: 50%;
             transform: translateX(-50%);
-            width: 35px;
-            height: 18px;
+            width: 38px;
+            height: 20px;
             background: linear-gradient(180deg, #ffd700 0%, #b8860b 100%);
-            clip-path: polygon(0% 100%, 10% 30%, 30% 0%, 50% 50%, 70% 0%, 90% 30%, 100% 100%);
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+            clip-path: polygon(0% 100%, 8% 28%, 28% 0%, 50% 48%, 72% 0%, 92% 28%, 100% 100%);
+            box-shadow: 0 0 22px rgba(255, 215, 0, 0.7);
             animation: crownGlow 2s ease-in-out infinite;
         }
 
         @keyframes crownGlow {
             0%,
             100% {
-                box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+                box-shadow: 0 0 22px rgba(255, 215, 0, 0.7);
             }
             50% {
-                box-shadow: 0 0 35px rgba(255, 215, 0, 1), 0 0 60px rgba(255, 200, 0, 0.5);
+                box-shadow: 0 0 38px rgba(255, 215, 0, 1), 0 0 65px rgba(255, 200, 0, 0.5);
             }
         }
 
-        /* Рука с молнией */
         .zeus-arm-container {
             position: absolute;
-            top: 15px;
-            right: -15px;
+            top: 18px;
+            right: -18px;
             z-index: 10;
             transform-origin: top left;
             transition: transform 0.4s ease-in-out;
         }
 
         .zeus-arm-container.raised {
-            transform: rotate(-130deg);
+            transform: rotate(-135deg);
         }
 
         .zeus-arm {
-            width: 20px;
-            height: 60px;
+            width: 22px;
+            height: 65px;
             background: linear-gradient(180deg, #f5e6d3 0%, #d4b896 100%);
-            border-radius: 8px;
+            border-radius: 9px;
             position: relative;
         }
 
         .zeus-hand {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background: #f5e6d3;
             border-radius: 50%;
             position: absolute;
-            bottom: -8px;
+            bottom: -9px;
             left: 50%;
             transform: translateX(-50%);
         }
 
-        /* Молния в руке */
         .zeus-lightning {
             position: absolute;
-            top: -25px;
+            top: -28px;
             left: 50%;
             transform: translateX(-50%);
-            width: 4px;
-            height: 30px;
+            width: 5px;
+            height: 32px;
             background: #fff;
             border-radius: 3px;
-            box-shadow: 0 0 20px #fff, 0 0 40px #ffd700, 0 0 60px #ff8c00;
+            box-shadow: 0 0 22px #fff, 0 0 45px #ffd700, 0 0 65px #ff8c00;
             opacity: 0;
             transition: all 0.1s;
         }
@@ -353,52 +348,49 @@
         @keyframes lightningFlash {
             0% {
                 opacity: 1;
-                height: 25px;
-                box-shadow: 0 0 30px #fff, 0 0 60px #ffd700;
+                height: 28px;
+                box-shadow: 0 0 32px #fff, 0 0 65px #ffd700;
             }
             50% {
                 opacity: 1;
-                height: 70px;
-                box-shadow: 0 0 50px #fff, 0 0 80px #ffd700, 0 0 100px #ff8c00;
+                height: 75px;
+                box-shadow: 0 0 55px #fff, 0 0 85px #ffd700, 0 0 110px #ff8c00;
             }
             100% {
                 opacity: 0;
-                height: 10px;
+                height: 12px;
             }
         }
 
-        /* Ноги */
         .zeus-legs {
             display: flex;
             justify-content: center;
-            gap: 8px;
-            margin-top: 2px;
+            gap: 10px;
+            margin-top: 3px;
         }
 
         .zeus-leg {
-            width: 15px;
-            height: 35px;
+            width: 16px;
+            height: 38px;
             background: linear-gradient(180deg, #e0d5c0 0%, #c4b5a0 100%);
-            border-radius: 0 0 8px 8px;
+            border-radius: 0 0 9px 9px;
         }
 
-        /* Сандалии */
         .zeus-sandal {
-            width: 20px;
-            height: 12px;
+            width: 22px;
+            height: 13px;
             background: #8b6914;
-            border-radius: 10px 10px 3px 3px;
+            border-radius: 11px 11px 3px 3px;
             margin: 0 auto;
         }
 
-        /* Облако под ногами */
         .zeus-cloud {
             position: absolute;
-            bottom: -8px;
+            bottom: -10px;
             left: 50%;
             transform: translateX(-50%);
-            width: 100px;
-            height: 25px;
+            width: 105px;
+            height: 28px;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 50%;
             filter: blur(8px);
@@ -412,7 +404,7 @@
             background: linear-gradient(180deg, #1a1a3a, #0d0d2b);
             border: 2px solid #3a3a6a;
             border-radius: 40px;
-            padding: 12px 30px;
+            padding: 14px 32px;
         }
 
         .win-display {
@@ -431,11 +423,11 @@
 
         .win-amount {
             color: #ffd700;
-            font-size: 32px;
+            font-size: 34px;
             font-weight: 900;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            text-shadow: 0 0 22px rgba(255, 215, 0, 0.5);
             transition: all 0.1s;
-            min-width: 120px;
+            min-width: 130px;
             text-align: center;
         }
 
@@ -470,29 +462,29 @@
 
         .bet-amount {
             color: #fff;
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 700;
         }
 
         .btn-spin {
-            width: 90px;
-            height: 90px;
+            width: 95px;
+            height: 95px;
             border-radius: 50%;
             border: 4px solid #ffd700;
             background: linear-gradient(135deg, #e63946, #c0392b);
             color: #fff;
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 900;
             letter-spacing: 2px;
             cursor: pointer;
             transition: all 0.2s;
-            box-shadow: 0 0 30px rgba(230, 57, 70, 0.4);
+            box-shadow: 0 0 32px rgba(230, 57, 70, 0.4);
             text-transform: uppercase;
         }
 
         .btn-spin:hover {
             transform: scale(1.05);
-            box-shadow: 0 0 45px rgba(230, 57, 70, 0.7);
+            box-shadow: 0 0 48px rgba(230, 57, 70, 0.7);
         }
 
         .btn-spin:active {
@@ -503,18 +495,18 @@
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
-            box-shadow: 0 0 10px rgba(230, 57, 70, 0.2);
+            box-shadow: 0 0 12px rgba(230, 57, 70, 0.2);
         }
 
         /* ---- ВСПЛЫВАЮЩИЕ МНОЖИТЕЛИ ---- */
         .orb-popup {
             position: absolute;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 900;
             pointer-events: none;
             animation: orbFloat 1.8s ease-out forwards;
             z-index: 10;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
         }
 
         @keyframes orbFloat {
@@ -522,8 +514,8 @@
                 transform: scale(0);
                 opacity: 0;
             }
-            30% {
-                transform: scale(1.4);
+            25% {
+                transform: scale(1.5);
                 opacity: 1;
             }
             70% {
@@ -531,19 +523,19 @@
                 opacity: 0.9;
             }
             100% {
-                transform: scale(0.7);
+                transform: scale(0.6);
                 opacity: 0;
             }
         }
 
-        /* ---- БОНУС-ЭКРАН (при входе в фриспины) ---- */
+        /* ---- БОНУС-ЭКРАН ---- */
         .bonus-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -561,16 +553,16 @@
         .bonus-popup {
             background: linear-gradient(135deg, #1a1a4a, #2a1a3a);
             border: 3px solid #ffd700;
-            border-radius: 20px;
-            padding: 40px;
+            border-radius: 22px;
+            padding: 45px;
             text-align: center;
-            box-shadow: 0 0 80px rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 85px rgba(255, 215, 0, 0.5);
             animation: bonusIn 0.5s ease-out;
         }
 
         @keyframes bonusIn {
             0% {
-                transform: scale(0.5);
+                transform: scale(0.4);
                 opacity: 0;
             }
             100% {
@@ -581,33 +573,34 @@
 
         .bonus-popup h2 {
             color: #ffd700;
-            font-size: 36px;
-            margin-bottom: 10px;
-            text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            font-size: 38px;
+            margin-bottom: 12px;
+            text-shadow: 0 0 35px rgba(255, 215, 0, 0.8);
         }
 
         .bonus-popup .bonus-spins {
             color: #fff;
-            font-size: 60px;
+            font-size: 65px;
             font-weight: 900;
-            text-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+            text-shadow: 0 0 45px rgba(255, 255, 255, 0.5);
         }
 
         .bonus-popup .bonus-subtitle {
             color: #ccc;
-            font-size: 16px;
-            margin-top: 10px;
+            font-size: 17px;
+            margin-top: 12px;
         }
 
         @media (max-width: 768px) {
             .game-container {
                 flex-direction: column;
                 gap: 10px;
+                padding: 10px;
             }
             .left-panel {
                 width: 100%;
                 flex-direction: row;
-                height: 60px;
+                height: 65px;
                 padding: 10px;
             }
             .right-panel {
@@ -622,24 +615,21 @@
 </head>
 <body>
 
-    <!-- Бонусный оверлей -->
     <div class="bonus-overlay" id="bonusOverlay">
         <div class="bonus-popup">
             <h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2>
             <div class="bonus-spins" id="bonusSpinsDisplay">15</div>
             <div class="bonus-subtitle">FREE SPINS</div>
-            <div class="bonus-subtitle" style="margin-top: 5px; font-size: 13px;">Накопительный множитель активирован!</div>
+            <div class="bonus-subtitle" style="margin-top: 6px; font-size: 14px;">Накопительный множитель активирован!</div>
         </div>
     </div>
 
     <div class="game-container">
-        <!-- Левая панель: накопительный множитель (бонус) -->
         <div class="left-panel inactive" id="leftPanel">
             <div class="panel-label">Total<br>Multiplier</div>
             <div class="multiplier-counter" id="totalMultiplierDisplay">1x</div>
         </div>
 
-        <!-- Основная область -->
         <div class="main-area" id="mainArea">
             <div class="game-header">
                 <div class="game-title">⚡ ZEUS THUNDER ⚡</div>
@@ -647,7 +637,7 @@
                     FREE SPINS <span id="freespinCountDisplay">15</span>
                 </div>
             </div>
-            <canvas id="gameCanvas" width="600" height="500"></canvas>
+            <canvas id="gameCanvas" width="630" height="525"></canvas>
             <div class="bottom-panel">
                 <div class="win-display">
                     <div class="win-label">Выигрыш</div>
@@ -661,7 +651,6 @@
             </div>
         </div>
 
-        <!-- Правая панель: Дед Зевс -->
         <div class="right-panel">
             <div class="zeus-container" id="zeusContainer">
                 <div class="zeus-figure">
@@ -700,56 +689,77 @@
         // ==================== КОНСТАНТЫ ====================
         const COLS = 6;
         const ROWS = 5;
-        const CELL_SIZE = 80;
-        const GRID_OFFSET_X = 40;
-        const GRID_OFFSET_Y = 40;
-        const SYMBOL_SIZE = 50;
+        const CELL_SIZE = 85;
+        const GRID_OFFSET_X = 45;
+        const GRID_OFFSET_Y = 45;
+        const SYMBOL_SIZE = 52;
+        const CASCADE_DELAY = 2000; // 2 секунды задержки
 
-        // Типы символов
+        // 10 символов
         const SYMBOLS = {
-            LOW: ['stone_1', 'stone_2', 'stone_3', 'stone_4', 'stone_5'],
-            MID: ['cup', 'ring'],
-            HIGH: ['hourglass', 'crown'],
-            SCATTER: 'zeus_scatter'
+            BLUE_CRYSTAL: 'blue_crystal',
+            GREEN_CRYSTAL: 'green_crystal',
+            YELLOW_CRYSTAL: 'yellow_crystal',
+            PURPLE_CRYSTAL: 'purple_crystal',
+            RED_CRYSTAL: 'red_crystal',
+            CUP: 'cup',
+            RING: 'ring',
+            HOURGLASS: 'hourglass',
+            CROWN: 'crown',
+            ZEUS_SCATTER: 'zeus_scatter'
         };
 
-        // Таблица выплат (Scatter Pays: количество -> множитель ставки)
+        const LOW_SYMBOLS = [
+            SYMBOLS.BLUE_CRYSTAL,
+            SYMBOLS.GREEN_CRYSTAL,
+            SYMBOLS.YELLOW_CRYSTAL,
+            SYMBOLS.PURPLE_CRYSTAL,
+            SYMBOLS.RED_CRYSTAL
+        ];
+
+        const MID_SYMBOLS = [SYMBOLS.CUP, SYMBOLS.RING];
+        const HIGH_SYMBOLS = [SYMBOLS.HOURGLASS, SYMBOLS.CROWN];
+        const ALL_REGULAR_SYMBOLS = [...LOW_SYMBOLS, ...MID_SYMBOLS, ...HIGH_SYMBOLS];
+
+        // Таблица выплат (количество -> множитель ставки)
         const PAYTABLE = {
-            stone_1: { 8: 2, 10: 5, 12: 10 },
-            stone_2: { 8: 2, 10: 5, 12: 10 },
-            stone_3: { 8: 3, 10: 6, 12: 12 },
-            stone_4: { 8: 3, 10: 6, 12: 12 },
-            stone_5: { 8: 4, 10: 8, 12: 15 },
-            cup: { 8: 5, 10: 12, 12: 25 },
-            ring: { 8: 5, 10: 12, 12: 25 },
-            hourglass: { 8: 10, 10: 25, 12: 50 },
-            crown: { 8: 15, 10: 40, 12: 100 },
-            zeus_scatter: { 4: 3, 5: 10, 6: 50 }
+            blue_crystal: { 8: 2, 9: 3, 10: 5, 11: 8, 12: 12 },
+            green_crystal: { 8: 2, 9: 3, 10: 5, 11: 8, 12: 12 },
+            yellow_crystal: { 8: 3, 9: 4, 10: 6, 11: 10, 12: 15 },
+            purple_crystal: { 8: 3, 9: 4, 10: 6, 11: 10, 12: 15 },
+            red_crystal: { 8: 4, 9: 6, 10: 8, 11: 12, 12: 18 },
+            cup: { 8: 5, 9: 8, 10: 12, 11: 18, 12: 25 },
+            ring: { 8: 5, 9: 8, 10: 12, 11: 18, 12: 25 },
+            hourglass: { 8: 10, 9: 15, 10: 25, 11: 40, 12: 50 },
+            crown: { 8: 15, 9: 25, 10: 40, 11: 60, 12: 100 },
+            zeus_scatter: { 4: 3, 5: 10, 6: 50, 7: 100, 8: 200 }
         };
 
-        // Множители для сфер
-        const ORB_MULTIPLIERS = [2, 3, 4, 5, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500];
+        // Множители с вероятностями
+        const ORB_MULTIPLIERS_COMMON = [2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 8, 8]; // ~15% шанс
+        const ORB_MULTIPLIERS_RARE = [10, 10, 15, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75]; // ~5% шанс
+        const ORB_MULTIPLIERS_LEGENDARY = [100, 150, 200, 250, 500]; // ~0.5% шанс
 
-        // Цвета для символов
+        // Цвета символов
         const SYMBOL_COLORS = {
-            stone_1: '#8e44ad',
-            stone_2: '#2980b9',
-            stone_3: '#27ae60',
-            stone_4: '#f39c12',
-            stone_5: '#e74c3c',
-            cup: '#3498db',
-            ring: '#f1c40f',
-            hourglass: '#e67e22',
+            blue_crystal: '#3498db',
+            green_crystal: '#2ecc71',
+            yellow_crystal: '#f1c40f',
+            purple_crystal: '#9b59b6',
+            red_crystal: '#e74c3c',
+            cup: '#1abc9c',
+            ring: '#e67e22',
+            hourglass: '#f39c12',
             crown: '#e74c3c',
             zeus_scatter: '#ffd700'
         };
 
         const SYMBOL_EMOJIS = {
-            stone_1: '💎',
-            stone_2: '🔮',
-            stone_3: '🟢',
-            stone_4: '🔥',
-            stone_5: '💥',
+            blue_crystal: '💎',
+            green_crystal: '💚',
+            yellow_crystal: '💛',
+            purple_crystal: '💜',
+            red_crystal: '❤️',
             cup: '🏆',
             ring: '💍',
             hourglass: '⏳',
@@ -757,30 +767,30 @@
             zeus_scatter: '⚡'
         };
 
-        // ==================== СОСТОЯНИЕ ИГРЫ ====================
+        // ==================== СОСТОЯНИЯ ИГРЫ ====================
         const GameStateEnum = {
             IDLE: 'IDLE',
             SPINNING: 'SPINNING',
-            TUMBLING: 'TUMBLING',
+            CASCADING: 'CASCADING',
             WIN_ANIMATION: 'WIN_ANIMATION',
             BONUS_TRANSITION: 'BONUS_TRANSITION'
         };
 
         class SlotEngine {
             constructor() {
-                this.grid = this.createEmptyGrid();
+                this.grid = [];
                 this.state = GameStateEnum.IDLE;
                 this.bet = 1.0;
                 this.totalWin = 0;
                 this.displayedWin = 0;
-                this.isProcessing = false; // Флаг для предотвращения повторных спинов
+                this.isProcessing = false;
 
                 // Бонусный режим
                 this.isFreeSpins = false;
                 this.freeSpinsRemaining = 0;
                 this.totalMultiplier = 1;
 
-                // Сферы на текущем поле
+                // Сферы на поле
                 this.activeOrbs = [];
                 this.particles = [];
 
@@ -788,62 +798,62 @@
                 this.zeusArmRaised = false;
                 this.zeusLightningActive = false;
 
+                // Для анимации каскада
+                this.cascadeInProgress = false;
+                this.cascadeColumnsAnimated = [];
+
                 this.initGrid();
             }
 
-            createEmptyGrid() {
-                const grid = [];
+            initGrid() {
+                this.grid = [];
                 for (let r = 0; r < ROWS; r++) {
-                    grid[r] = [];
+                    this.grid[r] = [];
                     for (let c = 0; c < COLS; c++) {
-                        grid[r][c] = {
-                            symbol: null,
+                        this.grid[r][c] = {
+                            symbol: this.getRandomRegularSymbol(),
                             y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
                             targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
                             velocity: 0,
                             scale: 1,
                             opacity: 1,
                             isWinning: false,
+                            isExploding: false,
                             hasOrb: false,
                             orbMultiplier: 1,
-                            bounceOffset: 0 // Для анимации отскока
+                            bounceOffset: 0,
+                            columnDropOrder: c,
+                            rowPosition: r
                         };
-                    }
-                }
-                return grid;
-            }
-
-            initGrid() {
-                for (let r = 0; r < ROWS; r++) {
-                    for (let c = 0; c < COLS; c++) {
-                        this.grid[r][c].symbol = this.randomSymbol();
-                        this.grid[r][c].y = this.grid[r][c].targetY;
-                        this.grid[r][c].velocity = 0;
-                        this.grid[r][c].scale = 1;
-                        this.grid[r][c].opacity = 1;
-                        this.grid[r][c].isWinning = false;
-                        this.grid[r][c].hasOrb = false;
-                        this.grid[r][c].orbMultiplier = 1;
-                        this.grid[r][c].bounceOffset = 0;
                     }
                 }
                 this.clearOrbs();
             }
 
-            randomSymbol() {
+            getRandomRegularSymbol() {
                 const rand = Math.random();
-                if (rand < 0.03) return SYMBOLS.SCATTER;
-                if (rand < 0.10) return SYMBOLS.HIGH[Math.floor(Math.random() * SYMBOLS.HIGH.length)];
-                if (rand < 0.25) return SYMBOLS.MID[Math.floor(Math.random() * SYMBOLS.MID.length)];
-                return SYMBOLS.LOW[Math.floor(Math.random() * SYMBOLS.LOW.length)];
+                if (rand < 0.04) return SYMBOLS.ZEUS_SCATTER;
+                if (rand < 0.12) return HIGH_SYMBOLS[Math.floor(Math.random() * HIGH_SYMBOLS.length)];
+                if (rand < 0.28) return MID_SYMBOLS[Math.floor(Math.random() * MID_SYMBOLS.length)];
+                return LOW_SYMBOLS[Math.floor(Math.random() * LOW_SYMBOLS.length)];
+            }
+
+            getRandomSymbolForCascade() {
+                const rand = Math.random();
+                if (rand < 0.03) return SYMBOLS.ZEUS_SCATTER;
+                if (rand < 0.10) return HIGH_SYMBOLS[Math.floor(Math.random() * HIGH_SYMBOLS.length)];
+                if (rand < 0.25) return MID_SYMBOLS[Math.floor(Math.random() * MID_SYMBOLS.length)];
+                return LOW_SYMBOLS[Math.floor(Math.random() * LOW_SYMBOLS.length)];
             }
 
             clearOrbs() {
                 this.activeOrbs = [];
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        this.grid[r][c].hasOrb = false;
-                        this.grid[r][c].orbMultiplier = 1;
+                        if (this.grid[r] && this.grid[r][c]) {
+                            this.grid[r][c].hasOrb = false;
+                            this.grid[r][c].orbMultiplier = 1;
+                        }
                     }
                 }
             }
@@ -855,7 +865,9 @@
 
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        if (visited[r][c] || !this.grid[r][c].symbol) continue;
+                        if (visited[r][c] || !this.grid[r][c] || !this.grid[r][c].symbol) continue;
+                        if (this.grid[r][c].isExploding) continue;
+
                         const symbol = this.grid[r][c].symbol;
                         const group = [];
                         const stack = [{ r, c }];
@@ -864,7 +876,9 @@
                             const { r: cr, c: cc } = stack.pop();
                             if (cr < 0 || cr >= ROWS || cc < 0 || cc >= COLS) continue;
                             if (visited[cr][cc]) continue;
+                            if (!this.grid[cr][cc] || !this.grid[cr][cc].symbol) continue;
                             if (this.grid[cr][cc].symbol !== symbol) continue;
+                            if (this.grid[cr][cc].isExploding) continue;
 
                             visited[cr][cc] = true;
                             group.push({ r: cr, c: cc });
@@ -875,8 +889,7 @@
                             stack.push({ r: cr, c: cc + 1 });
                         }
 
-                        // Скаттер: от 4 штук, остальные: от 8
-                        const minCount = symbol === SYMBOLS.SCATTER ? 4 : 8;
+                        const minCount = symbol === SYMBOLS.ZEUS_SCATTER ? 4 : 8;
                         if (group.length >= minCount) {
                             groups.push({
                                 symbol,
@@ -903,29 +916,53 @@
                 return payout * this.bet;
             }
 
-            // ==================== TUMBLE: СДВИГ СИМВОЛОВ ====================
-            applyGravity() {
+            // ==================== КАСКАДНАЯ МЕХАНИКА ====================
+            applyCascadeGravity() {
                 let moved = false;
                 for (let c = 0; c < COLS; c++) {
                     for (let r = ROWS - 1; r >= 0; r--) {
-                        if (this.grid[r][c].symbol === null) {
+                        if (!this.grid[r][c] || this.grid[r][c].symbol === null || this.grid[r][c].isExploding) {
+                            // Ищем символ сверху
                             for (let above = r - 1; above >= 0; above--) {
-                                if (this.grid[above][c].symbol !== null) {
+                                if (this.grid[above][c] && this.grid[above][c].symbol !== null && !this.grid[
+                                        above][c].isExploding) {
+                                    // Перемещаем символ вниз
+                                    if (!this.grid[r][c]) {
+                                        this.grid[r][c] = {
+                                            symbol: null,
+                                            y: 0,
+                                            targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
+                                            velocity: 0,
+                                            scale: 1,
+                                            opacity: 1,
+                                            isWinning: false,
+                                            isExploding: false,
+                                            hasOrb: false,
+                                            orbMultiplier: 1,
+                                            bounceOffset: 0,
+                                            columnDropOrder: c,
+                                            rowPosition: r
+                                        };
+                                    }
                                     this.grid[r][c].symbol = this.grid[above][c].symbol;
                                     this.grid[r][c].hasOrb = this.grid[above][c].hasOrb;
                                     this.grid[r][c].orbMultiplier = this.grid[above][c].orbMultiplier;
-                                    // НЕ меняем y — он будет анимирован отдельно
+                                    this.grid[r][c].y = this.grid[above][c].y;
                                     this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                                     this.grid[r][c].velocity = 0;
                                     this.grid[r][c].scale = 1;
                                     this.grid[r][c].opacity = 1;
                                     this.grid[r][c].isWinning = false;
+                                    this.grid[r][c].isExploding = false;
                                     this.grid[r][c].bounceOffset = 0;
+                                    this.grid[r][c].rowPosition = r;
 
+                                    // Очищаем верхнюю ячейку
                                     this.grid[above][c].symbol = null;
                                     this.grid[above][c].hasOrb = false;
                                     this.grid[above][c].orbMultiplier = 1;
                                     this.grid[above][c].isWinning = false;
+                                    this.grid[above][c].isExploding = false;
                                     moved = true;
                                     break;
                                 }
@@ -936,67 +973,67 @@
                 return moved;
             }
 
-            fillEmptyCells() {
+            fillEmptyCellsForCascade() {
                 for (let c = 0; c < COLS; c++) {
-                    let emptyAbove = 0;
-                    // Считаем сколько пустых ячеек над каждой позицией
+                    let emptyCount = 0;
+                    // Считаем пустые ячейки в колонке
                     for (let r = 0; r < ROWS; r++) {
-                        if (this.grid[r][c].symbol === null) {
-                            emptyAbove++;
-                            // Создаем новый символ над экраном
-                            this.grid[r][c].symbol = this.randomSymbol();
-                            this.grid[r][c].y = GRID_OFFSET_Y - (emptyAbove) * CELL_SIZE - 20;
+                        if (!this.grid[r][c] || this.grid[r][c].symbol === null || this.grid[r][c].isExploding) {
+                            emptyCount++;
+                        }
+                    }
+
+                    let newSymbolsAdded = 0;
+                    for (let r = 0; r < ROWS; r++) {
+                        if (!this.grid[r][c] || this.grid[r][c].symbol === null || this.grid[r][c].isExploding) {
+                            if (!this.grid[r][c]) {
+                                this.grid[r][c] = {
+                                    symbol: null,
+                                    y: 0,
+                                    targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
+                                    velocity: 0,
+                                    scale: 1,
+                                    opacity: 1,
+                                    isWinning: false,
+                                    isExploding: false,
+                                    hasOrb: false,
+                                    orbMultiplier: 1,
+                                    bounceOffset: 0,
+                                    columnDropOrder: c,
+                                    rowPosition: r
+                                };
+                            }
+                            this.grid[r][c].symbol = this.getRandomSymbolForCascade();
+                            this.grid[r][c].y = GRID_OFFSET_Y - (emptyCount - newSymbolsAdded) * CELL_SIZE - 30;
                             this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                             this.grid[r][c].velocity = 0;
                             this.grid[r][c].scale = 1;
                             this.grid[r][c].opacity = 1;
                             this.grid[r][c].isWinning = false;
+                            this.grid[r][c].isExploding = false;
                             this.grid[r][c].hasOrb = false;
                             this.grid[r][c].orbMultiplier = 1;
                             this.grid[r][c].bounceOffset = 0;
+                            this.grid[r][c].rowPosition = r;
+                            newSymbolsAdded++;
                         }
                     }
                 }
             }
 
-            removeWinningSymbols(groups) {
-                const cellsToRemove = new Set();
-                for (const group of groups) {
-                    for (const cell of group.cells) {
-                        cellsToRemove.add(`${cell.r},${cell.c}`);
-                        this.grid[cell.r][cell.c].isWinning = true;
-                    }
-                }
-                // Удаляем после анимации
-                for (const key of cellsToRemove) {
-                    const [r, c] = key.split(',').map(Number);
-                    this.spawnParticles(
-                        GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
-                        this.grid[r][c].y + this.grid[r][c].bounceOffset,
-                        SYMBOL_COLORS[this.grid[r][c].symbol] || '#fff'
-                    );
-                    this.grid[r][c].symbol = null;
-                    this.grid[r][c].hasOrb = false;
-                    this.grid[r][c].orbMultiplier = 1;
-                    this.grid[r][c].isWinning = false;
-                    this.grid[r][c].scale = 1;
-                    this.grid[r][c].bounceOffset = 0;
-                }
-            }
-
-            spawnParticles(x, y, color) {
-                for (let i = 0; i < 10; i++) {
-                    const angle = (Math.PI * 2 / 10) * i + Math.random() * 0.5;
-                    const speed = 2 + Math.random() * 5;
+            spawnParticles(x, y, color, count = 12) {
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.4;
+                    const speed = 3 + Math.random() * 6;
                     this.particles.push({
                         x,
                         y,
                         vx: Math.cos(angle) * speed,
                         vy: Math.sin(angle) * speed - 3,
                         life: 1,
-                        decay: 0.015 + Math.random() * 0.03,
+                        decay: 0.012 + Math.random() * 0.025,
                         color,
-                        size: 2 + Math.random() * 4
+                        size: 2 + Math.random() * 5
                     });
                 }
             }
@@ -1006,7 +1043,7 @@
                     const p = this.particles[i];
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.15;
+                    p.vy += 0.12;
                     p.life -= p.decay;
                     if (p.life <= 0) {
                         this.particles.splice(i, 1);
@@ -1015,8 +1052,20 @@
             }
 
             // ==================== СФЕРЫ ОТ ЗЕВСА ====================
+            getRandomOrbMultiplier() {
+                const rand = Math.random();
+                if (rand < 0.005) {
+                    return ORB_MULTIPLIERS_LEGENDARY[Math.floor(Math.random() * ORB_MULTIPLIERS_LEGENDARY.length)];
+                } else if (rand < 0.055) {
+                    return ORB_MULTIPLIERS_RARE[Math.floor(Math.random() * ORB_MULTIPLIERS_RARE.length)];
+                } else if (rand < 0.205) {
+                    return ORB_MULTIPLIERS_COMMON[Math.floor(Math.random() * ORB_MULTIPLIERS_COMMON.length)];
+                }
+                return null;
+            }
+
             zeusThrowOrbs() {
-                if (this.zeusArmRaised) return; // Уже в процессе
+                if (this.zeusArmRaised) return;
 
                 this.zeusArmRaised = true;
                 const armContainer = document.getElementById('zeusArmContainer');
@@ -1027,28 +1076,33 @@
                     const lightning = document.getElementById('zeusLightning');
                     if (lightning) lightning.classList.add('active');
 
-                    const orbCount = 2 + Math.floor(Math.random() * 4);
+                    const orbCount = 1 + Math.floor(Math.random() * 4);
                     const usedCells = new Set();
 
                     for (let i = 0; i < orbCount; i++) {
                         let r, c;
+                        let attempts = 0;
                         do {
                             r = Math.floor(Math.random() * ROWS);
                             c = Math.floor(Math.random() * COLS);
-                        } while (usedCells.has(`${r},${c}`) && usedCells.size < ROWS * COLS);
+                            attempts++;
+                        } while (usedCells.has(`${r},${c}`) && attempts < ROWS * COLS * 2);
 
-                        if (usedCells.size >= ROWS * COLS) break;
+                        if (attempts >= ROWS * COLS * 2) break;
                         usedCells.add(`${r},${c}`);
 
-                        const multiplier = ORB_MULTIPLIERS[Math.floor(Math.random() * ORB_MULTIPLIERS.length)];
+                        const multiplier = this.getRandomOrbMultiplier();
+                        if (!multiplier) continue;
+
                         const colors = ['#2ecc71', '#3498db', '#e91e90', '#ffd700'];
                         const color = colors[Math.floor(Math.random() * colors.length)];
 
-                        this.grid[r][c].hasOrb = true;
-                        this.grid[r][c].orbMultiplier = multiplier;
-                        this.activeOrbs.push({ r, c, multiplier, color });
-
-                        this.spawnOrbEffect(r, c, color, multiplier);
+                        if (this.grid[r] && this.grid[r][c]) {
+                            this.grid[r][c].hasOrb = true;
+                            this.grid[r][c].orbMultiplier = multiplier;
+                            this.activeOrbs.push({ r, c, multiplier, color });
+                            this.spawnOrbEffect(r, c, color, multiplier);
+                        }
                     }
 
                     setTimeout(() => {
@@ -1079,19 +1133,17 @@
                 if (this.activeOrbs.length === 0) return baseWin;
                 if (baseWin <= 0) return 0;
 
-                let totalOrbMultiplier = 0;
+                let totalOrbValue = 0;
                 for (const orb of this.activeOrbs) {
-                    totalOrbMultiplier += orb.multiplier;
+                    totalOrbValue += orb.multiplier;
                 }
 
                 if (this.isFreeSpins) {
-                    // В бонусе: добавляем орбы в накопитель и применяем его
-                    this.totalMultiplier += totalOrbMultiplier;
+                    this.totalMultiplier += totalOrbValue;
                     this.updateTotalMultiplierDisplay();
                     return baseWin * this.totalMultiplier;
                 } else {
-                    // В обычной игре: просто суммируем орбы
-                    return baseWin * (1 + totalOrbMultiplier);
+                    return baseWin * (1 + totalOrbValue);
                 }
             }
 
@@ -1101,15 +1153,18 @@
                 this.isProcessing = true;
                 this.state = GameStateEnum.SPINNING;
                 this.totalWin = 0;
+                this.displayedWin = 0;
+                this.updateWinDisplay();
                 this.clearOrbs();
                 this.particles = [];
 
-                await this.animateInitialDrop();
-                await this.sleep(300);
+                // Инициализация нового поля
+                await this.animateInitialCascade();
 
-                // Цикл тамблов
-                await this.tumbleCycle();
+                // Запуск каскадного цикла
+                await this.cascadeCycle();
 
+                // Применяем орбы к финальному выигрышу
                 const finalWin = this.applyOrbsToWin(this.totalWin);
                 this.totalWin = finalWin;
                 await this.animateWinCounter(finalWin);
@@ -1137,44 +1192,64 @@
                 this.updateSpinButton();
             }
 
-            async animateInitialDrop() {
-                // Поднимаем все символы наверх
+            async animateInitialCascade() {
+                // Сбрасываем все символы наверх
                 for (let c = 0; c < COLS; c++) {
                     for (let r = 0; r < ROWS; r++) {
-                        this.grid[r][c].symbol = this.randomSymbol();
-                        this.grid[r][c].y = -100 - r * 50 - c * 15;
+                        if (!this.grid[r] || !this.grid[r][c]) {
+                            if (!this.grid[r]) this.grid[r] = [];
+                            this.grid[r][c] = {
+                                symbol: null,
+                                y: 0,
+                                targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2,
+                                velocity: 0,
+                                scale: 1,
+                                opacity: 1,
+                                isWinning: false,
+                                isExploding: false,
+                                hasOrb: false,
+                                orbMultiplier: 1,
+                                bounceOffset: 0,
+                                columnDropOrder: c,
+                                rowPosition: r
+                            };
+                        }
+                        this.grid[r][c].symbol = this.getRandomRegularSymbol();
+                        this.grid[r][c].y = -120 - r * 45 - c * 8;
                         this.grid[r][c].targetY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
                         this.grid[r][c].velocity = 0;
                         this.grid[r][c].scale = 1;
                         this.grid[r][c].opacity = 1;
                         this.grid[r][c].isWinning = false;
+                        this.grid[r][c].isExploding = false;
                         this.grid[r][c].hasOrb = false;
                         this.grid[r][c].orbMultiplier = 1;
                         this.grid[r][c].bounceOffset = 0;
+                        this.grid[r][c].rowPosition = r;
                     }
                 }
 
-                // Падение по столбцам
+                // Падение по столбцам (каскадом)
                 const promises = [];
                 for (let c = 0; c < COLS; c++) {
-                    promises.push(this.dropColumn(c, c * 50));
+                    promises.push(this.dropColumnCascade(c, c * 60));
                 }
                 await Promise.all(promises);
-                await this.sleep(300);
+                await this.sleep(400);
             }
 
-            dropColumn(col, delay) {
+            dropColumnCascade(col, delay) {
                 return new Promise(resolve => {
                     setTimeout(() => {
-                        const GRAVITY = 1.2;
-                        const DAMPING = 0.35;
+                        const GRAVITY = 0.9;
+                        const DAMPING = 0.3;
                         const BOUNCE_HEIGHT = 8;
-                        let allSettled = false;
                         let settleCount = 0;
 
                         const animate = () => {
-                            allSettled = true;
+                            let allSettled = true;
                             for (let r = 0; r < ROWS; r++) {
+                                if (!this.grid[r] || !this.grid[r][col]) continue;
                                 const cell = this.grid[r][col];
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
@@ -1186,8 +1261,8 @@
 
                                     if (cell.y >= target) {
                                         cell.y = target;
-                                        if (Math.abs(cell.velocity) > 1) {
-                                            cell.bounceOffset = -BOUNCE_HEIGHT;
+                                        if (Math.abs(cell.velocity) > 0.8) {
+                                            cell.bounceOffset = -BOUNCE_HEIGHT * (Math.abs(cell.velocity) / 5);
                                             cell.velocity = -cell.velocity * DAMPING;
                                         } else {
                                             cell.velocity = 0;
@@ -1197,7 +1272,6 @@
                                 } else {
                                     cell.y = target;
                                     cell.velocity = 0;
-                                    // Затухание отскока
                                     if (cell.bounceOffset < 0) {
                                         cell.bounceOffset *= 0.7;
                                         if (Math.abs(cell.bounceOffset) < 0.3) cell.bounceOffset = 0;
@@ -1209,15 +1283,15 @@
                                 requestAnimationFrame(animate);
                             } else {
                                 settleCount++;
-                                if (settleCount < 5) {
-                                    // Даем время на затухание отскоков
+                                if (settleCount < 6) {
                                     requestAnimationFrame(animate);
                                 } else {
-                                    // Финально фиксируем позиции
                                     for (let r = 0; r < ROWS; r++) {
-                                        this.grid[r][col].y = this.grid[r][col].targetY;
-                                        this.grid[r][col].bounceOffset = 0;
-                                        this.grid[r][col].velocity = 0;
+                                        if (this.grid[r] && this.grid[r][col]) {
+                                            this.grid[r][col].y = this.grid[r][col].targetY;
+                                            this.grid[r][col].bounceOffset = 0;
+                                            this.grid[r][col].velocity = 0;
+                                        }
                                     }
                                     resolve();
                                 }
@@ -1228,15 +1302,17 @@
                 });
             }
 
-            async tumbleCycle() {
+            async cascadeCycle() {
                 let hasWins = true;
                 let iterations = 0;
-                const maxIterations = 20; // Защита от бесконечного цикла
+                const maxIterations = 30;
 
                 while (hasWins && iterations < maxIterations) {
                     iterations++;
-                    this.state = GameStateEnum.TUMBLING;
-                    await this.sleep(300);
+                    this.state = GameStateEnum.CASCADING;
+
+                    // Задержка 2 секунды перед проверкой
+                    await this.sleep(CASCADE_DELAY);
 
                     const groups = this.findGroups();
                     if (groups.length === 0) {
@@ -1244,51 +1320,75 @@
                         break;
                     }
 
+                    // Подсветка выигрышных символов
+                    this.state = GameStateEnum.WIN_ANIMATION;
+                    this.highlightWinningCells(groups);
+
+                    // Анимация подсветки
+                    await this.animateWinningHighlight(groups);
+                    await this.sleep(600);
+
+                    // Суммируем выигрыш
                     let cycleWin = 0;
                     for (const group of groups) {
                         cycleWin += group.payout;
                     }
                     this.totalWin += cycleWin;
 
-                    this.state = GameStateEnum.WIN_ANIMATION;
-                    await this.animateWinningSymbols(groups);
-                    await this.sleep(200);
+                    // Взрыв символов
+                    await this.animateExplosion(groups);
+                    await this.sleep(300);
 
-                    this.removeWinningSymbols(groups);
-                    await this.sleep(100);
+                    // Удаление взорванных символов
+                    this.removeExplodedSymbols(groups);
 
-                    // Сдвиг и заполнение
-                    this.applyGravity();
-                    this.fillEmptyCells();
-                    await this.animateGravityDrop();
-                    await this.sleep(200);
+                    // Сдвиг символов вниз
+                    this.applyCascadeGravity();
+                    this.fillEmptyCellsForCascade();
+
+                    // Анимация падения новых символов
+                    await this.animateCascadeDrop();
+                    await this.sleep(400);
                 }
             }
 
-            async animateWinningSymbols(groups) {
-                const winningCells = [];
+            highlightWinningCells(groups) {
                 for (const group of groups) {
                     for (const cell of group.cells) {
-                        winningCells.push(this.grid[cell.r][cell.c]);
+                        if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
+                            this.grid[cell.r][cell.c].isWinning = true;
+                        }
                     }
                 }
+            }
 
+            async animateWinningHighlight(groups) {
                 return new Promise(resolve => {
                     const startTime = performance.now();
-                    const duration = 400;
+                    const duration = 1200;
 
                     const pulse = (time) => {
                         const elapsed = time - startTime;
                         const progress = Math.min(elapsed / duration, 1);
-                        const scale = 1 + Math.sin(progress * Math.PI * 3) * 0.12;
-                        for (const cell of winningCells) {
-                            cell.scale = scale;
+                        const pulseScale = 1 + Math.sin(progress * Math.PI * 4) * 0.15;
+
+                        for (const group of groups) {
+                            for (const cell of group.cells) {
+                                if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
+                                    this.grid[cell.r][cell.c].scale = pulseScale;
+                                }
+                            }
                         }
+
                         if (progress < 1) {
                             requestAnimationFrame(pulse);
                         } else {
-                            for (const cell of winningCells) {
-                                cell.scale = 1;
+                            for (const group of groups) {
+                                for (const cell of group.cells) {
+                                    if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
+                                        this.grid[cell.r][cell.c].scale = 1.2;
+                                    }
+                                }
                             }
                             resolve();
                         }
@@ -1297,19 +1397,73 @@
                 });
             }
 
-            async animateGravityDrop() {
+            async animateExplosion(groups) {
                 return new Promise(resolve => {
-                    const GRAVITY = 1.0;
-                    const DAMPING = 0.3;
-                    let allSettled = true;
+                    const startTime = performance.now();
+                    const duration = 500;
+
+                    const explode = (time) => {
+                        const elapsed = time - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        const explodeScale = 1.2 + progress * 0.4;
+
+                        for (const group of groups) {
+                            for (const cell of group.cells) {
+                                if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
+                                    this.grid[cell.r][cell.c].scale = explodeScale;
+                                    this.grid[cell.r][cell.c].opacity = 1 - progress;
+                                    this.grid[cell.r][cell.c].isExploding = true;
+                                }
+                            }
+                        }
+
+                        if (progress < 1) {
+                            requestAnimationFrame(explode);
+                        } else {
+                            resolve();
+                        }
+                    };
+                    requestAnimationFrame(explode);
+                });
+            }
+
+            removeExplodedSymbols(groups) {
+                for (const group of groups) {
+                    for (const cell of group.cells) {
+                        if (this.grid[cell.r] && this.grid[cell.r][cell.c]) {
+                            const gridCell = this.grid[cell.r][cell.c];
+                            const x = GRID_OFFSET_X + cell.c * CELL_SIZE + CELL_SIZE / 2;
+                            const y = gridCell.y + gridCell.bounceOffset;
+                            this.spawnParticles(x, y, SYMBOL_COLORS[gridCell.symbol] || '#fff', 15);
+                            gridCell.symbol = null;
+                            gridCell.hasOrb = false;
+                            gridCell.orbMultiplier = 1;
+                            gridCell.isWinning = false;
+                            gridCell.isExploding = false;
+                            gridCell.scale = 0;
+                            gridCell.opacity = 1;
+                            gridCell.bounceOffset = 0;
+                        }
+                    }
+                }
+            }
+
+            async animateCascadeDrop() {
+                return new Promise(resolve => {
+                    const GRAVITY = 0.85;
+                    const DAMPING = 0.28;
                     let settleCount = 0;
 
                     const animate = () => {
-                        allSettled = true;
+                        let allSettled = true;
                         for (let c = 0; c < COLS; c++) {
                             for (let r = 0; r < ROWS; r++) {
+                                if (!this.grid[r] || !this.grid[r][c]) continue;
                                 const cell = this.grid[r][c];
                                 if (!cell.symbol) continue;
+
+                                cell.scale = Math.min(1, cell.scale + 0.15);
+
                                 const target = cell.targetY;
                                 const dy = target - cell.y;
 
@@ -1320,7 +1474,7 @@
 
                                     if (cell.y >= target) {
                                         cell.y = target;
-                                        if (Math.abs(cell.velocity) > 0.5) {
+                                        if (Math.abs(cell.velocity) > 0.6) {
                                             cell.bounceOffset = -5;
                                             cell.velocity = -cell.velocity * DAMPING;
                                         } else {
@@ -1343,15 +1497,18 @@
                             requestAnimationFrame(animate);
                         } else {
                             settleCount++;
-                            if (settleCount < 4) {
+                            if (settleCount < 5) {
                                 requestAnimationFrame(animate);
                             } else {
                                 for (let c = 0; c < COLS; c++) {
                                     for (let r = 0; r < ROWS; r++) {
-                                        const cell = this.grid[r][c];
-                                        cell.y = cell.targetY;
-                                        cell.bounceOffset = 0;
-                                        cell.velocity = 0;
+                                        if (this.grid[r] && this.grid[r][c]) {
+                                            const cell = this.grid[r][c];
+                                            cell.y = cell.targetY;
+                                            cell.bounceOffset = 0;
+                                            cell.velocity = 0;
+                                            cell.scale = 1;
+                                        }
                                     }
                                 }
                                 resolve();
@@ -1364,7 +1521,7 @@
 
             async animateWinCounter(targetWin) {
                 const startWin = this.displayedWin;
-                const duration = 800;
+                const duration = 900;
                 const startTime = performance.now();
 
                 return new Promise(resolve => {
@@ -1392,7 +1549,9 @@
                 let count = 0;
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        if (this.grid[r][c].symbol === SYMBOLS.SCATTER) count++;
+                        if (this.grid[r] && this.grid[r][c] && this.grid[r][c].symbol === SYMBOLS.ZEUS_SCATTER) {
+                            count++;
+                        }
                     }
                 }
                 return count;
@@ -1409,7 +1568,6 @@
                 this.updateFreespinDisplay();
                 this.updateTotalMultiplierDisplay();
 
-                // Показываем оверлей
                 const overlay = document.getElementById('bonusOverlay');
                 const spinsDisplay = document.getElementById('bonusSpinsDisplay');
                 if (spinsDisplay) spinsDisplay.textContent = spins;
@@ -1484,22 +1642,22 @@
             render(ctx) {
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-                // Фон сетки
+                // Фон ячеек
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
-                        const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
-                        const baseY = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
+                        const cx = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
+                        const cy = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2;
 
-                        ctx.fillStyle = 'rgba(15, 15, 35, 0.5)';
-                        ctx.strokeStyle = 'rgba(80, 80, 120, 0.25)';
+                        ctx.fillStyle = 'rgba(12, 12, 30, 0.55)';
+                        ctx.strokeStyle = 'rgba(70, 70, 110, 0.2)';
                         ctx.lineWidth = 1;
                         ctx.beginPath();
                         ctx.roundRect(
-                            GRID_OFFSET_X + c * CELL_SIZE + 5,
-                            GRID_OFFSET_Y + r * CELL_SIZE + 5,
-                            CELL_SIZE - 10,
-                            CELL_SIZE - 10,
-                            8
+                            GRID_OFFSET_X + c * CELL_SIZE + 4,
+                            GRID_OFFSET_Y + r * CELL_SIZE + 4,
+                            CELL_SIZE - 8,
+                            CELL_SIZE - 8,
+                            10
                         );
                         ctx.fill();
                         ctx.stroke();
@@ -1509,38 +1667,45 @@
                 // Символы
                 for (let r = 0; r < ROWS; r++) {
                     for (let c = 0; c < COLS; c++) {
+                        if (!this.grid[r] || !this.grid[r][c]) continue;
                         const cell = this.grid[r][c];
-                        if (!cell.symbol) continue;
+                        if (!cell.symbol || cell.scale <= 0.01) continue;
 
                         const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2;
                         const y = cell.y + cell.bounceOffset;
 
                         ctx.save();
                         ctx.translate(x, y);
-                        ctx.scale(cell.scale, cell.scale);
-                        ctx.globalAlpha = cell.opacity;
+                        ctx.scale(Math.max(0.01, cell.scale), Math.max(0.01, cell.scale));
+                        ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity));
 
                         // Свечение выигрыша
-                        if (cell.isWinning) {
+                        if (cell.isWinning && !cell.isExploding) {
                             ctx.shadowColor = '#ffd700';
-                            ctx.shadowBlur = 25;
+                            ctx.shadowBlur = 30;
+                        }
+
+                        // Ореол взрыва
+                        if (cell.isExploding) {
+                            ctx.shadowColor = '#fff';
+                            ctx.shadowBlur = 40;
                         }
 
                         // Ореол сферы
-                        if (cell.hasOrb) {
+                        if (cell.hasOrb && !cell.isExploding) {
                             ctx.shadowColor = '#ffd700';
-                            ctx.shadowBlur = 20;
-                            ctx.fillStyle = 'rgba(255, 215, 0, 0.25)';
+                            ctx.shadowBlur = 25;
+                            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
                             ctx.beginPath();
-                            ctx.arc(0, 0, SYMBOL_SIZE / 2 + 8, 0, Math.PI * 2);
+                            ctx.arc(0, 0, SYMBOL_SIZE / 2 + 10, 0, Math.PI * 2);
                             ctx.fill();
                             ctx.shadowBlur = 0;
                         }
 
                         // Круг символа
-                        const color = SYMBOL_COLORS[cell.symbol] || '#666';
-                        const gradient = ctx.createRadialGradient(-3, -8, 3, 0, 0, SYMBOL_SIZE / 2);
-                        gradient.addColorStop(0, this.lightenColor(color, 50));
+                        const color = SYMBOL_COLORS[cell.symbol] || '#555';
+                        const gradient = ctx.createRadialGradient(-4, -9, 4, 0, 0, SYMBOL_SIZE / 2);
+                        gradient.addColorStop(0, this.lightenColor(color, 55));
                         gradient.addColorStop(1, color);
 
                         ctx.fillStyle = gradient;
@@ -1548,32 +1713,31 @@
                         ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
                         ctx.fill();
 
-                        ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                        ctx.lineWidth = 2.5;
                         ctx.stroke();
 
                         // Эмодзи или иконка
                         ctx.shadowColor = 'transparent';
                         ctx.shadowBlur = 0;
-                        ctx.font = `${SYMBOL_SIZE * 0.55}px Arial`;
+                        ctx.font = `${SYMBOL_SIZE * 0.5}px Arial`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
                         ctx.fillStyle = '#fff';
 
-                        // Для скаттера рисуем лицо Деда
-                        if (cell.symbol === SYMBOLS.SCATTER) {
+                        if (cell.symbol === SYMBOLS.ZEUS_SCATTER) {
                             this.drawZeusIcon(ctx, SYMBOL_SIZE);
                         } else {
                             ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2);
                         }
 
                         // Множитель сферы
-                        if (cell.hasOrb) {
-                            ctx.font = 'bold 13px Arial';
+                        if (cell.hasOrb && !cell.isExploding) {
+                            ctx.font = 'bold 14px Arial';
                             ctx.fillStyle = '#ffd700';
-                            ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                            ctx.shadowBlur = 3;
-                            ctx.fillText(`x${cell.orbMultiplier}`, 0, -SYMBOL_SIZE / 2 - 12);
+                            ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                            ctx.shadowBlur = 4;
+                            ctx.fillText(`x${cell.orbMultiplier}`, 0, -SYMBOL_SIZE / 2 - 14);
                             ctx.shadowBlur = 0;
                         }
 
@@ -1586,7 +1750,7 @@
                     ctx.fillStyle = p.color;
                     ctx.globalAlpha = Math.max(0, p.life);
                     ctx.shadowColor = p.color;
-                    ctx.shadowBlur = 6;
+                    ctx.shadowBlur = 8;
                     ctx.beginPath();
                     ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                     ctx.fill();
@@ -1597,55 +1761,57 @@
             }
 
             drawZeusIcon(ctx, size) {
-                const s = size * 0.7;
+                const s = size * 0.65;
                 // Голова
                 ctx.fillStyle = '#f5e6d3';
                 ctx.beginPath();
-                ctx.arc(0, -s * 0.1, s * 0.4, 0, Math.PI * 2);
+                ctx.arc(0, -s * 0.08, s * 0.38, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = '#c4a882';
-                ctx.lineWidth = 1.5;
+                ctx.lineWidth = 1.8;
                 ctx.stroke();
 
                 // Борода
                 ctx.fillStyle = '#e8d5c0';
                 ctx.beginPath();
-                ctx.moveTo(-s * 0.25, s * 0.05);
-                ctx.quadraticCurveTo(0, s * 0.55, s * 0.25, s * 0.05);
-                ctx.quadraticCurveTo(0, s * 0.2, -s * 0.25, s * 0.05);
+                ctx.moveTo(-s * 0.22, s * 0.06);
+                ctx.quadraticCurveTo(0, s * 0.55, s * 0.22, s * 0.06);
+                ctx.quadraticCurveTo(0, s * 0.22, -s * 0.22, s * 0.06);
                 ctx.fill();
+                ctx.strokeStyle = '#c4a882';
+                ctx.lineWidth = 1;
                 ctx.stroke();
 
                 // Корона
                 ctx.fillStyle = '#ffd700';
                 ctx.beginPath();
-                ctx.moveTo(-s * 0.25, -s * 0.4);
-                ctx.lineTo(-s * 0.2, -s * 0.55);
-                ctx.lineTo(-s * 0.05, -s * 0.35);
+                ctx.moveTo(-s * 0.23, -s * 0.38);
+                ctx.lineTo(-s * 0.18, -s * 0.55);
+                ctx.lineTo(-s * 0.04, -s * 0.33);
                 ctx.lineTo(0, -s * 0.6);
-                ctx.lineTo(s * 0.05, -s * 0.35);
-                ctx.lineTo(s * 0.2, -s * 0.55);
-                ctx.lineTo(s * 0.25, -s * 0.4);
+                ctx.lineTo(s * 0.04, -s * 0.33);
+                ctx.lineTo(s * 0.18, -s * 0.55);
+                ctx.lineTo(s * 0.23, -s * 0.38);
                 ctx.closePath();
                 ctx.fill();
                 ctx.strokeStyle = '#b8860b';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 1.2;
                 ctx.stroke();
 
                 // Глаза
                 ctx.fillStyle = '#1a1a3a';
                 ctx.beginPath();
-                ctx.arc(-s * 0.1, -s * 0.15, s * 0.05, 0, Math.PI * 2);
+                ctx.arc(-s * 0.09, -s * 0.14, s * 0.045, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.beginPath();
-                ctx.arc(s * 0.1, -s * 0.15, s * 0.05, 0, Math.PI * 2);
+                ctx.arc(s * 0.09, -s * 0.14, s * 0.045, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Молния (маленькая, на фоне)
+                // Молния
                 ctx.fillStyle = '#ffd700';
-                ctx.font = `${s * 0.5}px Arial`;
+                ctx.font = `${s * 0.45}px Arial`;
                 ctx.textAlign = 'center';
-                ctx.fillText('⚡', 0, -s * 0.2);
+                ctx.fillText('⚡', 0, -s * 0.5);
             }
 
             lightenColor(hex, percent) {
@@ -1697,7 +1863,7 @@
             if (engine.activeOrbs.some(o => o.multiplier >= 50)) {
                 if (!document.body.classList.contains('zeus-rage')) {
                     document.body.classList.add('zeus-rage');
-                    setTimeout(() => document.body.classList.remove('zeus-rage'), 2000);
+                    setTimeout(() => document.body.classList.remove('zeus-rage'), 2500);
                 }
             }
 
@@ -1709,11 +1875,12 @@
         engine.updateSpinButton();
         gameLoop();
 
-        console.log('⚡ Zeus Thunder - Слот запущен!');
-        console.log('🎅 Скаттер: Дед Зевс (от 4 шт. — бонус, от 3 шт. в бонусе — +5 спинов)');
-        console.log('💎 Tumble: группы от 8 символов');
-        console.log('🌩️ Сферы: множители 2x-500x от Зевса');
-        console.log('🔄 Free Spins: накопительный множитель');
+        console.log('⚡ Zeus Thunder - Каскадный слот запущен!');
+        console.log('🎰 10 символов: 5 кристаллов, Чаша, Кольцо, Песочные часы, Корона, Зевс (Scatter)');
+        console.log('💥 Каскадная механика: группы 8+, взрыв, падение новых символов');
+        console.log('🌩️ Множители: Common (15%): 2x-8x, Rare (5%): 10x-75x, Legendary (0.5%): 100x-500x');
+        console.log('🔄 Free Spins: 4+ Зевса, накопительный множитель');
+        console.log('⏱️ Задержка каскада: 2 секунды');
     </script>
 </body>
 </html>
