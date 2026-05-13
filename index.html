@@ -10,7 +10,6 @@
             --gold: #ffd700;
             --red: #e63946;
             --dark-gold: #b8860b;
-            --cell-size: 85px;
         }
         * {
             margin: 0;
@@ -530,33 +529,6 @@
             background: #ffd700;
             color: #1a0500;
         }
-        .orb-popup {
-            position: absolute;
-            font-size: 24px;
-            font-weight: 900;
-            pointer-events: none;
-            animation: orbFloat 1.8s ease-out forwards;
-            z-index: 10;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.9);
-        }
-        @keyframes orbFloat {
-            0% {
-                transform: scale(0);
-                opacity: 0;
-            }
-            25% {
-                transform: scale(1.5);
-                opacity: 1;
-            }
-            70% {
-                transform: scale(1);
-                opacity: 0.9;
-            }
-            100% {
-                transform: scale(0.6);
-                opacity: 0;
-            }
-        }
         .win-float-text {
             position: absolute;
             pointer-events: none;
@@ -580,6 +552,83 @@
             100% {
                 opacity: 0;
                 transform: translateY(-80px) scale(0.8);
+            }
+        }
+        .big-win-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            cursor: pointer;
+        }
+        .big-win-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .big-win-content {
+            text-align: center;
+            animation: bigWinIn 0.5s ease-out;
+        }
+        @keyframes bigWinIn {
+            0% {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        .big-win-amount {
+            font-size: 80px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 60px rgba(255, 215, 0, 0.9), 0 0 120px rgba(255, 150, 0, 0.5);
+            animation: bigWinPulse 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes bigWinPulse {
+            0% {
+                transform: scale(1);
+            }
+            100% {
+                transform: scale(1.1);
+            }
+        }
+        .big-win-label {
+            font-size: 30px;
+            color: #fff;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            margin-top: 10px;
+        }
+        .big-win-sparks {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 201;
+        }
+        .big-spark {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ffd700;
+            border-radius: 50%;
+            animation: bigSparkFly 1.5s ease-out forwards;
+            box-shadow: 0 0 10px #ffd700, 0 0 20px #ff8c00;
+        }
+        @keyframes bigSparkFly {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--dx), var(--dy)) scale(0);
+                opacity: 0;
             }
         }
         .bonus-overlay {
@@ -666,24 +715,25 @@
                 height: 65px;
                 font-size: 14px;
             }
+            .big-win-amount {
+                font-size: 40px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="golden-gates"><div class="gate-left"></div><div class="gate-right"></div><div class="gate-arch"></div></div>
     <div class="fire-sparks" id="fireSparks"></div>
-    <div class="bonus-overlay" id="bonusOverlay">
-        <div class="bonus-popup" id="bonusPopup"><h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2><div class="bonus-spins" id="bonusSpinsDisplay">15</div><div class="bonus-subtitle">FREE SPINS</div><div class="bonus-subtitle" style="margin-top:6px;font-size:14px;">Нажмите для запуска</div></div>
-    </div>
+    <div class="big-win-overlay" id="bigWinOverlay"><div class="big-win-content"><div class="big-win-amount" id="bigWinAmount"></div><div class="big-win-label" id="bigWinLabel"></div></div></div>
+    <div class="big-win-sparks" id="bigWinSparks"></div>
+    <div class="bonus-overlay" id="bonusOverlay"><div class="bonus-popup" id="bonusPopup"><h2>⚡ ЯРОСТЬ ЗЕВСА! ⚡</h2><div class="bonus-spins" id="bonusSpinsDisplay">15</div><div class="bonus-subtitle">FREE SPINS</div><div class="bonus-subtitle" style="margin-top:6px;font-size:14px;">Нажмите для запуска</div></div></div>
     <div class="game-container">
         <div class="left-panel inactive" id="leftPanel"><div class="panel-label">Total<br>Multiplier</div><div class="multiplier-counter" id="totalMultiplierDisplay">1x</div></div>
         <div class="main-area" id="mainArea">
             <div class="game-header"><div class="game-title">⚡ ZEUS THUNDER ⚡</div><div class="freespin-badge" id="freespinBadge">FREE SPINS <span id="freespinCountDisplay">15</span></div></div>
             <div class="spin-total-display" id="spinTotalDisplay"></div>
             <canvas id="gameCanvas" width="630" height="525"></canvas>
-            <div class="auto-spins-select" id="autoSpinsSelect">
-                <span class="auto-spin-option" data-spins="5">5</span><span class="auto-spin-option" data-spins="10">10</span><span class="auto-spin-option" data-spins="20">20</span><span class="auto-spin-option" data-spins="40">40</span><span class="auto-spin-option" data-spins="50">50</span><span class="auto-spin-option" data-spins="100">100</span>
-            </div>
+            <div class="auto-spins-select" id="autoSpinsSelect"><span class="auto-spin-option" data-spins="5">5</span><span class="auto-spin-option" data-spins="10">10</span><span class="auto-spin-option" data-spins="20">20</span><span class="auto-spin-option" data-spins="40">40</span><span class="auto-spin-option" data-spins="50">50</span><span class="auto-spin-option" data-spins="100">100</span></div>
             <div class="bottom-panel">
                 <div class="win-display"><div class="win-label">Выигрыш</div><div class="win-amount" id="winDisplay">0</div></div>
                 <div class="balance-display"><div class="balance-label">Баланс</div><div class="balance-amount" id="balanceDisplay">10000</div></div>
@@ -708,18 +758,15 @@
             INITIAL_BALANCE = 10000;
         const MAX_WIN_MULTIPLIER = 5000;
         const SYMBOLS = { BLUE_CRYSTAL: 'blue_crystal', GREEN_CRYSTAL: 'green_crystal', YELLOW_CRYSTAL: 'yellow_crystal', PURPLE_CRYSTAL: 'purple_crystal', RED_CRYSTAL: 'red_crystal', CUP: 'cup', RING: 'ring', HOURGLASS: 'hourglass', CROWN: 'crown', ZEUS_SCATTER: 'zeus_scatter', ORB_MULTIPLIER: 'orb_multiplier' };
-        const SYMBOL_PROBABILITIES = [
-            { symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 },
-            { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 },
-            { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 2 }
-        ];
+        const SYMBOL_PROBABILITIES_NORMAL = [{ symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 }, { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 }, { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 2 }];
+        const SYMBOL_PROBABILITIES_BONUS = [{ symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 }, { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 }, { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 1.33 }];
         const PAYTABLE_MIN = { blue_crystal: 0.25, green_crystal: 0.40, yellow_crystal: 0.50, purple_crystal: 0.80, red_crystal: 1.0, cup: 1.5, ring: 2.0, hourglass: 2.5, crown: 10, zeus_scatter: 100 };
         const PAYTABLE_MAX = { blue_crystal: 2, green_crystal: 4, yellow_crystal: 5, purple_crystal: 8, red_crystal: 10, cup: 12, ring: 15, hourglass: 25, crown: 50, zeus_scatter: 100 };
         const ORB_TIERS = [{ min: 2, max: 5, prob: 70 }, { min: 6, max: 15, prob: 20 }, { min: 20, max: 50, prob: 8 }, { min: 100, max: 500, prob: 2 }];
         const ORB_TIERS_BONUS = [{ min: 2, max: 15, prob: 55 }, { min: 20, max: 75, prob: 25 }, { min: 100, max: 250, prob: 15 }, { min: 300, max: 500, prob: 5 }];
         const SYMBOL_COLORS = { blue_crystal: '#3498db', green_crystal: '#2ecc71', yellow_crystal: '#f1c40f', purple_crystal: '#9b59b6', red_crystal: '#e74c3c', cup: '#1abc9c', ring: '#e67e22', hourglass: '#f39c12', crown: '#e74c3c', zeus_scatter: '#ffd700', orb_multiplier: '#ffd700' };
         const SYMBOL_EMOJIS = { blue_crystal: '💎', green_crystal: '💚', yellow_crystal: '💛', purple_crystal: '💜', red_crystal: '❤️', cup: '🏆', ring: '💍', hourglass: '⏳', crown: '👑', zeus_scatter: '⚡', orb_multiplier: '✖️' };
-        const GameStateEnum = { IDLE: 'IDLE', SPINNING: 'SPINNING', CASCADING: 'CASCADING', WIN_ANIMATION: 'WIN_ANIMATION', BONUS_TRANSITION: 'BONUS_TRANSITION' };
+        const GameStateEnum = { IDLE: 'IDLE', SPINNING: 'SPINNING', CASCADING: 'CASCADING', WIN_ANIMATION: 'WIN_ANIMATION', BONUS_TRANSITION: 'BONUS_TRANSITION', ZEUS_PAUSE: 'ZEUS_PAUSE' };
 
         function createFireSparks() { const c = document.getElementById('fireSparks'); if (!c) return;
             c.innerHTML = ''; for (let i = 0; i < 30; i++) { const s = document.createElement('div');
@@ -914,38 +961,20 @@
                 this.maxWinCap = 0;
                 this.fastMode = false;
                 this.autoSpinsRemaining = 0;
-                this.autoSpinsTotal = 0;
                 this.spinRunningTotal = 0;
                 this.initGrid();
             }
             get speedMult() { return this.fastMode ? 0.35 : 1; }
             get cascadeDelay() { return CASCADE_DELAY_BASE * this.speedMult; }
-            getRandomSymbol() {
-                const rand = Math.random() * 100;
-                let cum = 0;
-                for (const e of SYMBOL_PROBABILITIES) { cum += e.prob; if (rand <= cum) return e.symbol; }
-                return SYMBOLS.BLUE_CRYSTAL;
-            }
-            getRandomSymbolWithOrbs() {
-                const orbChance = this.isFreeSpins ? 0.06 : 0.02;
-                if (Math.random() < orbChance) return SYMBOLS.ORB_MULTIPLIER;
-                return this.getRandomSymbol();
-            }
-            getOrbValue() {
-                const tiers = this.isFreeSpins ? ORB_TIERS_BONUS : ORB_TIERS;
-                const rand = Math.random() * 100;
-                let cum = 0;
-                for (const t of tiers) { cum += t.prob; if (rand <= cum) { const step = t.max <= 15 ? 1 : (t.max <= 75 ? 5 : (t.max <= 250 ? 25 : 50)); const steps = Math.floor((t.max - t.min) / step) + 1;
-                        let val = t.min + Math.floor(Math.random() * steps) * step; if (val >= 20 && !this.isFreeSpins && Math.random() < 0.75) val = Math.floor(val / 4) || 2; return val; } }
-                return 2;
-            }
+            getSymbolProbabilities() { return this.isFreeSpins ? SYMBOL_PROBABILITIES_BONUS : SYMBOL_PROBABILITIES_NORMAL; }
+            getRandomSymbol() { const probs = this.getSymbolProbabilities(); const rand = Math.random() * 100; let cum = 0; for (const e of probs) { cum += e.prob; if (rand <= cum) return e.symbol; } return SYMBOLS.BLUE_CRYSTAL; }
+            getRandomSymbolWithOrbs() { const orbChance = this.isFreeSpins ? 0.01 : 0.0025; if (Math.random() < orbChance) return SYMBOLS.ORB_MULTIPLIER; return this.getRandomSymbol(); }
+            getOrbValue() { const tiers = this.isFreeSpins ? ORB_TIERS_BONUS : ORB_TIERS; const rand = Math.random() * 100; let cum = 0; for (const t of tiers) { cum += t.prob; if (rand <= cum) { const step = t.max <= 15 ? 1 : (t.max <= 75 ? 5 : (t.max <= 250 ? 25 : 50)); const steps = Math.floor((t.max - t.min) / step) + 1; let val = t.min + Math.floor(Math.random() * steps) * step; if (val >= 10 && !this.isFreeSpins && Math.random() < 0.95) val = Math.floor(val / 20) || 2; else if (val >= 10 && this.isFreeSpins && Math.random() < 0.933) val = Math.floor(val / 15) || 2; else if (val < 10 && !this.isFreeSpins && Math.random() < 0.875) val = Math.floor(val / 8) || 2; else if (val < 10 && this.isFreeSpins && Math.random() < 0.833) val = Math.floor(val / 6) || 2; return val; } } return 2; }
             initGrid() { this.grid = []; for (let r = 0; r < ROWS; r++) { this.grid[r] = []; for (let c = 0; c < COLS; c++) { this.grid[r][c] = this.makeCell(r, c, this.getRandomSymbol());
                         this.grid[r][c].y = this.grid[r][c].targetY;
                         this.grid[r][c].alive = true; } } this.clearOrbs(); }
-            makeCell(r, c, symbol) { const isOrb = symbol === SYMBOLS.ORB_MULTIPLIER; return { symbol, y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, hasOrb: false, orbMultiplier: 1, bounceOffset: 0, alive: true, isOrb, orbValue: isOrb ? this.getOrbValue() : 1 }; }
-            clearOrbs() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (cell) { cell.hasOrb = false;
-                        cell.orbMultiplier = 1;
-                        cell.isOrb = false;
+            makeCell(r, c, symbol) { const isOrb = symbol === SYMBOLS.ORB_MULTIPLIER; return { symbol, y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, isScatterPulse: false, bounceOffset: 0, alive: true, isOrb, orbValue: isOrb ? this.getOrbValue() : 1 }; }
+            clearOrbs() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (cell) { cell.isOrb = false;
                         cell.orbValue = 1; } } }
             getPayoutForCount(symbol, count) { if (symbol === SYMBOLS.ZEUS_SCATTER) { if (count >= 6) return PAYTABLE_MAX.zeus_scatter * this.bet; if (count >= 4) return 3 * this.bet; return 0; } const minPay = PAYTABLE_MIN[symbol] || 0,
                     maxPay = PAYTABLE_MAX[symbol] || 0; if (count < 8) return 0; if (count >= 12) return maxPay * this.bet; const ratio = (count - 8) / 4; return (minPay + (maxPay - minPay) * ratio) * this.bet; }
@@ -954,10 +983,10 @@
                             cellMap[sym] = []; } counts[sym]++;
                         cellMap[sym].push({ r, c }); } } const groups = []; for (const [sym, count] of Object.entries(counts)) { const minCount = sym === SYMBOLS.ZEUS_SCATTER ? 4 : 8; if (count >= minCount) { const payout = this.getPayoutForCount(sym, count);
                         groups.push({ symbol: sym, cells: cellMap[sym], count, payout }); } } return groups; }
-            collectOrbsFromGrid() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb && cell.symbol === SYMBOLS.ORB_MULTIPLIER) { this.activeOrbs.push({ r, c, multiplier: cell.orbValue, color: '#ffd700' });
-                        this.spawnOrbEffect(r, c, '#ffd700', cell.orbValue); } } } }
+            countScattersAlive() { let count = 0; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol === SYMBOLS.ZEUS_SCATTER) count++; } return count; }
+            collectOrbsFromGrid() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb && cell.symbol === SYMBOLS.ORB_MULTIPLIER) { this.activeOrbs.push({ r, c, multiplier: cell.orbValue, color: '#ffd700' }); } } } }
             applyCascadeGravity() { let moved = false; for (let c = 0; c < COLS; c++) { for (let r = ROWS - 1; r >= 0; r--) { const cell = this.grid[r][c]; if (!cell || !cell.alive) { for (let above = r - 1; above >= 0; above--) { const aboveCell = this.grid[above][c]; if (aboveCell && aboveCell.alive && aboveCell.symbol) { if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null); const to = this.grid[r][c];
-                                Object.assign(to, { symbol: aboveCell.symbol, isOrb: aboveCell.isOrb, orbValue: aboveCell.orbValue, y: aboveCell.y, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, bounceOffset: 0, alive: true });
+                                Object.assign(to, { symbol: aboveCell.symbol, isOrb: aboveCell.isOrb, orbValue: aboveCell.orbValue, y: aboveCell.y, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, isScatterPulse: false, bounceOffset: 0, alive: true });
                                 aboveCell.alive = false;
                                 aboveCell.symbol = null;
                                 aboveCell.isOrb = false;
@@ -973,6 +1002,7 @@
                         cell.opacity = 1;
                         cell.isWinning = false;
                         cell.isExploding = false;
+                        cell.isScatterPulse = false;
                         cell.bounceOffset = 0;
                         cell.alive = true;
                         added++; } } } }
@@ -983,18 +1013,12 @@
                     p.y += p.vy;
                     p.vy += 0.1;
                     p.life -= p.decay; if (p.life <= 0) this.particles.splice(i, 1); } }
-            spawnOrbEffect(r, c, color, mult) { const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
-                    y = GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2; const d = document.createElement('div');
-                d.className = 'orb-popup';
-                d.textContent = `x${mult}`;
-                d.style.cssText = `left:${x}px;top:${y}px;color:${color}`;
-                document.getElementById('mainArea')?.appendChild(d); setTimeout(() => d.remove(), 1800 * this.speedMult); }
             showWinFloatText(x, y, amount) { const d = document.createElement('div');
                 d.className = 'win-float-text';
                 d.textContent = `+${Math.floor(amount)}`;
                 d.style.left = x + 'px';
                 d.style.top = y + 'px';
-                document.getElementById('mainArea')?.appendChild(d); setTimeout(() => d.remove(), 1500); }
+                document.getElementById('mainArea')?.appendChild(d); setTimeout(() => d.remove(), 1500 * this.speedMult); }
             showWinFloatOnGroup(groups) { const allCells = [];
                 groups.forEach(g => allCells.push(...g.cells)); if (allCells.length === 0) return; const midIndex = Math.floor(allCells.length / 2); const midCell = allCells[Math.min(midIndex, allCells.length - 1)]; const x = GRID_OFFSET_X + midCell.c * CELL_SIZE + CELL_SIZE / 2; const y = GRID_OFFSET_Y + midCell.r * CELL_SIZE + CELL_SIZE / 2; let totalPayout = 0;
                 groups.forEach(g => totalPayout += g.payout);
@@ -1004,13 +1028,31 @@
                 el.classList.add('visible'); if (className) { el.classList.add(className);
                     setTimeout(() => el.classList.remove(className), 600); } }
             hideSpinTotalDisplay() { const el = document.getElementById('spinTotalDisplay'); if (el) el.classList.remove('visible'); }
+            async showBigWinOverlay(amount, label) { const ov = document.getElementById('bigWinOverlay'); const amt = document.getElementById('bigWinAmount'); const lbl = document.getElementById('bigWinLabel'); if (!ov || !amt || !lbl) return;
+                amt.textContent = Math.floor(amount);
+                lbl.textContent = label;
+                ov.classList.add('active');
+                this.spawnBigSparks(); return new Promise(r => { const handler = () => { ov.removeEventListener('click', handler);
+                        ov.classList.remove('active');
+                        r(); };
+                    ov.addEventListener('click', handler); }); }
+            spawnBigSparks() { const container = document.getElementById('bigWinSparks'); if (!container) return;
+                container.innerHTML = ''; for (let i = 0; i < 40; i++) { const s = document.createElement('div');
+                    s.className = 'big-spark';
+                    s.style.left = '50%';
+                    s.style.top = '50%';
+                    s.style.setProperty('--dx', (Math.random() - 0.5) * 600 + 'px');
+                    s.style.setProperty('--dy', (Math.random() - 0.5) * 600 + 'px');
+                    s.style.animationDelay = Math.random() * 1 + 's';
+                    container.appendChild(s); } }
             applyOrbsToWin(baseWin) { if (this.activeOrbs.length === 0 || baseWin <= 0) return baseWin; let totalOrb = 0; for (const o of this.activeOrbs) totalOrb += o.multiplier; if (this.isFreeSpins) { this.totalMultiplier += totalOrb;
                     this.updateTotalMultiplierDisplay();
                     this.bonusTotalWin += baseWin;
                     this.spinRunningTotal = this.bonusTotalWin * this.totalMultiplier;
-                    this.updateSpinTotalDisplay(`💰 Бонус: ${Math.floor(this.bonusTotalWin)} x ${this.totalMultiplier} = ${Math.floor(this.spinRunningTotal)}`, 'multiplying'); return 0; } const multiplied = baseWin * (1 + totalOrb);
+                    this.updateSpinTotalDisplay(`💰 Бонус: ${Math.floor(baseWin)} x ${this.totalMultiplier} = ${Math.floor(this.spinRunningTotal)}`, 'multiplying'); return 0; } const multiplied = baseWin * (1 + totalOrb);
                 this.spinRunningTotal = multiplied;
                 this.updateSpinTotalDisplay(`💰 ${Math.floor(baseWin)} x ${(1+totalOrb)} = ${Math.floor(multiplied)}`, 'multiplying'); return multiplied; }
+            getMultiplierFromBet(winAmount) { return winAmount / this.bet; }
             async spin() { if (this.state !== GameStateEnum.IDLE || this.isProcessing) return; if (this.balance < this.bet && !this.isFreeSpins) return;
                 this.isProcessing = true;
                 this.state = GameStateEnum.SPINNING;
@@ -1034,11 +1076,11 @@
                     this.updateBalanceDisplay();
                     this.updateSpinTotalDisplay(`✅ Выигрыш: ${Math.floor(finalWin)}`, 'multiplying'); } else { this.spinRunningTotal = this.bonusTotalWin * this.totalMultiplier;
                     this.updateSpinTotalDisplay(`🎰 Бонус: ${Math.floor(this.bonusTotalWin)} x${this.totalMultiplier}`, 'multiplying'); }
-                await this.animateWinCounter(finalWin);
-                await this.sleep(800 * this.speedMult);
-                this.hideSpinTotalDisplay(); if (this.spinWinTotal >= this.maxWinCap) { console.log('🏆 MAX WIN x5000!'); if (this.isFreeSpins) { this.balance += this.maxWinCap;
+                await this.animateWinCounter(finalWin); if (finalWin > 0) { const mult = this.getMultiplierFromBet(finalWin); if (mult >= 200) { await this.showBigWinOverlay(finalWin, '🏆 ЭПИЧЕСКИЙ ВЫИГРЫШ! 🏆'); } else if (mult >= 100) { await this.showBigWinOverlay(finalWin, '💥 ОГРОМНЫЙ ВЫИГРЫШ! 💥'); } else if (mult >= 50) { await this.showBigWinOverlay(finalWin, '🔥 КРУПНЫЙ ВЫИГРЫШ! 🔥'); } else if (mult >= 20) { await this.showBigWinOverlay(finalWin, '⚡ ОТЛИЧНЫЙ ВЫИГРЫШ! ⚡'); } }
+                await this.sleep(500 * this.speedMult);
+                this.hideSpinTotalDisplay(); if (this.spinWinTotal >= this.maxWinCap) { if (this.isFreeSpins) { this.balance += this.maxWinCap;
                         this.updateBalanceDisplay();
-                        this.freeSpinsRemaining = 0; } } const scatterCount = this.countScatters(); if (scatterCount >= 4 && !this.isFreeSpins) { await this.enterBonusGame(15); } else if (scatterCount >= 3 && this.isFreeSpins) { this.freeSpinsRemaining += 5;
+                        this.freeSpinsRemaining = 0; } } const scatterCount = this.countScattersAlive(); if (scatterCount >= 4 && !this.isFreeSpins) { await this.enterBonusGame(15); } else if (scatterCount >= 3 && this.isFreeSpins) { this.freeSpinsRemaining += 5;
                     this.updateFreespinDisplay();
                     this.showRetriggerEffect(); } if (this.isFreeSpins && this.spinWinTotal < this.maxWinCap) { this.freeSpinsRemaining--;
                     this.updateFreespinDisplay(); if (this.freeSpinsRemaining <= 0) await this.finishBonusGame(); } else if (this.isFreeSpins && this.spinWinTotal >= this.maxWinCap) { await this.finishBonusGame(); }
@@ -1059,7 +1101,8 @@
                         cell.opacity = 1;
                         cell.alive = true;
                         cell.isWinning = false;
-                        cell.isExploding = false; } } const proms = []; for (let c = 0; c < COLS; c++) proms.push(this.dropColumn(c, c * 40 * this.speedMult)); await Promise.all(proms); }
+                        cell.isExploding = false;
+                        cell.isScatterPulse = false; } } const proms = []; for (let c = 0; c < COLS; c++) proms.push(this.dropColumn(c, c * 40 * this.speedMult)); await Promise.all(proms); }
             dropColumn(col, delay) { return new Promise(r => { setTimeout(() => { const G = 0.95,
                             D = 0.3; let sf = 0; const anim = () => { let all = true; for (let ri = 0; ri < ROWS; ri++) { const cell = this.grid[ri] && this.grid[ri][col]; if (!cell || !cell.alive) continue; const t = cell.targetY,
                                     dy = t - cell.y; if (Math.abs(dy) > 0.5) { all = false;
@@ -1078,11 +1121,15 @@
                     this.state = GameStateEnum.WIN_ANIMATION;
                     this.highlightWinningCells(groups);
                     this.showWinFloatOnGroup(groups);
-                    this.updateSpinTotalDisplay(`⚡ Сыгровка: +${Math.floor(groups.reduce((s,g)=>s+g.payout,0))}`, ''); await this.animateWinningHighlight(groups); await this.sleep(400 * this.speedMult); let cycWin = 0; for (const g of groups) cycWin += g.payout;
-                    this.totalWin += cycWin; await this.animateExplosion(groups); await this.sleep(200 * this.speedMult);
+                    let cycWin = 0; for (const g of groups) cycWin += g.payout;
+                    this.updateSpinTotalDisplay(`⚡ Сыгровка: +${Math.floor(cycWin)} | Всего: ${Math.floor(this.totalWin+cycWin)}`); await this.animateWinningHighlight(groups); await this.sleep(400 * this.speedMult);
+                    this.totalWin += cycWin; const scatterBefore = this.countScattersAlive(); if ((scatterBefore >= 3 && !this.isFreeSpins) || (scatterBefore >= 2 && this.isFreeSpins)) { this.pulseScatterCells(); await this.sleep(2000 * this.speedMult);
+                        this.unpulseScatterCells(); } await this.animateExplosion(groups); await this.sleep(200 * this.speedMult);
                     this.removeExplodedSymbols(groups);
                     this.applyCascadeGravity();
                     this.fillEmptyCells(); await this.animateCascadeDrop(); await this.sleep(300 * this.speedMult); } }
+            pulseScatterCells() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol === SYMBOLS.ZEUS_SCATTER) cell.isScatterPulse = true; } }
+            unpulseScatterCells() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell) cell.isScatterPulse = false; } }
             highlightWinningCells(groups) { for (const g of groups) for (const cell of g.cells) { const c = this.grid[cell.r] && this.grid[cell.r][cell.c]; if (c && c.alive) c.isWinning = true; } }
             async animateWinningHighlight(groups) { return new Promise(r => { const st = performance.now(),
                         dur = 900 * this.speedMult; const anim = (t) => { const p = Math.min((t - st) / dur, 1),
@@ -1100,6 +1147,7 @@
                         gc.isOrb = false;
                         gc.isWinning = false;
                         gc.isExploding = false;
+                        gc.isScatterPulse = false;
                         gc.scale = 1;
                         gc.opacity = 1; } } }
             async animateCascadeDrop() { return new Promise(r => { const G = 0.9,
@@ -1124,7 +1172,6 @@
                             this.updateWinDisplay();
                             r(); } };
                     requestAnimationFrame(anim); }); }
-            countScatters() { let count = 0; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol === SYMBOLS.ZEUS_SCATTER) count++; } return count; }
             async enterBonusGame(spins) { this.state = GameStateEnum.BONUS_TRANSITION;
                 this.isFreeSpins = true;
                 this.freeSpinsRemaining = spins;
@@ -1148,8 +1195,8 @@
                 this.totalWin = finalBonusWin;
                 this.balance += finalBonusWin;
                 this.updateBalanceDisplay();
-                this.updateSpinTotalDisplay(`🏆 Бонус: ${Math.floor(this.bonusTotalWin)} x${this.totalMultiplier} = ${Math.floor(finalBonusWin)}`, 'multiplying'); await this.animateWinCounter(finalBonusWin);
-                await this.sleep(1500 * this.speedMult);
+                this.updateSpinTotalDisplay(`🏆 Бонус: ${Math.floor(this.bonusTotalWin)} x${this.totalMultiplier} = ${Math.floor(finalBonusWin)}`, 'multiplying'); await this.animateWinCounter(finalBonusWin); if (finalBonusWin > 0) { const mult = this.getMultiplierFromBet(finalBonusWin); if (mult >= 200) await this.showBigWinOverlay(finalBonusWin, '🏆 ЭПИЧЕСКИЙ БОНУС! 🏆'); else if (mult >= 100) await this.showBigWinOverlay(finalBonusWin, '💥 ОГРОМНЫЙ БОНУС! 💥'); else if (mult >= 50) await this.showBigWinOverlay(finalBonusWin, '🔥 КРУПНЫЙ БОНУС! 🔥'); else if (mult >= 20) await this.showBigWinOverlay(finalBonusWin, '⚡ ОТЛИЧНЫЙ БОНУС! ⚡'); }
+                await this.sleep(500 * this.speedMult);
                 this.hideSpinTotalDisplay();
                 this.isFreeSpins = false;
                 this.freeSpinsRemaining = 0;
@@ -1158,24 +1205,19 @@
                 this.spinRunningTotal = 0;
                 document.getElementById('leftPanel').classList.add('inactive');
                 document.getElementById('freespinBadge').classList.remove('active');
-                this.updateTotalMultiplierDisplay(); const ov = document.getElementById('bonusOverlay'),
-                    sd = document.getElementById('bonusSpinsDisplay'),
-                    h2 = ov?.querySelector('h2'),
-                    sub = ov?.querySelector('.bonus-subtitle'); if (sd) sd.textContent = finalBonusWin.toFixed(0); if (h2) h2.textContent = '🏆 БОНУС ЗАВЕРШЕН! 🏆'; if (sub) sub.textContent = 'Общий выигрыш:'; if (ov) ov.classList.add('active'); await this.sleep(2500); if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; if (sub) sub.textContent = 'FREE SPINS'; }
+                this.updateTotalMultiplierDisplay(); }
             showRetriggerEffect() { const ov = document.getElementById('bonusOverlay'),
                     sd = document.getElementById('bonusSpinsDisplay'),
                     h2 = ov?.querySelector('h2'); if (sd) sd.textContent = '+5 SPINS'; if (h2) h2.textContent = '⚡ РЕТРИГГЕР! ⚡'; if (ov) ov.classList.add('active'); setTimeout(() => { if (ov) ov.classList.remove('active'); if (h2) h2.textContent = '⚡ ЯРОСТЬ ЗЕВСА! ⚡'; }, 1200); }
-            toggleFastMode() { this.fastMode = !this.fastMode; const btn = document.getElementById('btnFast'); if (btn) { if (this.fastMode) btn.classList.add('active'); else btn.classList.remove('active'); } }
+            toggleFastMode() { this.fastMode = !this.fastMode; const btn = document.getElementById('btnFast'); if (btn) btn.classList.toggle('active', this.fastMode); }
             startAutoSpins(count) { if (this.isProcessing || this.isFreeSpins) return;
                 this.autoSpinsRemaining = count;
-                this.autoSpinsTotal = count;
                 this.updateAutoSpinDisplay(); const btn = document.getElementById('btnAuto'); if (btn) btn.classList.add('active');
                 document.getElementById('autoSpinsSelect').classList.remove('show');
                 this.spin(); }
-            stopAutoSpins() { this.autoSpinsRemaining = 0;
-                this.autoSpinsTotal = 0; const btn = document.getElementById('btnAuto'); if (btn) btn.classList.remove('active');
+            stopAutoSpins() { this.autoSpinsRemaining = 0; const btn = document.getElementById('btnAuto'); if (btn) btn.classList.remove('active');
                 this.updateAutoSpinDisplay(); }
-            updateAutoSpinDisplay() { const btn = document.getElementById('btnAuto'); if (btn && this.autoSpinsRemaining > 0) { btn.textContent = this.autoSpinsRemaining; } else if (btn) { btn.textContent = 'A'; } }
+            updateAutoSpinDisplay() { const btn = document.getElementById('btnAuto'); if (btn) btn.textContent = this.autoSpinsRemaining > 0 ? this.autoSpinsRemaining : 'A'; }
             buyBonus() { if (this.state !== GameStateEnum.IDLE || this.isProcessing || this.isFreeSpins) return; const cost = this.bet * 100; if (this.balance < cost) return;
                 this.balance -= cost;
                 this.updateBalanceDisplay();
@@ -1210,10 +1252,11 @@
                     ctx.setLineDash([]); } for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol) continue; const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
                         y = cell.y + cell.bounceOffset;
                     ctx.save();
-                    ctx.translate(x, y); const s = Math.max(0.1, cell.scale);
+                    ctx.translate(x, y); let s = Math.max(0.1, cell.scale); if (cell.isScatterPulse) { s += Math.sin(performance.now() / 100) * 0.15; }
                     ctx.scale(s, s);
-                    ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity)); if (cell.isWinning && !cell.isExploding) { ctx.shadowColor = '#ffd700';
-                        ctx.shadowBlur = 35; } if (cell.isExploding) { ctx.shadowColor = '#fff';
+                    ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity)); if (cell.isWinning && !cell.isExploding && !cell.isScatterPulse) { ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 35; } if (cell.isScatterPulse) { ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 50; } if (cell.isExploding) { ctx.shadowColor = '#fff';
                         ctx.shadowBlur = 45; } if (cell.isOrb) { ctx.fillStyle = '#1a0500';
                         ctx.shadowColor = '#ffd700';
                         ctx.shadowBlur = 20;
@@ -1314,8 +1357,7 @@
         document.getElementById('betDown').addEventListener('click', () => engine.decreaseBet());
         document.getElementById('btnBuyBonus').addEventListener('click', () => engine.buyBonus());
         document.getElementById('btnFast').addEventListener('click', () => engine.toggleFastMode());
-        document.getElementById('btnAuto').addEventListener('click', () => { const sel = document.getElementById('autoSpinsSelect');
-            sel.classList.toggle('show'); });
+        document.getElementById('btnAuto').addEventListener('click', () => { document.getElementById('autoSpinsSelect').classList.toggle('show'); });
         document.querySelectorAll('.auto-spin-option').forEach(el => { el.addEventListener('click', () => { const spins = parseInt(el.dataset.spins); if (spins > 0) engine.startAutoSpins(spins); }); });
 
         function gameLoop() { engine.updateParticles();
@@ -1333,11 +1375,12 @@
         engine.updateSpinButton();
         drawZeusFigure(zctx, false, false);
         gameLoop();
-        console.log('⚡ ZEUS THUNDER - Готов!');
-        console.log('✖️ Иксы выпадают с символами (шанс 2% обычная / 6% бонус)');
-        console.log('📉 x20+ в обычной игре: шанс снижен в 4 раза');
-        console.log('💸 Анимация сумм над сыгровками');
-        console.log('📊 Верхняя строка: общий выигрыш / умножение');
+        console.log('⚡ ZEUS THUNDER - Полная версия!');
+        console.log('✖️ Иксы: шанс 0.25% обычная / 1% бонус');
+        console.log('📉 x10+ снижены в 20 раз (обычная) / 15 раз (бонус)');
+        console.log('📉 x2-x9 снижены в 8 раз (обычная) / 6 раз (бонус)');
+        console.log('⚡ 3 Зевса в обычной / 2 в бонусной = пауза 2с');
+        console.log('🎉 Big Win анимации: 20x-50x, 50x-100x, 100x-200x, 200x+');
     </script>
 </body>
 </html>
