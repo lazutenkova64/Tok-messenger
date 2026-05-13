@@ -134,12 +134,15 @@
             position: relative;
             display: flex;
             gap: 20px;
-            align-items: stretch;
+            align-items: center;
+            justify-content: center;
             padding: 20px;
             z-index: 1;
+            min-width: 900px;
         }
         .left-panel {
-            width: 85px;
+            width: 90px;
+            min-width: 90px;
             background: linear-gradient(180deg, rgba(30, 15, 0, 0.9) 0%, rgba(20, 8, 0, 0.95) 100%);
             border: 2px solid rgba(180, 130, 0, 0.6);
             border-radius: 15px;
@@ -151,6 +154,7 @@
             padding: 15px 10px;
             transition: all 0.3s;
             box-shadow: 0 0 20px rgba(255, 150, 0, 0.2);
+            flex-shrink: 0;
         }
         .left-panel.inactive {
             opacity: 0.3;
@@ -190,6 +194,7 @@
             align-items: center;
             gap: 15px;
             z-index: 1;
+            flex-shrink: 0;
         }
         .game-header {
             display: flex;
@@ -270,6 +275,7 @@
             background: linear-gradient(180deg, rgba(10, 5, 0, 0.85) 0%, rgba(20, 10, 0, 0.9) 100%);
             box-shadow: 0 0 50px rgba(255, 150, 0, 0.3), 0 0 100px rgba(255, 100, 0, 0.15), inset 0 0 80px rgba(0, 0, 0, 0.5);
             transition: box-shadow 0.3s;
+            display: block;
         }
         body.zeus-rage canvas#gameCanvas {
             box-shadow: 0 0 80px rgba(255, 30, 0, 0.7), 0 0 120px rgba(200, 30, 0, 0.4), inset 0 0 100px rgba(200, 20, 0, 0.3);
@@ -277,10 +283,12 @@
         }
         .right-panel {
             width: 180px;
+            min-width: 180px;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .zeus-canvas-container {
             width: 170px;
@@ -294,6 +302,7 @@
             background: transparent;
             box-shadow: none;
             border-radius: 0;
+            display: block;
         }
         .bottom-panel {
             display: flex;
@@ -302,22 +311,27 @@
             background: linear-gradient(180deg, rgba(30, 15, 0, 0.9), rgba(20, 8, 0, 0.95));
             border: 2px solid rgba(180, 130, 0, 0.5);
             border-radius: 40px;
-            padding: 14px 22px;
+            padding: 14px 28px;
             box-shadow: 0 0 30px rgba(255, 150, 0, 0.2);
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             justify-content: center;
+            min-width: 630px;
+            flex-shrink: 0;
         }
         .win-display {
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 2px;
+            min-width: 120px;
+            flex-shrink: 0;
         }
         .win-label {
             color: #cca300;
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 2px;
+            white-space: nowrap;
         }
         .win-amount {
             color: #ffd700;
@@ -346,6 +360,8 @@
             flex-direction: column;
             align-items: center;
             gap: 2px;
+            min-width: 80px;
+            flex-shrink: 0;
         }
         .balance-label {
             color: #cca300;
@@ -363,6 +379,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            flex-shrink: 0;
         }
         .bet-btn {
             width: 30px;
@@ -375,6 +392,7 @@
             font-weight: 700;
             cursor: pointer;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
         .bet-btn:hover {
             background: rgba(255, 215, 0, 0.2);
@@ -400,6 +418,7 @@
         .btn-spin {
             width: 85px;
             height: 85px;
+            min-width: 85px;
             border-radius: 50%;
             border: 4px solid #ffd700;
             background: linear-gradient(135deg, #e63946, #c0392b);
@@ -411,6 +430,7 @@
             transition: all 0.2s;
             box-shadow: 0 0 35px rgba(230, 57, 70, 0.5);
             text-transform: uppercase;
+            flex-shrink: 0;
         }
         .btn-spin:hover {
             transform: scale(1.05);
@@ -438,6 +458,7 @@
             box-shadow: 0 0 15px rgba(255, 200, 0, 0.4);
             transition: all 0.2s;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         .btn-buy-bonus:hover {
             box-shadow: 0 0 25px rgba(255, 200, 0, 0.7);
@@ -450,6 +471,7 @@
         .btn-fast {
             width: 40px;
             height: 40px;
+            min-width: 40px;
             border-radius: 50%;
             border: 2px solid #ffd700;
             background: rgba(0, 0, 0, 0.5);
@@ -460,6 +482,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .btn-fast:hover {
             background: rgba(255, 215, 0, 0.3);
@@ -473,6 +496,7 @@
         .btn-auto {
             width: 40px;
             height: 40px;
+            min-width: 40px;
             border-radius: 50%;
             border: 2px solid #ffd700;
             background: rgba(0, 0, 0, 0.5);
@@ -484,6 +508,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
         }
         .btn-auto:hover {
             background: rgba(255, 215, 0, 0.3);
@@ -689,12 +714,14 @@
                 flex-direction: column;
                 gap: 10px;
                 padding: 10px;
+                min-width: auto;
             }
             .left-panel {
                 width: 100%;
                 flex-direction: row;
                 height: 65px;
                 padding: 10px;
+                min-width: auto;
             }
             .right-panel {
                 display: none;
@@ -709,10 +736,13 @@
             .bottom-panel {
                 gap: 8px;
                 padding: 10px 14px;
+                min-width: auto;
+                flex-wrap: wrap;
             }
             .btn-spin {
                 width: 65px;
                 height: 65px;
+                min-width: 65px;
                 font-size: 14px;
             }
             .big-win-amount {
@@ -749,23 +779,52 @@
     <script>
         const COLS = 6,
             ROWS = 5;
-        const CELL_SIZE = 90,
-            GRID_OFFSET_X = 40,
-            GRID_OFFSET_Y = 40,
-            SYMBOL_SIZE = 56;
+        const CELL_SIZE = 98,
+            GRID_OFFSET_X = 20,
+            GRID_OFFSET_Y = 15,
+            SYMBOL_SIZE = 72;
         const CASCADE_DELAY_BASE = 700;
         const BET_OPTIONS = [50, 100, 200, 300, 400, 500, 1000, 2000, 5000],
             INITIAL_BALANCE = 10000;
         const MAX_WIN_MULTIPLIER = 5000;
-        const SYMBOLS = { BLUE_CRYSTAL: 'blue_crystal', GREEN_CRYSTAL: 'green_crystal', YELLOW_CRYSTAL: 'yellow_crystal', PURPLE_CRYSTAL: 'purple_crystal', RED_CRYSTAL: 'red_crystal', CUP: 'cup', RING: 'ring', HOURGLASS: 'hourglass', CROWN: 'crown', ZEUS_SCATTER: 'zeus_scatter', ORB_MULTIPLIER: 'orb_multiplier' };
-        const SYMBOL_PROBABILITIES_NORMAL = [{ symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 }, { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 }, { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 2 }];
-        const SYMBOL_PROBABILITIES_BONUS = [{ symbol: SYMBOLS.BLUE_CRYSTAL, prob: 20 }, { symbol: SYMBOLS.GREEN_CRYSTAL, prob: 18 }, { symbol: SYMBOLS.YELLOW_CRYSTAL, prob: 17 }, { symbol: SYMBOLS.PURPLE_CRYSTAL, prob: 13 }, { symbol: SYMBOLS.RED_CRYSTAL, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 }, { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 1.33 }];
-        const PAYTABLE_MIN = { blue_crystal: 0.25, green_crystal: 0.40, yellow_crystal: 0.50, purple_crystal: 0.80, red_crystal: 1.0, cup: 1.5, ring: 2.0, hourglass: 2.5, crown: 10, zeus_scatter: 100 };
-        const PAYTABLE_MAX = { blue_crystal: 2, green_crystal: 4, yellow_crystal: 5, purple_crystal: 8, red_crystal: 10, cup: 12, ring: 15, hourglass: 25, crown: 50, zeus_scatter: 100 };
+        const SYMBOLS = {
+            SAPPHIRE: 'sapphire',
+            EMERALD: 'emerald',
+            TOPAZ: 'topaz',
+            AMETHYST: 'amethyst',
+            RUBY: 'ruby',
+            CUP: 'cup',
+            RING: 'ring',
+            HOURGLASS: 'hourglass',
+            CROWN: 'crown',
+            ZEUS_SCATTER: 'zeus_scatter',
+            ORB_MULTIPLIER: 'orb_multiplier'
+        };
+        const SYMBOL_PROBABILITIES_NORMAL = [
+            { symbol: SYMBOLS.SAPPHIRE, prob: 20 }, { symbol: SYMBOLS.EMERALD, prob: 18 }, { symbol: SYMBOLS.TOPAZ, prob: 17 },
+            { symbol: SYMBOLS.AMETHYST, prob: 13 }, { symbol: SYMBOLS.RUBY, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 },
+            { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 2 }
+        ];
+        const SYMBOL_PROBABILITIES_BONUS = [
+            { symbol: SYMBOLS.SAPPHIRE, prob: 20 }, { symbol: SYMBOLS.EMERALD, prob: 18 }, { symbol: SYMBOLS.TOPAZ, prob: 17 },
+            { symbol: SYMBOLS.AMETHYST, prob: 13 }, { symbol: SYMBOLS.RUBY, prob: 12 }, { symbol: SYMBOLS.CUP, prob: 7 },
+            { symbol: SYMBOLS.RING, prob: 5 }, { symbol: SYMBOLS.HOURGLASS, prob: 3.5 }, { symbol: SYMBOLS.CROWN, prob: 2.5 }, { symbol: SYMBOLS.ZEUS_SCATTER, prob: 1.33 }
+        ];
+        const PAYTABLE = {
+            sapphire: { 8: 0.25, 10: 0.75, 12: 2 },
+            emerald: { 8: 0.40, 10: 0.90, 12: 4 },
+            topaz: { 8: 0.50, 10: 1.0, 12: 5 },
+            amethyst: { 8: 0.80, 10: 1.2, 12: 8 },
+            ruby: { 8: 1.0, 10: 1.5, 12: 10 },
+            cup: { 8: 1.5, 10: 2, 12: 12 },
+            ring: { 8: 2, 10: 5, 12: 15 },
+            hourglass: { 8: 2.5, 10: 10, 12: 25 },
+            crown: { 8: 10, 10: 25, 12: 50 },
+            zeus_scatter: { 4: 3, 6: 50, 8: 100 }
+        };
         const ORB_TIERS = [{ min: 2, max: 5, prob: 70 }, { min: 6, max: 15, prob: 20 }, { min: 20, max: 50, prob: 8 }, { min: 100, max: 500, prob: 2 }];
         const ORB_TIERS_BONUS = [{ min: 2, max: 15, prob: 55 }, { min: 20, max: 75, prob: 25 }, { min: 100, max: 250, prob: 15 }, { min: 300, max: 500, prob: 5 }];
-        const SYMBOL_COLORS = { blue_crystal: '#3498db', green_crystal: '#2ecc71', yellow_crystal: '#f1c40f', purple_crystal: '#9b59b6', red_crystal: '#e74c3c', cup: '#1abc9c', ring: '#e67e22', hourglass: '#f39c12', crown: '#e74c3c', zeus_scatter: '#ffd700', orb_multiplier: '#ffd700' };
-        const SYMBOL_EMOJIS = { blue_crystal: '💎', green_crystal: '💚', yellow_crystal: '💛', purple_crystal: '💜', red_crystal: '❤️', cup: '🏆', ring: '💍', hourglass: '⏳', crown: '👑', zeus_scatter: '⚡', orb_multiplier: '✖️' };
+        const SYMBOL_COLORS = { sapphire: '#1a3a8a', emerald: '#0a6e3a', topaz: '#c48c00', amethyst: '#6a2c8a', ruby: '#b01020', cup: '#d4a017', ring: '#c0a030', hourglass: '#d4a017', crown: '#d4a017', zeus_scatter: '#ffd700', orb_multiplier: '#ffd700' };
         const GameStateEnum = { IDLE: 'IDLE', SPINNING: 'SPINNING', CASCADING: 'CASCADING', WIN_ANIMATION: 'WIN_ANIMATION', BONUS_TRANSITION: 'BONUS_TRANSITION', ZEUS_PAUSE: 'ZEUS_PAUSE' };
 
         function createFireSparks() { const c = document.getElementById('fireSparks'); if (!c) return;
@@ -776,55 +835,84 @@
 
         function drawZeusFigure(zctx, armRaised, lightningActive, tridentRaised, mouthOpen) { const w = 170,
                 h = 420;
-            zctx.clearRect(0, 0, w, h); if (tridentRaised) { zctx.save();
-                zctx.translate(140, 200);
-                zctx.rotate(-2.5);
-                zctx.fillStyle = '#daa520';
-                zctx.fillRect(-4, -80, 8, 100);
+            zctx.clearRect(0, 0, w, h);
+            if (tridentRaised) {
+                zctx.save();
+                zctx.translate(145, 195);
+                zctx.rotate(-2.4);
+                const shaftGrad = zctx.createLinearGradient(0, -75, 8, 95);
+                shaftGrad.addColorStop(0, '#daa520');
+                shaftGrad.addColorStop(0.3, '#b8860b');
+                shaftGrad.addColorStop(0.6, '#8b6914');
+                shaftGrad.addColorStop(1, '#6b4f10');
+                zctx.fillStyle = shaftGrad;
+                zctx.beginPath();
+                zctx.roundRect(-4, -75, 8, 95, 3);
+                zctx.fill();
+                zctx.strokeStyle = '#4a3508';
+                zctx.lineWidth = 1;
+                zctx.stroke();
                 zctx.fillStyle = '#ffd700';
                 zctx.beginPath();
-                zctx.moveTo(0, -85);
-                zctx.lineTo(-12, -55);
-                zctx.lineTo(-4, -50);
-                zctx.lineTo(-2, -30);
+                zctx.moveTo(0, -88);
+                zctx.lineTo(-14, -58);
+                zctx.quadraticCurveTo(-7, -55, -5, -50);
+                zctx.lineTo(-3, -30);
                 zctx.lineTo(0, -30);
-                zctx.lineTo(2, -30);
-                zctx.lineTo(4, -50);
-                zctx.lineTo(12, -55);
+                zctx.lineTo(3, -30);
+                zctx.lineTo(5, -50);
+                zctx.quadraticCurveTo(7, -55, 14, -58);
                 zctx.closePath();
                 zctx.fill();
                 zctx.strokeStyle = '#8b6914';
                 zctx.lineWidth = 1.5;
-                zctx.stroke(); if (lightningActive) { zctx.fillStyle = '#fff';
+                zctx.stroke();
+                if (lightningActive) {
+                    zctx.fillStyle = '#fff';
                     zctx.shadowColor = '#ffd700';
-                    zctx.shadowBlur = 20;
+                    zctx.shadowBlur = 25;
                     zctx.beginPath();
-                    zctx.moveTo(2, -95);
-                    zctx.lineTo(-8, -115);
-                    zctx.lineTo(0, -120);
-                    zctx.lineTo(-4, -140);
-                    zctx.lineTo(6, -125);
-                    zctx.lineTo(3, -118);
-                    zctx.lineTo(8, -105);
+                    zctx.moveTo(3, -100);
+                    zctx.lineTo(-10, -125);
+                    zctx.lineTo(-1, -130);
+                    zctx.lineTo(-7, -155);
+                    zctx.lineTo(8, -135);
+                    zctx.lineTo(4, -128);
+                    zctx.lineTo(12, -108);
                     zctx.closePath();
                     zctx.fill();
-                    zctx.shadowBlur = 0; } zctx.restore(); } else { zctx.fillStyle = '#daa520';
-                zctx.fillRect(132, 280, 8, 90);
+                    zctx.shadowBlur = 0;
+                }
+                zctx.restore();
+            } else {
+                const shaftGrad = zctx.createLinearGradient(0, 190, 8, 285);
+                shaftGrad.addColorStop(0, '#daa520');
+                shaftGrad.addColorStop(0.3, '#b8860b');
+                shaftGrad.addColorStop(0.6, '#8b6914');
+                shaftGrad.addColorStop(1, '#6b4f10');
+                zctx.fillStyle = shaftGrad;
+                zctx.beginPath();
+                zctx.roundRect(132, 190, 8, 90, 3);
+                zctx.fill();
+                zctx.strokeStyle = '#4a3508';
+                zctx.lineWidth = 1;
+                zctx.stroke();
                 zctx.fillStyle = '#ffd700';
                 zctx.beginPath();
-                zctx.moveTo(136, 195);
-                zctx.lineTo(124, 255);
-                zctx.lineTo(132, 260);
-                zctx.lineTo(134, 275);
-                zctx.lineTo(136, 275);
-                zctx.lineTo(138, 275);
-                zctx.lineTo(140, 260);
-                zctx.lineTo(148, 255);
+                zctx.moveTo(136, 185);
+                zctx.lineTo(122, 255);
+                zctx.quadraticCurveTo(128, 258, 132, 262);
+                zctx.lineTo(134, 278);
+                zctx.lineTo(136, 278);
+                zctx.lineTo(138, 278);
+                zctx.lineTo(140, 262);
+                zctx.quadraticCurveTo(144, 258, 150, 255);
                 zctx.closePath();
                 zctx.fill();
                 zctx.strokeStyle = '#8b6914';
                 zctx.lineWidth = 1.5;
-                zctx.stroke(); }
+                zctx.stroke();
+            }
             zctx.fillStyle = 'rgba(255,255,255,0.12)';
             zctx.beginPath();
             zctx.ellipse(80, 395, 60, 18, 0, 0, Math.PI * 2);
@@ -838,7 +926,8 @@
             zctx.fill();
             zctx.beginPath();
             zctx.roundRect(80, 383, 28, 12, 6);
-            zctx.fill(); const bg = zctx.createLinearGradient(65, 240, 95, 355);
+            zctx.fill();
+            const bg = zctx.createLinearGradient(65, 240, 95, 355);
             bg.addColorStop(0, '#ffd700');
             bg.addColorStop(0.3, '#daa520');
             bg.addColorStop(0.6, '#b8860b');
@@ -849,7 +938,8 @@
             zctx.fill();
             zctx.strokeStyle = '#5c3d0a';
             zctx.lineWidth = 2;
-            zctx.stroke();[{ x: 64, y: 262 }, { x: 94, y: 262 }, { x: 56, y: 305 }, { x: 79, y: 295 }, { x: 102, y: 305 }, { x: 64, y: 340 }, { x: 94, y: 340 }].forEach(p => { const gg = zctx.createRadialGradient(p.x - 1, p.y - 1, 1, p.x, p.y, 8);
+            zctx.stroke();
+            [{ x: 64, y: 262 }, { x: 94, y: 262 }, { x: 56, y: 305 }, { x: 79, y: 295 }, { x: 102, y: 305 }, { x: 64, y: 340 }, { x: 94, y: 340 }].forEach(p => { const gg = zctx.createRadialGradient(p.x - 1, p.y - 1, 1, p.x, p.y, 8);
                 gg.addColorStop(0, '#87CEEB');
                 gg.addColorStop(0.5, '#4169E1');
                 gg.addColorStop(1, '#000080');
@@ -863,14 +953,14 @@
             zctx.fillStyle = '#8b0000';
             zctx.beginPath();
             zctx.moveTo(50, 250);
-            zctx.lineTo(25, 365);
-            zctx.lineTo(38, 375);
+            zctx.lineTo(22, 370);
+            zctx.lineTo(35, 380);
             zctx.lineTo(50, 345);
             zctx.fill();
             zctx.beginPath();
             zctx.moveTo(108, 250);
-            zctx.lineTo(133, 365);
-            zctx.lineTo(120, 375);
+            zctx.lineTo(136, 370);
+            zctx.lineTo(123, 380);
             zctx.lineTo(108, 345);
             zctx.fill();
             zctx.fillStyle = '#daa520';
@@ -880,7 +970,9 @@
             zctx.strokeStyle = '#5c3d0a';
             zctx.lineWidth = 1.5;
             zctx.stroke();
-            zctx.save(); if (armRaised) { zctx.translate(112, 255);
+            zctx.save();
+            if (armRaised) {
+                zctx.translate(112, 255);
                 zctx.rotate(-2.2);
                 zctx.fillStyle = '#daa520';
                 zctx.beginPath();
@@ -888,14 +980,18 @@
                 zctx.fill();
                 zctx.strokeStyle = '#5c3d0a';
                 zctx.lineWidth = 1.5;
-                zctx.stroke(); } else { zctx.fillStyle = '#daa520';
+                zctx.stroke();
+            } else {
+                zctx.fillStyle = '#daa520';
                 zctx.beginPath();
                 zctx.roundRect(104, 260, 12, 42, 6);
                 zctx.fill();
                 zctx.strokeStyle = '#5c3d0a';
                 zctx.lineWidth = 1.5;
-                zctx.stroke(); }
-            zctx.restore(); const hg = zctx.createRadialGradient(76, 210, 5, 80, 220, 36);
+                zctx.stroke();
+            }
+            zctx.restore();
+            const hg = zctx.createRadialGradient(76, 210, 5, 80, 220, 36);
             hg.addColorStop(0, '#f5e6d3');
             hg.addColorStop(0.7, '#d4b896');
             hg.addColorStop(1, '#b8956a');
@@ -919,7 +1015,8 @@
             zctx.fill();
             zctx.strokeStyle = '#b8860b';
             zctx.lineWidth = 2;
-            zctx.stroke();[62, 80, 98].forEach(cx => { const gg = zctx.createRadialGradient(cx - 1, 184, 1, cx, 184, 5);
+            zctx.stroke();
+            [62, 80, 98].forEach(cx => { const gg = zctx.createRadialGradient(cx - 1, 184, 1, cx, 184, 5);
                 gg.addColorStop(0, '#87CEEB');
                 gg.addColorStop(0.5, '#4169E1');
                 gg.addColorStop(1, '#000080');
@@ -930,22 +1027,27 @@
             zctx.fillStyle = '#fafafa';
             zctx.beginPath();
             zctx.moveTo(56, 238);
-            zctx.quadraticCurveTo(60, 285, 80, 290);
-            zctx.quadraticCurveTo(100, 285, 104, 238);
+            zctx.quadraticCurveTo(60, 288, 80, 292);
+            zctx.quadraticCurveTo(100, 288, 104, 238);
             zctx.quadraticCurveTo(92, 250, 80, 252);
             zctx.quadraticCurveTo(68, 250, 56, 238);
             zctx.fill();
-            zctx.strokeStyle = '#e0d5c0';
+            zctx.strokeStyle = '#e8ddd0';
             zctx.lineWidth = 1.5;
-            zctx.stroke(); if (mouthOpen) { zctx.fillStyle = '#8b0000';
+            zctx.stroke();
+            if (mouthOpen) {
+                zctx.fillStyle = '#6b1515';
                 zctx.beginPath();
                 zctx.ellipse(80, 242, 10, 7, 0, 0, Math.PI * 2);
-                zctx.fill(); } else { zctx.strokeStyle = '#b8956a';
+                zctx.fill();
+            } else {
+                zctx.strokeStyle = '#b8956a';
                 zctx.lineWidth = 2;
                 zctx.beginPath();
                 zctx.moveTo(70, 240);
-                zctx.quadraticCurveTo(80, 243, 90, 240);
-                zctx.stroke(); }
+                zctx.quadraticCurveTo(80, 244, 90, 240);
+                zctx.stroke();
+            }
             zctx.fillStyle = '#f0e0c0';
             zctx.beginPath();
             zctx.moveTo(66, 232);
@@ -978,16 +1080,17 @@
             zctx.lineWidth = 3;
             zctx.beginPath();
             zctx.moveTo(62, 208);
-            zctx.quadraticCurveTo(68, 203, 74, 208);
+            zctx.quadraticCurveTo(68, 202, 74, 208);
             zctx.stroke();
             zctx.beginPath();
             zctx.moveTo(86, 208);
-            zctx.quadraticCurveTo(92, 203, 98, 208);
+            zctx.quadraticCurveTo(92, 202, 98, 208);
             zctx.stroke();
             zctx.fillStyle = '#d4b896';
             zctx.beginPath();
             zctx.ellipse(80, 226, 6, 3.5, 0, 0, Math.PI * 2);
-            zctx.fill(); }
+            zctx.fill();
+        }
 
         class SlotEngine {
             constructor() {
@@ -1021,7 +1124,7 @@
             get speedMult() { return this.fastMode ? 0.35 : 1; }
             get cascadeDelay() { return CASCADE_DELAY_BASE * this.speedMult; }
             getSymbolProbabilities() { return this.isFreeSpins ? SYMBOL_PROBABILITIES_BONUS : SYMBOL_PROBABILITIES_NORMAL; }
-            getRandomSymbol() { const probs = this.getSymbolProbabilities(); const rand = Math.random() * 100; let cum = 0; for (const e of probs) { cum += e.prob; if (rand <= cum) return e.symbol; } return SYMBOLS.BLUE_CRYSTAL; }
+            getRandomSymbol() { const probs = this.getSymbolProbabilities(); const rand = Math.random() * 100; let cum = 0; for (const e of probs) { cum += e.prob; if (rand <= cum) return e.symbol; } return SYMBOLS.SAPPHIRE; }
             getRandomSymbolWithOrbs() { const orbChance = this.isFreeSpins ? 0.01 : 0.0025; if (Math.random() < orbChance) return SYMBOLS.ORB_MULTIPLIER; return this.getRandomSymbol(); }
             getOrbValue() { const tiers = this.isFreeSpins ? ORB_TIERS_BONUS : ORB_TIERS; const rand = Math.random() * 100; let cum = 0; for (const t of tiers) { cum += t.prob; if (rand <= cum) { const step = t.max <= 15 ? 1 : (t.max <= 75 ? 5 : (t.max <= 250 ? 25 : 50)); const steps = Math.floor((t.max - t.min) / step) + 1; let val = t.min + Math.floor(Math.random() * steps) * step; if (val >= 10 && !this.isFreeSpins && Math.random() < 0.95) val = Math.floor(val / 20) || 2; else if (val >= 10 && this.isFreeSpins && Math.random() < 0.933) val = Math.floor(val / 15) || 2; else if (val < 10 && !this.isFreeSpins && Math.random() < 0.875) val = Math.floor(val / 8) || 2; else if (val < 10 && this.isFreeSpins && Math.random() < 0.833) val = Math.floor(val / 6) || 2; return val; } } return 2; }
             initGrid() { this.grid = []; for (let r = 0; r < ROWS; r++) { this.grid[r] = []; for (let c = 0; c < COLS; c++) { this.grid[r][c] = this.makeCell(r, c, this.getRandomSymbol());
@@ -1030,15 +1133,14 @@
             makeCell(r, c, symbol) { const isOrb = symbol === SYMBOLS.ORB_MULTIPLIER; return { symbol, y: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, isScatterPulse: false, bounceOffset: 0, alive: true, isOrb, orbValue: isOrb ? this.getOrbValue() : 1 }; }
             clearOrbs() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (cell) { cell.isOrb = false;
                         cell.orbValue = 1; } } }
-            getPayoutForCount(symbol, count) { if (symbol === SYMBOLS.ZEUS_SCATTER) { if (count >= 6) return PAYTABLE_MAX.zeus_scatter * this.bet; if (count >= 4) return 3 * this.bet; return 0; } const minPay = PAYTABLE_MIN[symbol] || 0,
-                    maxPay = PAYTABLE_MAX[symbol] || 0; if (count < 8) return 0; if (count >= 12) return maxPay * this.bet; const ratio = (count - 8) / 4; return (minPay + (maxPay - minPay) * ratio) * this.bet; }
+            getPayoutForCount(symbol, count) { const table = PAYTABLE[symbol]; if (!table) return 0; if (symbol === SYMBOLS.ZEUS_SCATTER) { if (count >= 8) return table[8] * this.bet; if (count >= 6) return table[6] * this.bet; if (count >= 4) return table[4] * this.bet; return 0; } if (count >= 12) return table[12] * this.bet; if (count >= 10) return table[10] * this.bet; if (count >= 8) return table[8] * this.bet; return 0; }
             findGroupsPayAnywhere() { const counts = {},
                     cellMap = {}; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol || cell.isOrb) continue; const sym = cell.symbol; if (!counts[sym]) { counts[sym] = 0;
                             cellMap[sym] = []; } counts[sym]++;
                         cellMap[sym].push({ r, c }); } } const groups = []; for (const [sym, count] of Object.entries(counts)) { const minCount = sym === SYMBOLS.ZEUS_SCATTER ? 4 : 8; if (count >= minCount) { const payout = this.getPayoutForCount(sym, count);
                         groups.push({ symbol: sym, cells: cellMap[sym], count, payout }); } } return groups; }
             countScattersAlive() { let count = 0; for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.symbol === SYMBOLS.ZEUS_SCATTER) count++; } return count; }
-            hasOrbsOnField() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb) return true; } return false; }
+            checkOrbSignal() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb) return cell.orbValue; } return 0; }
             collectOrbsFromGrid() { this.activeOrbs = []; for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb) { this.activeOrbs.push({ r, c, multiplier: cell.orbValue, color: '#ffd700' }); } } } }
             applyCascadeGravity() { let moved = false; for (let c = 0; c < COLS; c++) { for (let r = ROWS - 1; r >= 0; r--) { const cell = this.grid[r][c]; if (!cell || !cell.alive) { for (let above = r - 1; above >= 0; above--) { const aboveCell = this.grid[above][c]; if (aboveCell && aboveCell.alive && aboveCell.symbol) { if (!this.grid[r][c]) this.grid[r][c] = this.makeCell(r, c, null); const to = this.grid[r][c];
                                 Object.assign(to, { symbol: aboveCell.symbol, isOrb: aboveCell.isOrb, orbValue: aboveCell.orbValue, y: aboveCell.y, targetY: GRID_OFFSET_Y + r * CELL_SIZE + CELL_SIZE / 2, velocity: 0, scale: 1, opacity: 1, isWinning: false, isExploding: false, isScatterPulse: false, bounceOffset: 0, alive: true });
@@ -1110,7 +1212,6 @@
                 this.spinRunningTotal = multiplied;
                 this.updateSpinTotalDisplay(`💰 ${Math.floor(baseWin)} x ${(1+totalOrb)} = ${Math.floor(multiplied)}`, 'multiplying'); return multiplied; }
             getMultiplierFromBet(winAmount) { return winAmount / this.bet; }
-            checkOrbSignal() { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (cell && cell.alive && cell.isOrb) return cell.orbValue; } return 0; }
             async spin() { if (this.state !== GameStateEnum.IDLE || this.isProcessing) return; if (this.balance < this.bet && !this.isFreeSpins) return;
                 this.isProcessing = true;
                 this.state = GameStateEnum.SPINNING;
@@ -1119,7 +1220,7 @@
                 this.spinWinTotal = 0;
                 this.spinRunningTotal = 0;
                 this.updateWinDisplay();
-                this.setWinLabel('Выигрыш');
+                if (!this.isFreeSpins) { this.setWinLabel('Выигрыш'); } else { this.setWinLabel('Выигрыш'); }
                 this.hideSpinTotalDisplay();
                 this.clearOrbs();
                 this.particles = [];
@@ -1129,8 +1230,9 @@
                 this.zeusArmRaised = false; if (!this.isFreeSpins) { this.balance -= this.bet;
                     this.updateBalanceDisplay(); }
                 await this.animateInitialCascade();
-                await this.sleep(300 * this.speedMult); const orbSignal = this.checkOrbSignal(); if (orbSignal >= 10 || (orbSignal >= 2 && orbSignal <= 9 && Math.random() < 0.8)) { this.zeusTridentRaised = true;
-                    this.zeusMouthOpen = true; if (orbSignal >= 10) this.zeusLightningActive = true; } await this.sleep(300 * this.speedMult);
+                await this.sleep(1000 * this.speedMult); const orbSignal = this.checkOrbSignal(); if (orbSignal >= 10 || (orbSignal >= 2 && orbSignal <= 9 && Math.random() < 0.8)) { this.zeusTridentRaised = true;
+                    this.zeusMouthOpen = true; if (orbSignal >= 10) this.zeusLightningActive = true;
+                    await this.sleep(600 * this.speedMult); }
                 this.zeusTridentRaised = false;
                 this.zeusMouthOpen = false;
                 this.zeusLightningActive = false; await this.cascadeCycle();
@@ -1141,9 +1243,9 @@
                     this.updateBalanceDisplay();
                     this.lastWin = finalWin;
                     this.setWinLabel('Последний выигрыш');
-                    this.updateSpinTotalDisplay(`✅ Выигрыш: ${Math.floor(finalWin)}`, 'multiplying'); } else { this.spinRunningTotal = this.bonusTotalWin;
-                    this.lastWin = this.bonusTotalWin;
-                    this.setWinLabel('Последний выигрыш');
+                    this.updateSpinTotalDisplay(`✅ Выигрыш: ${Math.floor(finalWin)}`, 'multiplying'); } else { this.lastWin = this.bonusTotalWin;
+                    this.displayedWin = this.bonusTotalWin;
+                    this.updateWinDisplay();
                     this.updateSpinTotalDisplay(`🎰 Бонус: Всего ${Math.floor(this.bonusTotalWin)} | x${this.totalMultiplier}`, 'multiplying'); }
                 await this.animateWinCounter(finalWin); if (finalWin > 0) { const mult = this.getMultiplierFromBet(finalWin); if (mult >= 200) { await this.showBigWinOverlay(finalWin, '🏆 ЭПИЧЕСКИЙ ВЫИГРЫШ! 🏆'); } else if (mult >= 100) { await this.showBigWinOverlay(finalWin, '💥 ОГРОМНЫЙ ВЫИГРЫШ! 💥'); } else if (mult >= 50) { await this.showBigWinOverlay(finalWin, '🔥 КРУПНЫЙ ВЫИГРЫШ! 🔥'); } else if (mult >= 20) { await this.showBigWinOverlay(finalWin, '⚡ ОТЛИЧНЫЙ ВЫИГРЫШ! ⚡'); } }
                 await this.sleep(500 * this.speedMult);
@@ -1320,24 +1422,24 @@
             updateSpinButton() { const btn = document.getElementById('btnSpin'); if (!btn) return;
                 btn.textContent = this.isFreeSpins ? 'FREE' : 'SPIN';
                 btn.disabled = this.state !== GameStateEnum.IDLE || (this.balance < this.bet && !this.isFreeSpins) || this.autoSpinsRemaining > 0; }
-            render(ctx) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); for (let c = 0; c < COLS; c++) { ctx.strokeStyle = 'rgba(180,130,0,0.12)';
+            render(ctx) { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); for (let c = 0; c < COLS; c++) { ctx.strokeStyle = 'rgba(180,130,0,0.15)';
                     ctx.lineWidth = 1;
-                    ctx.setLineDash([3, 10]);
+                    ctx.setLineDash([4, 16]);
                     ctx.beginPath();
-                    ctx.moveTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y);
-                    ctx.lineTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y + ROWS * CELL_SIZE);
+                    ctx.moveTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y + 5);
+                    ctx.lineTo(GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2, GRID_OFFSET_Y + ROWS * CELL_SIZE - 5);
                     ctx.stroke();
                     ctx.setLineDash([]); } for (let r = 0; r < ROWS; r++) { for (let c = 0; c < COLS; c++) { const cell = this.grid[r] && this.grid[r][c]; if (!cell || !cell.alive || !cell.symbol) continue; const x = GRID_OFFSET_X + c * CELL_SIZE + CELL_SIZE / 2,
                         y = cell.y + cell.bounceOffset;
                     ctx.save();
-                    ctx.translate(x, y); let s = Math.max(0.1, cell.scale); if (cell.isScatterPulse) s += Math.sin(performance.now() / 100) * 0.15;
+                    ctx.translate(x, y); let s = Math.max(0.1, cell.scale); if (cell.isScatterPulse) s += Math.sin(performance.now() / 80) * 0.18;
                     ctx.scale(s, s);
                     ctx.globalAlpha = Math.max(0, Math.min(1, cell.opacity)); if (cell.isWinning && !cell.isExploding && !cell.isScatterPulse) { ctx.shadowColor = '#ffd700';
-                        ctx.shadowBlur = 35; } if (cell.isScatterPulse) { ctx.shadowColor = '#ffd700';
-                        ctx.shadowBlur = 50; } if (cell.isExploding) { ctx.shadowColor = '#fff';
-                        ctx.shadowBlur = 45; } if (cell.isOrb) { ctx.fillStyle = '#1a0500';
-                        ctx.shadowColor = '#ffd700';
-                        ctx.shadowBlur = 20;
+                        ctx.shadowBlur = 40; } if (cell.isScatterPulse) { ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 55; } if (cell.isExploding) { ctx.shadowColor = '#fff';
+                        ctx.shadowBlur = 50; } if (cell.isOrb) { ctx.shadowColor = '#ffd700';
+                        ctx.shadowBlur = 28;
+                        ctx.fillStyle = '#1a0500';
                         ctx.beginPath();
                         ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
                         ctx.fill();
@@ -1346,25 +1448,12 @@
                         ctx.stroke();
                         ctx.shadowBlur = 0;
                         ctx.fillStyle = '#ffd700';
-                        ctx.font = 'bold 18px Arial';
+                        ctx.font = 'bold 20px Arial';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(`x${cell.orbValue}`, 0, 0); } else { const color = SYMBOL_COLORS[cell.symbol] || '#555'; const grad = ctx.createRadialGradient(-4, -9, 4, 0, 0, SYMBOL_SIZE / 2);
-                        grad.addColorStop(0, this.lightenColor(color, 55));
-                        grad.addColorStop(1, color);
-                        ctx.fillStyle = grad;
-                        ctx.beginPath();
-                        ctx.arc(0, 0, SYMBOL_SIZE / 2, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-                        ctx.lineWidth = 2.5;
-                        ctx.stroke();
-                        ctx.shadowColor = 'transparent';
+                        ctx.fillText(`x${cell.orbValue}`, 0, 0); } else { ctx.shadowColor = 'transparent';
                         ctx.shadowBlur = 0;
-                        ctx.font = `${SYMBOL_SIZE*0.5}px Arial`;
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillStyle = '#fff'; if (cell.symbol === SYMBOLS.ZEUS_SCATTER) this.drawZeusIcon(ctx, SYMBOL_SIZE); else ctx.fillText(SYMBOL_EMOJIS[cell.symbol] || '?', 0, 2); }
+                        this.drawSymbolImage(ctx, cell.symbol, SYMBOL_SIZE); }
                     ctx.restore(); } } for (const p of this.particles) { ctx.fillStyle = p.color;
                     ctx.globalAlpha = Math.max(0, p.life);
                     ctx.shadowColor = p.color;
@@ -1375,12 +1464,161 @@
                 ctx.globalAlpha = 1;
                 ctx.shadowColor = 'transparent';
                 ctx.shadowBlur = 0; }
-            drawZeusIcon(ctx, size) { const s = size * 0.6;
+            drawSymbolImage(ctx, symbol, size) { const s = size * 0.7;
+                ctx.save(); switch (symbol) { case SYMBOLS.SAPPHIRE:
+                        this.drawFacetedGem(ctx, s, '#1a3a8a', '#4169E1', '#87CEEB', 'diamond'); break; case SYMBOLS.EMERALD:
+                        this.drawFacetedGem(ctx, s, '#0a5a2a', '#2ecc71', '#90EE90', 'square'); break; case SYMBOLS.TOPAZ:
+                        this.drawFacetedGem(ctx, s, '#8a6a00', '#f1c40f', '#fff8c0', 'triangle'); break; case SYMBOLS.AMETHYST:
+                        this.drawFacetedGem(ctx, s, '#4a1a6a', '#9b59b6', '#d8b0f0', 'hexagon'); break; case SYMBOLS.RUBY:
+                        this.drawFacetedGem(ctx, s, '#8a1020', '#e74c3c', '#ff9090', 'oval'); break; case SYMBOLS.CUP:
+                        this.drawCup(ctx, s); break; case SYMBOLS.RING:
+                        this.drawRing(ctx, s); break; case SYMBOLS.HOURGLASS:
+                        this.drawHourglass(ctx, s); break; case SYMBOLS.CROWN:
+                        this.drawCrownIcon(ctx, s); break; case SYMBOLS.ZEUS_SCATTER:
+                        this.drawZeusIcon(ctx, s); break; }
+                ctx.restore(); }
+            drawFacetedGem(ctx, s, dark, mid, light, shape) {
+                ctx.shadowColor = light;
+                ctx.shadowBlur = 8;
+                const grad = ctx.createRadialGradient(-s * 0.1, -s * 0.2, s * 0.05, 0, 0, s);
+                grad.addColorStop(0, light);
+                grad.addColorStop(0.35, mid);
+                grad.addColorStop(0.7, dark);
+                grad.addColorStop(1, '#000');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                switch (shape) {
+                    case 'diamond':
+                        ctx.moveTo(0, -s);
+                        ctx.lineTo(s * 0.55, 0);
+                        ctx.lineTo(0, s * 0.8);
+                        ctx.lineTo(-s * 0.55, 0);
+                        break;
+                    case 'square':
+                        ctx.moveTo(-s * 0.55, -s * 0.7);
+                        ctx.lineTo(s * 0.55, -s * 0.5);
+                        ctx.lineTo(s * 0.6, s * 0.5);
+                        ctx.lineTo(-s * 0.6, s * 0.7);
+                        break;
+                    case 'triangle':
+                        ctx.moveTo(0, -s);
+                        ctx.lineTo(s * 0.65, s * 0.4);
+                        ctx.lineTo(-s * 0.65, s * 0.4);
+                        break;
+                    case 'hexagon':
+                        for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + (Math.PI / 3) * i;
+                            ctx.lineTo(Math.cos(a) * s * 0.55, Math.sin(a) * s * 0.55); } break;
+                    case 'oval':
+                        ctx.ellipse(0, 0, s * 0.5, s * 0.65, 0, 0, Math.PI * 2); break;
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(-s * 0.15, -s * 0.25, s * 0.12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            drawCup(ctx, s) {
+                const grad = ctx.createLinearGradient(0, -s * 0.5, 0, s * 0.4);
+                grad.addColorStop(0, '#ffd700');
+                grad.addColorStop(0.4, '#daa520');
+                grad.addColorStop(0.7, '#b8860b');
+                grad.addColorStop(1, '#8b6914');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.45, -s * 0.4);
+                ctx.quadraticCurveTo(-s * 0.55, s * 0.1, -s * 0.3, s * 0.35);
+                ctx.lineTo(s * 0.3, s * 0.35);
+                ctx.quadraticCurveTo(s * 0.55, s * 0.1, s * 0.45, -s * 0.4);
+                ctx.quadraticCurveTo(0, -s * 0.5, -s * 0.45, -s * 0.4);
+                ctx.fill();
+                ctx.strokeStyle = '#5c3d0a';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(-s * 0.1, -s * 0.15, s * 0.15, s * 0.25, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            drawRing(ctx, s) {
+                const grad = zctx.createLinearGradient ? ctx.createLinearGradient(0, -s * 0.3, s * 0.4, s * 0.3) : null;
+                ctx.fillStyle = '#daa520';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s * 0.4, s * 0.3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1a0500';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, s * 0.22, s * 0.15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(s * 0.05, -s * 0.08, s * 0.12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(s * 0.02, -s * 0.12, s * 0.04, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            drawHourglass(ctx, s) {
+                ctx.fillStyle = '#daa520';
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.25, -s * 0.55);
+                ctx.lineTo(s * 0.25, -s * 0.55);
+                ctx.lineTo(s * 0.1, s * 0.1);
+                ctx.lineTo(s * 0.35, s * 0.55);
+                ctx.lineTo(-s * 0.35, s * 0.55);
+                ctx.lineTo(-s * 0.1, s * 0.1);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#8b6914';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.fillStyle = '#f5e6d3';
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.12, -s * 0.3);
+                ctx.lineTo(s * 0.12, -s * 0.3);
+                ctx.lineTo(s * 0.05, s * 0.05);
+                ctx.lineTo(-s * 0.05, s * 0.05);
+                ctx.closePath();
+                ctx.fill();
+            }
+            drawCrownIcon(ctx, s) {
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.moveTo(-s * 0.45, s * 0.1);
+                ctx.lineTo(-s * 0.4, -s * 0.4);
+                ctx.lineTo(-s * 0.2, -s * 0.05);
+                ctx.lineTo(0, -s * 0.55);
+                ctx.lineTo(s * 0.2, -s * 0.05);
+                ctx.lineTo(s * 0.4, -s * 0.4);
+                ctx.lineTo(s * 0.45, s * 0.1);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#b8860b';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(0, s * 0.05, s * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1a3a8a';
+                ctx.beginPath();
+                ctx.arc(-s * 0.2, s * 0.02, s * 0.07, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(s * 0.2, s * 0.02, s * 0.07, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            drawZeusIcon(ctx, s) {
                 ctx.fillStyle = '#f5e6d3';
                 ctx.beginPath();
                 ctx.arc(0, -s * 0.05, s * 0.35, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = '#e8d5c0';
+                ctx.fillStyle = '#fafafa';
                 ctx.beginPath();
                 ctx.moveTo(-s * 0.2, s * 0.08);
                 ctx.quadraticCurveTo(0, s * 0.5, s * 0.2, s * 0.08);
@@ -1407,7 +1645,8 @@
                 ctx.fillStyle = '#ffd700';
                 ctx.font = `${s*0.4}px Arial`;
                 ctx.textAlign = 'center';
-                ctx.fillText('⚡', 0, -s * 0.5); }
+                ctx.fillText('⚡', 0, -s * 0.5);
+            }
             lightenColor(hex, p) { const n = parseInt(hex.replace('#', ''), 16),
                     a = Math.round(2.55 * p); return `rgb(${Math.min(255,(n>>16)+a)},${Math.min(255,((n>>8)&0xFF)+a)},${Math.min(255,(n&0xFF)+a)})`; }
         }
@@ -1454,10 +1693,11 @@
         engine.setWinLabel('Выигрыш');
         drawZeusFigure(zctx, false, false, false, false);
         gameLoop();
-        console.log('⚡ ZEUS THUNDER - Полная версия!');
-        console.log('🔱 Трезубец + рот Зевса реагируют на иксы');
-        console.log('💰 Бонус: икс умножает только раунд где выпал');
-        console.log('🏷️ "Последний выигрыш" / "Выигрыш"');
+        console.log('⚡ ZEUS THUNDER - Готов!');
+        console.log('💎 5 драгоценных камней разных форм');
+        console.log('👑 Новые выплаты: 8-9, 10-11, 12+');
+        console.log('🔱 Трезубец с детализацией');
+        console.log('📐 Фиксированные размеры панелей');
     </script>
 </body>
 </html>
