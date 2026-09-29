@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Tok Web</title>
-    <!-- FIX: Убран document.write и fallback. Оставлен только один источник для Ably. -->
-    <script src="https://cdn.ably.com/lib/ably.min-2.js"></script>
+    <!-- FIX: Один локальный источник для Ably. Никаких document.write и CDN. -->
+    <script src="ably.min-2.js"></script>
     <script src="https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
     <style>
         * {
@@ -2465,7 +2465,7 @@
     <div id="remote-audios"></div>
 
     <script>
-        // ========== FIX RF: локальная генерация аватаров (без ui-avatars.com) ==========
+        // ========== FIX RF: локальная генерация аватаров ==========
         window.generateAvatarUrl = function(name, bgColor) {
             try {
                 const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
@@ -2541,7 +2541,6 @@
         // ========== ИНИЦИАЛИЗАЦИЯ SUPABASE ==========
         const DB_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
         const DB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scXdnZmVzZWR6cm5wd2Z3cXBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMTQ4MDAsImV4cCI6MjA4NTg5MDgwMH0.e4x_7SsbZKMEcwj7xzFcmmztTbauOhRy8G5LNDweK1E";
-        // FIX: заменён ключ Ably на новый (Subscribe only + Publish + Presence)
         const ABLY_API_KEY = "pYHevw.z2CzIQ:h2xngSLO4hPhPqsM_ZX_VuX4XVhtIeVY3sEwisavycQ";
 
         if (typeof supabase === 'undefined') {
@@ -2914,10 +2913,6 @@
                 }
             }
         }
-
-        // ========== SERVICE WORKER (УДАЛЕН ИЗ-ЗА ОШИБКИ BLOB URL) ==========
-        // Функция registerServiceWorker была удалена, так как браузеры не поддерживают
-        // регистрацию Service Worker из blob: URL.
 
         function showBackgroundNotification(title, options) {
             if (document.visibilityState === 'hidden') {
