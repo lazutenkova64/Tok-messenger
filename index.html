@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Tok Web</title>
-    <!-- FIX RF: используем fastly.jsdelivr.net (реже блокируется) + fallback -->
+    <!-- FIX RF: fastly.jsdelivr.net + fallback -->
     <script src="https://fastly.jsdelivr.net/npm/ably@2.4.1/dist/ably.min.js"></script>
     <script>
-      // FIX RF: fallback если fastly не загрузился
       if (typeof Ably === 'undefined') {
         document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/ably/2.4.1/ably.min.js"><\/script>');
       }
@@ -653,6 +652,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            overflow: hidden;
         }
 
         .chat-details {
@@ -863,6 +863,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            overflow: hidden;
         }
 
         .chat-avatar-small:active {
@@ -1273,14 +1274,8 @@
         }
 
         @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .emoji-btn {
@@ -1344,14 +1339,8 @@
         }
 
         @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .modal-content h2 {
@@ -1494,22 +1483,25 @@
         }
 
         .delete-chat-btn {
-            background-color: var(--dnd-red);
-            color: white;
+            background-color: transparent;
+            color: var(--text-secondary);
             border: none;
-            padding: 6px 12px;
-            border-radius: 16px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 16px;
             cursor: pointer;
-            margin-left: 8px;
-            transition: background-color 0.2s;
-            box-shadow: 0 2px 4px rgba(255, 59, 48, 0.3);
+            transition: all 0.2s;
+            opacity: 0.6;
+            line-height: 1;
+        }
+
+        .delete-chat-btn:hover {
+            opacity: 1;
+            background-color: rgba(255, 59, 48, 0.2);
         }
 
         .delete-chat-btn:active {
-            background-color: #d63026;
-            transform: scale(0.95);
+            background-color: rgba(255, 59, 48, 0.4);
         }
 
         .chat-deleted-message {
@@ -1643,29 +1635,6 @@
             overflow: hidden;
         }
 
-        .play-pause-btn::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s, height 0.3s;
-        }
-
-        .play-pause-btn:active::before {
-            width: 100px;
-            height: 100px;
-        }
-
-        .play-pause-btn:hover {
-            transform: scale(1.08);
-            box-shadow: 0 6px 16px rgba(0, 122, 255, 0.5);
-        }
-
         .play-pause-btn.playing {
             background: linear-gradient(145deg, #ff3b30, #d63026);
             box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
@@ -1695,19 +1664,6 @@
             border-radius: 3px;
             width: 0%;
             transition: width 0.1s linear;
-            position: relative;
-        }
-
-        .audio-progress-fill::after {
-            content: '';
-            position: absolute;
-            right: 0;
-            top: 0;
-            width: 2px;
-            height: 100%;
-            background-color: white;
-            border-radius: 1px;
-            opacity: 0.5;
         }
 
         .audio-time-container {
@@ -1716,10 +1672,6 @@
             font-size: 12px;
             color: var(--text-secondary);
             font-weight: 500;
-        }
-
-        .audio-current-time, .audio-duration {
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
         }
 
         .user-profile {
@@ -1745,6 +1697,7 @@
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
+            overflow: hidden;
         }
 
         .user-profile-name {
@@ -1815,104 +1768,76 @@
 
         .theme-preview.neon-city {
             background: linear-gradient(135deg, #0b0e1a, #1a1f2a);
-            position: relative;
         }
         .theme-preview.neon-city::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: radial-gradient(circle at 20% 30%, rgba(0, 255, 255, 0.2) 0%, transparent 30%),
                       radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.2) 0%, transparent 30%);
         }
 
         .theme-preview.cyberpunk {
             background: linear-gradient(135deg, #0f0c1a, #1a1530);
-            position: relative;
         }
         .theme-preview.cyberpunk::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: repeating-linear-gradient(45deg, rgba(255, 234, 0, 0.1) 0px, rgba(255, 234, 0, 0.1) 2px, transparent 2px, transparent 8px),
                       linear-gradient(135deg, rgba(255, 0, 102, 0.1) 0%, transparent 50%);
         }
 
         .theme-preview.ice-cave {
             background: linear-gradient(135deg, #0e1a1f, #1a2a33);
-            position: relative;
         }
         .theme-preview.ice-cave::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: linear-gradient(125deg, rgba(125, 249, 255, 0.15) 0%, transparent 50%),
                       radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.1) 0%, transparent 30%);
         }
 
         .theme-preview.volcanic {
             background: linear-gradient(135deg, #1a0f0a, #2a1a12);
-            position: relative;
         }
         .theme-preview.volcanic::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: repeating-linear-gradient(0deg, rgba(255, 69, 0, 0.1) 0px, rgba(255, 69, 0, 0.1) 1px, transparent 1px, transparent 4px),
                       radial-gradient(circle at 50% 30%, rgba(255, 107, 74, 0.15) 0%, transparent 40%);
         }
 
         .theme-preview.mint-fresh {
             background: linear-gradient(135deg, #0a1a14, #122a20);
-            position: relative;
         }
         .theme-preview.mint-fresh::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: repeating-linear-gradient(30deg, rgba(152, 255, 152, 0.1) 0px, rgba(152, 255, 152, 0.1) 3px, transparent 3px, transparent 12px);
         }
 
         .theme-preview.purple-haze {
             background: linear-gradient(135deg, #140a1a, #22122a);
-            position: relative;
         }
         .theme-preview.purple-haze::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: radial-gradient(circle at 40% 60%, rgba(184, 122, 255, 0.15) 0%, transparent 40%),
                       radial-gradient(circle at 70% 20%, rgba(155, 89, 182, 0.15) 0%, transparent 30%);
         }
 
         .theme-preview.golden-age {
             background: linear-gradient(135deg, #1a1510, #2a221a);
-            position: relative;
         }
         .theme-preview.golden-age::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: linear-gradient(45deg, rgba(255, 215, 0, 0.1) 25%, transparent 25%),
                       linear-gradient(-45deg, rgba(255, 215, 0, 0.1) 25%, transparent 25%);
             background-size: 40px 40px;
@@ -1920,15 +1845,11 @@
 
         .theme-preview.cosmic-abyss {
             background: linear-gradient(135deg, #0a0a14, #121224);
-            position: relative;
         }
         .theme-preview.cosmic-abyss::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: radial-gradient(2px 2px at 15px 30px, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0)),
                       radial-gradient(2px 2px at 45px 70px, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0));
             background-size: 60px 60px;
@@ -1936,15 +1857,11 @@
 
         .theme-preview.ocean-deep {
             background: linear-gradient(135deg, #0a141f, #122232);
-            position: relative;
         }
         .theme-preview.ocean-deep::after {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: repeating-linear-gradient(125deg, rgba(32, 178, 170, 0.1) 0px, rgba(32, 178, 170, 0.1) 2px, transparent 2px, transparent 15px);
         }
 
@@ -2031,119 +1948,36 @@
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-            }
-            
-            .message {
-                max-width: 85%;
-            }
-            
-            .back-button.mobile-visible {
-                display: flex;
-            }
-            
-            .action-btn {
-                width: 44px;
-                height: 44px;
-            }
-            
-            .emoji-toggle-btn,
-            .mic-btn,
-            .send-btn {
-                width: 48px;
-                height: 48px;
-                display: flex !important;
-            }
-            
-            .modal-content {
-                padding: 20px;
-            }
-            
-            .auth-tab {
-                padding: 14px;
-            }
-            
-            .modal-btn {
-                padding: 16px;
-            }
-            
-            .modal-input {
-                padding: 16px;
-            }
-
-            .message-input-container {
-                display: flex !important;
-                padding: 8px 10px;
-            }
-
-            .audio-player {
-                min-width: 180px;
-            }
-
-            .theme-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .call-timer {
-                font-size: 24px;
-            }
+            .sidebar { width: 100%; }
+            .message { max-width: 85%; }
+            .back-button.mobile-visible { display: flex; }
+            .action-btn { width: 44px; height: 44px; }
+            .emoji-toggle-btn, .mic-btn, .send-btn { width: 48px; height: 48px; display: flex !important; }
+            .modal-content { padding: 20px; }
+            .message-input-container { display: flex !important; padding: 8px 10px; }
+            .audio-player { min-width: 180px; }
+            .theme-grid { grid-template-columns: 1fr; }
+            .call-timer { font-size: 24px; }
         }
 
         @media (max-width: 320px) {
-            .chat-avatar {
-                width: 44px;
-                height: 44px;
-                font-size: 18px;
-            }
-            
-            .chat-avatar-small {
-                width: 36px;
-                height: 36px;
-                font-size: 18px;
-            }
-            
-            .emoji-toggle-btn,
-            .mic-btn,
-            .send-btn {
-                width: 40px;
-                height: 40px;
-                font-size: 18px;
-            }
-            
-            .message {
-                max-width: 90%;
-            }
-
-            .audio-player {
-                min-width: 150px;
-            }
-
-            .call-timer {
-                font-size: 20px;
-            }
+            .chat-avatar { width: 44px; height: 44px; font-size: 18px; }
+            .chat-avatar-small { width: 36px; height: 36px; font-size: 18px; }
+            .emoji-toggle-btn, .mic-btn, .send-btn { width: 40px; height: 40px; font-size: 18px; }
+            .message { max-width: 90%; }
+            .audio-player { min-width: 150px; }
+            .call-timer { font-size: 20px; }
         }
 
         @media (min-width: 768px) and (max-width: 1024px) {
-            .sidebar {
-                width: 320px;
-            }
-            
-            .chat-avatar {
-                width: 48px;
-                height: 48px;
-            }
+            .sidebar { width: 320px; }
+            .chat-avatar { width: 48px; height: 48px; }
         }
 
-        .auth-loading {
-            display: none !important;
-        }
+        .auth-loading { display: none !important; }
         .splash-screen {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: var(--bg-color);
             display: flex;
             align-items: center;
@@ -2153,19 +1987,12 @@
             font-size: 24px;
             font-weight: 600;
         }
-        .splash-screen.hidden {
-            display: none;
-        }
-        #remote-audios {
-            display: none;
-        }
+        .splash-screen.hidden { display: none; }
+        #remote-audios { display: none; }
 
         .fatal-error {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background: #0f0f0f;
             color: #fff;
             display: flex;
@@ -2176,25 +2003,12 @@
             text-align: center;
             z-index: 10000;
         }
-        .fatal-error h2 {
-            color: #ff3b30;
-            margin-bottom: 16px;
-        }
-        .fatal-error p {
-            color: #8e8e93;
-            max-width: 500px;
-            line-height: 1.5;
-            margin-bottom: 12px;
-        }
+        .fatal-error h2 { color: #ff3b30; margin-bottom: 16px; }
+        .fatal-error p { color: #8e8e93; max-width: 500px; line-height: 1.5; margin-bottom: 12px; }
         .fatal-error button {
-            margin-top: 16px;
-            padding: 12px 24px;
-            background: #007aff;
-            color: #fff;
-            border: none;
-            border-radius: 20px;
-            font-size: 16px;
-            cursor: pointer;
+            margin-top: 16px; padding: 12px 24px;
+            background: #007aff; color: #fff; border: none;
+            border-radius: 20px; font-size: 16px; cursor: pointer;
         }
     </style>
 </head>
@@ -2370,7 +2184,6 @@
         </div>
     </div>
 
-    <!-- FIX 2: Модалка удаления чата -->
     <div class="modal" id="deleteChatModal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeDeleteChatModal()">×</button>
@@ -2407,19 +2220,16 @@
     <div id="remote-audios"></div>
 
     <script>
-        // ========== FIX RF: локальная генерация аватаров (без ui-avatars.com) ==========
-        // Генерируем SVG data URI — работает без сетевых запросов
-        window.generateAvatarUrl = function(name, bgColor) {
+        // ========== FIX 1: локальная генерация аватаров (без сетевых запросов) ==========
+        // Генерируем SVG data URI для любого имени. Никогда не передаём эмодзи в url().
+        window.generateAvatarUrl = function(name) {
             try {
                 const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
                 const colors = ['#007aff', '#34c759', '#ff9500', '#ff3b30', '#af52de', '#5856d6', '#ff2d55', '#5ac8fa'];
-                let color = bgColor;
-                if (!color) {
-                    let hash = 0;
-                    const s = String(name || '?');
-                    for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
-                    color = colors[Math.abs(hash) % colors.length];
-                }
+                let hash = 0;
+                const s = String(name || '?');
+                for (let i = 0; i < s.length; i++) hash = s.charCodeAt(i) + ((hash << 5) - hash);
+                const color = colors[Math.abs(hash) % colors.length];
                 const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">' +
                     '<rect width="96" height="96" rx="48" fill="' + color + '"/>' +
                     '<text x="48" y="48" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif" ' +
@@ -2431,13 +2241,18 @@
             }
         };
 
-        // FIX RF: если аватар — это URL на ui-avatars.com, заменяем на локальный
-        window.normalizeAvatar = function(avatar, name) {
-            if (!avatar) return window.generateAvatarUrl(name || '?');
-            if (typeof avatar === 'string' && avatar.indexOf('ui-avatars.com') !== -1) {
-                return window.generateAvatarUrl(name || '?');
-            }
-            return avatar;
+        // FIX 1: Проверяем, является ли строка URL-ом (http/https/data), а не эмодзи
+        window.isImageUrl = function(str) {
+            if (!str || typeof str !== 'string') return false;
+            return /^(https?:\/\/|data:image\/)/i.test(str);
+        };
+
+        // FIX 1: Безопасное получение значения для CSS background-image.
+        // Если это URL — возвращаем его. Иначе — генерируем SVG data URI.
+        // НИКОГДА не возвращает эмодзи в виде URL.
+        window.getAvatarBackground = function(avatar, name) {
+            if (window.isImageUrl(avatar)) return avatar;
+            return window.generateAvatarUrl(name || '?');
         };
 
         // ========== ГЛОБАЛЬНАЯ ОБРАБОТКА ОШИБОК ==========
@@ -2458,7 +2273,6 @@
                     div.innerHTML = `
                         <h2>Ошибка загрузки</h2>
                         <p>${String(message || 'Не удалось запустить приложение. Попробуйте обновить страницу.')}</p>
-                        <p style="font-size: 12px; opacity: 0.6;">Если ошибка повторяется, проверьте консоль (F12).</p>
                         <button onclick="location.reload()">Обновить страницу</button>
                     `;
                     document.body.appendChild(div);
@@ -2488,32 +2302,17 @@
         const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
 
         if (typeof supabase === 'undefined') {
-            throw new Error('Библиотека Supabase не загрузилась. Проверьте подключение к интернету.');
+            throw new Error('Библиотека Supabase не загрузилась.');
         }
 
-        // FIX RF: Supabase клиент с увеличенными таймаутами для медленного интернета
         const db = supabase.createClient(DB_URL, DB_ANON_KEY, {
-            auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: false
-            },
-            global: {
-                headers: { 'x-application-name': 'tok-web' }
-            },
-            db: {
-                schema: 'public'
-            },
-            realtime: {
-                params: {
-                    eventsPerSecond: 5
-                }
-            }
+            auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+            global: { headers: { 'x-application-name': 'tok-web' } }
         });
 
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
-        let ablyUserChannel = null; // FIX 3: сохраняем ссылку на user-канал
+        let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
         let publicChats = [];
@@ -2528,53 +2327,36 @@
         let messageStatuses = {};
         let deletedMessages = {};
         let pinnedChats = [];
-
         let notifications = {};
         let incomingMessageSound = null;
-
         let lastMessageTime = 0;
         const MESSAGE_COOLDOWN = 500;
         let sendBtnDisabled = false;
-
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
         let recordingTimeout;
         let mediaStream = null;
         let recordingStartTime = 0;
-        
         let activeAudio = null;
         let activeAudioId = null;
         let audioElements = {};
         let audioUpdateInterval = null;
-
         let heartbeatInterval;
         let presenceUpdateInterval;
         let statusUpdateInterval;
-
         let loginAttempts = 0;
         let lastLoginAttemptTime = 0;
-
         let isInitialized = false;
         let currentTheme = localStorage.getItem('theme') || 'classic-dark';
         let pendingMessages = {};
         let messageQueue = {};
-
-        // FIX 2: чат для удаления
         let chatToDelete = null;
-        // FIX: локально удалённые чаты (только у себя)
         let locallyDeletedChats = new Set();
 
-        // Состояние звонка
         let currentCall = {
-            status: null,
-            peerId: null,
-            callId: null,
-            dbId: null,
-            isInitiator: false,
-            callerInfo: null,
-            startTime: null,
-            timeout: null
+            status: null, peerId: null, callId: null, dbId: null,
+            isInitiator: false, callerInfo: null, startTime: null, timeout: null
         };
         let peerConnection = null;
         let localStream = null;
@@ -2589,8 +2371,6 @@
 
         let pendingIceCandidates = [];
         let remoteDescriptionSet = false;
-
-        // FIX 3: флаг подписки на user-канал
         let userChannelSubscribed = false;
 
         let callsTableExists = true;
@@ -2635,35 +2415,27 @@
         function populateThemeGrid() {
             const grid = document.getElementById('themeGrid');
             if (!grid) return;
-            
             grid.innerHTML = '';
-            
             themes.forEach(theme => {
                 const div = document.createElement('div');
                 div.className = `theme-option ${currentTheme === theme.id ? 'selected' : ''}`;
                 div.onclick = () => selectTheme(theme.id, div);
-                
                 const preview = document.createElement('div');
                 preview.className = `theme-preview ${theme.class}`;
-                
                 const message1 = document.createElement('div');
                 message1.className = 'preview-message';
                 message1.style.width = '70%';
                 message1.style.marginBottom = '4px';
-                
                 const message2 = document.createElement('div');
                 message2.className = 'preview-message';
                 message2.style.width = '40%';
                 message2.style.alignSelf = 'flex-end';
                 message2.style.marginLeft = 'auto';
-                
                 preview.appendChild(message1);
                 preview.appendChild(message2);
-                
                 const name = document.createElement('span');
                 name.className = 'theme-name';
                 name.textContent = theme.name;
-                
                 div.appendChild(preview);
                 div.appendChild(name);
                 grid.appendChild(div);
@@ -2678,15 +2450,12 @@
 
         function formatLastSeen(timestamp) {
             if (!timestamp || isNaN(timestamp)) return 'давно';
-            
             const now = Date.now();
             const diff = now - timestamp;
-            
             const seconds = Math.floor(diff / 1000);
             const minutes = Math.floor(seconds / 60);
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
-            
             if (days > 30) return 'давно';
             if (seconds < 60) return 'только что';
             if (minutes < 60) {
@@ -2703,7 +2472,6 @@
                 if (days >= 2 && days <= 4) return `${days} дня назад`;
                 return `${days} дней назад`;
             }
-            
             const date = new Date(timestamp);
             return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
         }
@@ -2731,56 +2499,33 @@
 
         function getDayKey(timestamp) {
             const d = new Date(timestamp);
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
         function formatDateDivider(timestamp) {
             const now = new Date();
             const date = new Date(timestamp);
-            
-            const todayKey = getDayKey(now.getTime());
-            const msgKey = getDayKey(date.getTime());
-            
-            if (msgKey === todayKey) return 'Сегодня';
-            
+            if (getDayKey(now.getTime()) === getDayKey(date.getTime())) return 'Сегодня';
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayKey = getDayKey(yesterday.getTime());
-            
-            if (msgKey === yesterdayKey) return 'Вчера';
-            
-            const day = date.getDate();
-            const month = date.getMonth() + 1;
-            const year = date.getFullYear();
-            return `${day}.${month}.${year}`;
+            if (getDayKey(yesterday.getTime()) === getDayKey(date.getTime())) return 'Вчера';
+            return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
         }
 
         function formatChatListDate(timestamp) {
             if (!timestamp) return '';
             const now = new Date();
             const date = new Date(timestamp);
-            
-            const todayKey = getDayKey(now.getTime());
-            const msgKey = getDayKey(date.getTime());
-            
-            if (msgKey === todayKey) {
+            if (getDayKey(now.getTime()) === getDayKey(date.getTime())) {
                 return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             }
-            
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayKey = getDayKey(yesterday.getTime());
-            
-            if (msgKey === yesterdayKey) return 'Вчера';
-            
+            if (getDayKey(yesterday.getTime()) === getDayKey(date.getTime())) return 'Вчера';
             const day = date.getDate();
             const month = date.getMonth() + 1;
             const year = date.getFullYear();
             const currentYear = now.getFullYear();
-            
             if (year === currentYear) return `${day}.${month}`;
             return `${day}.${month}.${year}`;
         }
@@ -2788,18 +2533,14 @@
         function generateUUID() {
             try {
                 if (typeof crypto !== 'undefined') {
-                    if (typeof crypto.randomUUID === 'function') {
-                        return crypto.randomUUID();
-                    }
+                    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
                     if (typeof crypto.getRandomValues === 'function') {
                         const bytes = new Uint8Array(16);
                         crypto.getRandomValues(bytes);
                         bytes[6] = (bytes[6] & 0x0f) | 0x40;
                         bytes[8] = (bytes[8] & 0x3f) | 0x80;
                         const hex = [];
-                        for (let i = 0; i < 256; i++) {
-                            hex.push((i + 0x100).toString(16).substr(1));
-                        }
+                        for (let i = 0; i < 256; i++) hex.push((i + 0x100).toString(16).substr(1));
                         return hex[bytes[0]] + hex[bytes[1]] + hex[bytes[2]] + hex[bytes[3]] + '-' +
                                hex[bytes[4]] + hex[bytes[5]] + '-' +
                                hex[bytes[6]] + hex[bytes[7]] + '-' +
@@ -2816,49 +2557,17 @@
 
         function isMediaRecorderSupported() {
             try {
-                return typeof MediaRecorder !== 'undefined' && 
-                       navigator.mediaDevices && 
-                       typeof navigator.mediaDevices.getUserMedia === 'function';
-            } catch (e) {
-                return false;
-            }
+                return typeof MediaRecorder !== 'undefined' && navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function';
+            } catch (e) { return false; }
         }
 
         function getSupportedMimeType() {
-            const types = [
-                'audio/webm;codecs=opus',
-                'audio/webm',
-                'audio/mp4',
-                'audio/aac',
-                'audio/ogg;codecs=opus',
-                'audio/ogg'
-            ];
-            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
-                return '';
-            }
+            const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/ogg;codecs=opus', 'audio/ogg'];
+            if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return '';
             for (const type of types) {
-                try {
-                    if (MediaRecorder.isTypeSupported(type)) return type;
-                } catch (e) {}
+                try { if (MediaRecorder.isTypeSupported(type)) return type; } catch (e) {}
             }
             return '';
-        }
-
-        // FIX RF: request с таймаутом и retry для Supabase
-        async function dbQueryWithRetry(queryFn, retries = 2, timeoutMs = 15000) {
-            for (let attempt = 0; attempt <= retries; attempt++) {
-                try {
-                    const result = await Promise.race([
-                        queryFn(),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('DB timeout')), timeoutMs))
-                    ]);
-                    return result;
-                } catch (err) {
-                    console.warn(`DB query attempt ${attempt + 1} failed:`, err.message);
-                    if (attempt === retries) throw err;
-                    await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
-                }
-            }
         }
 
         // ========== SERVICE WORKER ==========
@@ -2886,7 +2595,7 @@
                 const swUrl = URL.createObjectURL(blob);
                 swRegistration = await navigator.serviceWorker.register(swUrl, { scope: './' });
             } catch (err) {
-                console.warn('Service Worker registration failed:', err);
+                console.warn('SW registration failed:', err);
             }
         }
 
@@ -2909,24 +2618,18 @@
         function loadPinnedChats() {
             try {
                 const saved = localStorage.getItem(`pinnedChats_${currentUser?.id}`);
-                if (saved) pinnedChats = JSON.parse(saved);
-                else pinnedChats = [];
-            } catch (e) {
-                pinnedChats = [];
-            }
+                pinnedChats = saved ? JSON.parse(saved) : [];
+            } catch (e) { pinnedChats = []; }
         }
 
         function savePinnedChats() {
             if (!currentUser) return;
-            try {
-                localStorage.setItem(`pinnedChats_${currentUser.id}`, JSON.stringify(pinnedChats));
-            } catch (e) {}
+            try { localStorage.setItem(`pinnedChats_${currentUser.id}`, JSON.stringify(pinnedChats)); } catch (e) {}
         }
 
         function togglePinChat(chatId, event) {
             event.stopPropagation();
             if (!currentUser) return;
-            
             const index = pinnedChats.indexOf(chatId);
             if (index === -1) pinnedChats.push(chatId);
             else pinnedChats.splice(index, 1);
@@ -2934,34 +2637,21 @@
             updateChatsList();
         }
 
-        function isChatPinned(chatId) {
-            return pinnedChats.includes(chatId);
-        }
+        function isChatPinned(chatId) { return pinnedChats.includes(chatId); }
 
-        // FIX 2: локально удалённые чаты
         function loadLocallyDeletedChats() {
             if (!currentUser) return;
             try {
                 const saved = localStorage.getItem(`locallyDeletedChats_${currentUser.id}`);
-                if (saved) {
-                    const arr = JSON.parse(saved);
-                    locallyDeletedChats = new Set(arr);
-                } else {
-                    locallyDeletedChats = new Set();
-                }
-            } catch (e) {
-                locallyDeletedChats = new Set();
-            }
+                locallyDeletedChats = saved ? new Set(JSON.parse(saved)) : new Set();
+            } catch (e) { locallyDeletedChats = new Set(); }
         }
 
         function saveLocallyDeletedChats() {
             if (!currentUser) return;
-            try {
-                localStorage.setItem(`locallyDeletedChats_${currentUser.id}`, JSON.stringify([...locallyDeletedChats]));
-            } catch (e) {}
+            try { localStorage.setItem(`locallyDeletedChats_${currentUser.id}`, JSON.stringify([...locallyDeletedChats])); } catch (e) {}
         }
 
-        // FIX 1: фильтрация чатов — только где есть хотя бы одно сообщение от меня
         function hasMyMessages(chatId) {
             if (!currentUser) return false;
             const chatMsgs = messages[chatId];
@@ -2973,17 +2663,12 @@
         function loadNotifications() {
             try {
                 const saved = localStorage.getItem('tok_notifications');
-                if (saved) notifications = JSON.parse(saved);
-                else notifications = {};
-            } catch (e) {
-                notifications = {};
-            }
+                notifications = saved ? JSON.parse(saved) : {};
+            } catch (e) { notifications = {}; }
         }
 
         function saveNotifications() {
-            try {
-                localStorage.setItem('tok_notifications', JSON.stringify(notifications));
-            } catch (e) {}
+            try { localStorage.setItem('tok_notifications', JSON.stringify(notifications)); } catch (e) {}
         }
 
         function getNotificationState(chatId) {
@@ -2991,14 +2676,13 @@
             const chat = myChats.find(c => c.id === chatId) || publicChats.find(c => c.id === chatId);
             if (chat) {
                 if (chat.type === 'private' && chat.pair_key !== `${currentUser?.id}_${currentUser?.id}`) return true;
-                else return false;
+                return false;
             }
             return false;
         }
 
         function toggleNotification(chatId) {
-            const currentState = getNotificationState(chatId);
-            notifications[chatId] = !currentState;
+            notifications[chatId] = !getNotificationState(chatId);
             saveNotifications();
             updateNotificationBell(chatId);
         }
@@ -3028,91 +2712,40 @@
             try {
                 incomingMessageSound.currentTime = 0;
                 const p = incomingMessageSound.play();
-                if (p && p.catch) {
-                    p.catch(() => {
-                        const unlockAudio = () => {
-                            try { incomingMessageSound.play().catch(() => {}); } catch (e) {}
-                            document.removeEventListener('touchstart', unlockAudio);
-                            document.removeEventListener('click', unlockAudio);
-                        };
-                        document.addEventListener('touchstart', unlockAudio, { once: true });
-                        document.addEventListener('click', unlockAudio, { once: true });
-                    });
-                }
+                if (p && p.catch) p.catch(() => {});
             } catch (e) {}
         }
 
         // ========== ЧАТ "ИЗБРАННОЕ" ==========
         async function ensureSavedMessagesChat() {
             if (!currentUser) return;
-            
             const pairKey = `${currentUser.id}_${currentUser.id}`;
-            
             try {
-                const { data: existingChat, error } = await db
-                    .from('chats')
-                    .select('*')
-                    .eq('pair_key', pairKey)
-                    .eq('type', 'private')
-                    .maybeSingle();
-                
+                const { data: existingChat, error } = await db.from('chats').select('*').eq('pair_key', pairKey).eq('type', 'private').maybeSingle();
                 if (error) return;
-                
                 if (existingChat) {
-                    const { data: member } = await db
-                        .from('chat_members')
-                        .select('*')
-                        .eq('chat_id', existingChat.id)
-                        .eq('user_id', currentUser.id)
-                        .maybeSingle();
-                    
-                    if (!member) {
-                        await db.from('chat_members').insert([{ chat_id: existingChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
-                    }
-                    
+                    const { data: member } = await db.from('chat_members').select('*').eq('chat_id', existingChat.id).eq('user_id', currentUser.id).maybeSingle();
+                    if (!member) await db.from('chat_members').insert([{ chat_id: existingChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
                     if (!myChats.some(c => c.id === existingChat.id)) {
                         myChats.push({
-                            id: existingChat.id,
-                            name: 'Избранное',
-                            avatar: '⭐',
-                            is_public: false,
-                            type: 'private',
-                            pair_key: pairKey,
+                            id: existingChat.id, name: 'Избранное', avatar: '⭐',
+                            is_public: false, type: 'private', pair_key: pairKey,
                             created_at: existingChat.created_at
                         });
                         localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                        
                         if (ably) subscribeToChatChannel(existingChat.id);
                     }
                 } else {
-                    const newChat = {
-                        name: 'Избранное',
-                        is_public: false,
-                        type: 'private',
-                        pair_key: pairKey,
-                        created_at: new Date().toISOString()
-                    };
-                    
-                    const { data, error } = await db
-                        .from('chats')
-                        .insert([newChat])
-                        .select();
-                    
+                    const newChat = { name: 'Избранное', is_public: false, type: 'private', pair_key: pairKey, created_at: new Date().toISOString() };
+                    const { data, error } = await db.from('chats').insert([newChat]).select();
                     if (error) throw error;
-                    
                     await db.from('chat_members').insert([{ chat_id: data[0].id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
-                    
                     myChats.push({
-                        id: data[0].id,
-                        name: 'Избранное',
-                        avatar: '⭐',
-                        is_public: false,
-                        type: 'private',
-                        pair_key: pairKey,
+                        id: data[0].id, name: 'Избранное', avatar: '⭐',
+                        is_public: false, type: 'private', pair_key: pairKey,
                         created_at: data[0].created_at
                     });
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
                     if (ably) subscribeToChatChannel(data[0].id);
                 }
             } catch (err) {
@@ -3123,45 +2756,21 @@
         // ========== ЗАГРУЗКА ЧАТОВ ==========
         async function loadUserChats() {
             if (!currentUser) return [];
-            
             try {
-                const { data: memberships, error: membersError } = await db
-                    .from('chat_members')
-                    .select('chat_id')
-                    .eq('user_id', currentUser.id);
-                
+                const { data: memberships, error: membersError } = await db.from('chat_members').select('chat_id').eq('user_id', currentUser.id);
                 if (membersError) throw membersError;
-                
                 const chatIds = memberships.map(m => m.chat_id);
-                
                 let userChats = [];
                 if (chatIds.length > 0) {
-                    const { data: chats, error: chatsError } = await db
-                        .from('chats')
-                        .select('*')
-                        .in('id', chatIds)
-                        .order('created_at', { ascending: false });
-                    
+                    const { data: chats, error: chatsError } = await db.from('chats').select('*').in('id', chatIds).order('created_at', { ascending: false });
                     if (chatsError) throw chatsError;
                     userChats = chats || [];
                 }
-                
-                const { data: allPublicChats, error: publicError } = await db
-                    .from('chats')
-                    .select('*')
-                    .eq('is_public', true)
-                    .order('created_at', { ascending: false });
-                
+                const { data: allPublicChats, error: publicError } = await db.from('chats').select('*').eq('is_public', true).order('created_at', { ascending: false });
                 if (publicError) throw publicError;
                 publicChats = allPublicChats || [];
-                
-                myChats = userChats.map(chat => ({
-                    ...chat,
-                    avatar: chat.is_public ? '👥' : '👤'
-                }));
-                
+                myChats = userChats.map(chat => ({ ...chat, avatar: chat.is_public ? '👥' : '👤' }));
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                
                 return myChats;
             } catch (err) {
                 console.error('Error loading user chats:', err);
@@ -3171,15 +2780,8 @@
 
         async function checkCallsTable() {
             try {
-                const { error } = await db
-                    .from('calls')
-                    .select('id')
-                    .limit(1);
-                if (error && error.code === 'PGRST116') {
-                    callsTableExists = false;
-                } else {
-                    callsTableExists = true;
-                }
+                const { error } = await db.from('calls').select('id').limit(1);
+                callsTableExists = !(error && error.code === 'PGRST116');
             } catch (err) {
                 callsTableExists = false;
             }
@@ -3191,27 +2793,21 @@
                 if (saved) messageStatuses = JSON.parse(saved);
             } catch (e) {}
         }
-
         function saveMessageStatuses() {
-            try {
-                localStorage.setItem('messageStatuses', JSON.stringify(messageStatuses));
-            } catch (e) {}
+            try { localStorage.setItem('messageStatuses', JSON.stringify(messageStatuses)); } catch (e) {}
         }
-
         function loadDeletedMessages() {
             try {
                 const saved = localStorage.getItem('deletedMessages');
                 if (saved) deletedMessages = JSON.parse(saved);
             } catch (e) {}
         }
-
         function loadPendingMessages() {
             try {
                 const saved = localStorage.getItem('pendingMessages');
                 if (saved) pendingMessages = JSON.parse(saved);
             } catch (e) {}
         }
-
         function loadMessageQueue() {
             try {
                 const saved = localStorage.getItem('messageQueue');
@@ -3219,11 +2815,10 @@
             } catch (e) {}
         }
 
-        // ========== АУТЕНТИФИКАЦИЯ ==========
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
         async function init() {
             if (isInitialized) return;
             isInitialized = true;
-
             try {
                 applyTheme(currentTheme);
                 loadMessageStatuses();
@@ -3231,85 +2826,50 @@
                 loadDeletedMessages();
                 loadPendingMessages();
                 loadMessageQueue();
-                
                 callModal = document.getElementById('callModal');
-                
-                await Promise.all([
-                    preloadSounds(),
-                    checkCallsTable()
-                ]);
+                await Promise.all([preloadSounds(), checkCallsTable()]);
 
                 let session = null;
                 try {
                     const sessionPromise = db.auth.getSession();
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('getSession timeout')), 12000)
-                    );
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('getSession timeout')), 12000));
                     const result = await Promise.race([sessionPromise, timeoutPromise]);
                     session = result.data ? result.data.session : null;
                 } catch (sessionErr) {
-                    console.warn('Session check failed:', sessionErr);
                     session = null;
                 }
                 
                 if (session?.user) {
-                    const { data: userData } = await db
-                        .from('profiles')
-                        .select('*')
-                        .eq('id', session.user.id)
-                        .single();
-                    
+                    const { data: userData } = await db.from('profiles').select('*').eq('id', session.user.id).single();
                     if (userData) {
                         currentUser = {
-                            id: userData.id,
-                            name: userData.username,
-                            avatar: userData.avatar || '👤',
-                            bio: userData.bio || '',
-                            is_vip: userData.is_vip || false,
-                            is_admin: userData.is_admin || false,
+                            id: userData.id, name: userData.username,
+                            avatar: userData.avatar || '👤', bio: userData.bio || '',
+                            is_vip: userData.is_vip || false, is_admin: userData.is_admin || false,
                             dnd: userData.dnd || false
                         };
-                        
                         document.getElementById('loginModal').classList.remove('active');
                         document.getElementById('appContainer').style.display = 'flex';
                         document.getElementById('splashScreen').classList.add('hidden');
-                        
                         updateProfileUI();
-                        
-                        await Promise.all([
-                            loadAllUsers(),
-                            loadUserChats(),
-                            loadAllMessages()
-                        ]);
-                        
+                        await Promise.all([loadAllUsers(), loadUserChats(), loadAllMessages()]);
                         await ensureSavedMessagesChat();
-                        
                         loadPinnedChats();
                         loadLocallyDeletedChats();
-                        
                         initAbly();
                         startHeartbeat();
                         startPresenceUpdates();
                         startStatusUpdates();
-                        
                         cleanupOldCalls();
-                        
                         checkUrlForChat();
                         forceShowInput();
-                        
                         sendPendingMessages();
                         processMessageQueue();
-                        
-                        // FIX 3: подписка на user-канал перенесена — теперь в initAbly через событие
-                        
                         populateThemeGrid();
-                        
                         if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                             try { Notification.requestPermission(); } catch (e) {}
                         }
-                        
                         if (myChats.length === 0) updateChatsList();
-
                         document.addEventListener('visibilitychange', handleVisibilityChange);
                         await registerServiceWorker();
                     } else {
@@ -3320,16 +2880,12 @@
                     document.getElementById('loginModal').classList.add('active');
                     document.getElementById('splashScreen').classList.add('hidden');
                 }
-                
                 setupMobileHandlers();
                 updateBackButtonVisibility();
                 updateCreateChatButtonVisibility();
-                
                 window.addEventListener('beforeunload', handleBeforeUnload);
                 setInterval(forceShowInput, 1000);
-                
                 loadingComplete = true;
-                
             } catch (err) {
                 console.error('Init error:', err);
                 document.getElementById('loginModal').classList.add('active');
@@ -3352,80 +2908,42 @@
         async function login() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
-            
-            if (!email || !password) {
-                alert('Введите email и пароль');
-                return;
-            }
-            
+            if (!email || !password) { alert('Введите email и пароль'); return; }
             try {
-                const { data: authData, error: authError } = await db.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
-                
-                if (authError) {
-                    alert('Неверный email или пароль');
-                    return;
-                }
-                
-                const { data: userData } = await db
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', authData.user.id)
-                    .single();
-                
+                const { data: authData, error: authError } = await db.auth.signInWithPassword({ email, password });
+                if (authError) { alert('Неверный email или пароль'); return; }
+                const { data: userData } = await db.from('profiles').select('*').eq('id', authData.user.id).single();
                 if (userData) {
                     currentUser = {
-                        id: userData.id,
-                        name: userData.username,
-                        avatar: userData.avatar || '👤',
-                        bio: userData.bio || '',
-                        is_vip: userData.is_vip || false,
-                        is_admin: userData.is_admin || false,
+                        id: userData.id, name: userData.username,
+                        avatar: userData.avatar || '👤', bio: userData.bio || '',
+                        is_vip: userData.is_vip || false, is_admin: userData.is_admin || false,
                         dnd: userData.dnd || false
                     };
-                    
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    
                     document.getElementById('loginModal').classList.remove('active');
                     document.getElementById('appContainer').style.display = 'flex';
                     document.getElementById('splashScreen').classList.add('hidden');
-                    
                     updateProfileUI();
-                    
-                    await Promise.all([
-                        loadAllUsers(),
-                        loadUserChats(),
-                        loadAllMessages()
-                    ]);
-                    
+                    await Promise.all([loadAllUsers(), loadUserChats(), loadAllMessages()]);
                     await ensureSavedMessagesChat();
-                    
                     loadPinnedChats();
                     loadLocallyDeletedChats();
-                    
                     initAbly();
                     startHeartbeat();
                     startPresenceUpdates();
                     startStatusUpdates();
-                    
                     cleanupOldCalls();
                     checkUrlForChat();
                     forceShowInput();
-                    
                     updateBackButtonVisibility();
                     updateCreateChatButtonVisibility();
-                    
                     populateThemeGrid();
-                    
                     if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                         try { Notification.requestPermission(); } catch (e) {}
                     }
-
                     await registerServiceWorker();
                 }
-                
             } catch (err) {
                 console.error('Login error:', err);
                 alert('Ошибка при входе');
@@ -3436,63 +2954,26 @@
             const email = document.getElementById('registerEmail').value.trim();
             const password = document.getElementById('registerPassword').value;
             const confirmPassword = document.getElementById('registerConfirmPassword').value;
-            
-            if (!email || !password) {
-                alert('Заполните все поля');
-                return;
-            }
-            if (password !== confirmPassword) {
-                alert('Пароли не совпадают');
-                return;
-            }
-            
+            if (!email || !password) { alert('Заполните все поля'); return; }
+            if (password !== confirmPassword) { alert('Пароли не совпадают'); return; }
             const username = email.split('@')[0];
-            
             try {
-                const { data: authData, error: authError } = await db.auth.signUp({
-                    email: email,
-                    password: password
-                });
-                
-                if (authError) {
-                    alert('Ошибка при регистрации: ' + authError.message);
-                    return;
-                }
-                
-                if (!authData.user) {
-                    alert('Ошибка при создании пользователя');
-                    return;
-                }
-                
-                // FIX RF: локальный аватар вместо ui-avatars.com
+                const { data: authData, error: authError } = await db.auth.signUp({ email, password });
+                if (authError) { alert('Ошибка при регистрации: ' + authError.message); return; }
+                if (!authData.user) { alert('Ошибка при создании пользователя'); return; }
                 const generatedAvatar = window.generateAvatarUrl(username);
-                
                 const newUser = {
-                    id: authData.user.id,
-                    username: username,
-                    avatar: generatedAvatar,
-                    bio: '',
-                    is_vip: false,
-                    is_admin: false,
-                    dnd: false,
+                    id: authData.user.id, username, avatar: generatedAvatar,
+                    bio: '', is_vip: false, is_admin: false, dnd: false,
                     created_at: new Date().toISOString()
                 };
-                
-                const { error } = await db
-                    .from('profiles')
-                    .insert([newUser]);
-                
-                if (error) {
-                    alert('Ошибка при регистрации: ' + error.message);
-                    return;
-                }
-                
+                const { error } = await db.from('profiles').insert([newUser]);
+                if (error) { alert('Ошибка при регистрации: ' + error.message); return; }
                 alert('Регистрация успешна! Теперь вы можете войти.');
                 switchAuthMode('login');
-                
             } catch (err) {
                 console.error('Registration error:', err);
-                alert('Ошибка при регистрации. Проверьте подключение к интернету.');
+                alert('Ошибка при регистрации.');
             }
         }
 
@@ -3501,44 +2982,33 @@
             if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; }
             if (peerConnection) { peerConnection.close(); peerConnection = null; }
             if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
-            
-            Object.values(audioElements).forEach(audio => {
-                if (audio) { audio.pause(); audio.currentTime = 0; }
-            });
+            Object.values(audioElements).forEach(audio => { if (audio) { audio.pause(); audio.currentTime = 0; } });
             audioElements = {};
             activeAudio = null;
             activeAudioId = null;
-            
             if (audioUpdateInterval) { clearInterval(audioUpdateInterval); audioUpdateInterval = null; }
             if (heartbeatInterval) { clearInterval(heartbeatInterval); heartbeatInterval = null; }
             if (presenceUpdateInterval) { clearInterval(presenceUpdateInterval); presenceUpdateInterval = null; }
             if (statusUpdateInterval) { clearInterval(statusUpdateInterval); statusUpdateInterval = null; }
             if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
             if (currentCall.timeout) { clearTimeout(currentCall.timeout); currentCall.timeout = null; }
-            
             resetCallState();
-            
             if (ably) {
                 try {
                     myChats.forEach(chat => {
                         const channel = ably.channels.get(`tok_chat_${chat.id}`);
                         channel.unsubscribe();
                     });
-                    
                     const presenceChannel = ably.channels.get('tok_global_online');
                     if (presenceChannel.state === 'attached') presenceChannel.presence.leave();
-                    
                     ably.close();
                 } catch (e) {}
                 ably = null;
             }
-            
             ablyUserChannel = null;
             userChannelSubscribed = false;
-            
             await updateUserLastSeen();
             await db.auth.signOut();
-            
             localStorage.removeItem('currentUser');
             currentUser = null;
             currentChat = null;
@@ -3546,14 +3016,12 @@
             onlineUsers = {};
             allUsers = [];
             pinnedChats = [];
-            
             document.getElementById('appContainer').style.display = 'none';
             document.getElementById('loginModal').classList.add('active');
             document.getElementById('splashScreen').classList.add('hidden');
             updateUrlWithChat(null);
             updateBackButtonVisibility();
             updateCreateChatButtonVisibility();
-            
             document.getElementById('loginEmail').value = '';
             document.getElementById('loginPassword').value = '';
             document.getElementById('registerEmail').value = '';
@@ -3563,24 +3031,14 @@
 
         async function updateUserLastSeen() {
             if (!currentUser) return;
-            try {
-                await db
-                    .from('profiles')
-                    .update({ last_seen: new Date().toISOString() })
-                    .eq('id', currentUser.id);
-            } catch (err) {}
+            try { await db.from('profiles').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id); } catch (err) {}
         }
 
         async function loadAllUsers() {
             try {
-                const { data, error } = await db
-                    .from('profiles')
-                    .select('*')
-                    .order('username');
-                
+                const { data, error } = await db.from('profiles').select('*').order('username');
                 if (error) throw error;
                 allUsers = data || [];
-                
                 if (currentTab === 'users') updateChatsList();
             } catch (err) {
                 console.error('Error loading users:', err);
@@ -3589,62 +3047,36 @@
 
         async function loadAllMessages() {
             if (!currentUser) return;
-            
             try {
                 const lastSync = localStorage.getItem(`lastSync_${currentUser.id}`);
                 const lastSyncTime = lastSync ? new Date(parseInt(lastSync)).toISOString() : new Date(0).toISOString();
-                
-                const { data, error } = await db
-                    .from('messages')
-                    .select('*')
-                    .gt('created_at', lastSyncTime)
-                    .order('created_at', { ascending: true })
-                    .limit(500);
-                
+                const { data, error } = await db.from('messages').select('*').gt('created_at', lastSyncTime).order('created_at', { ascending: true }).limit(500);
                 if (error) return;
-                
                 if (data && data.length > 0) {
                     data.forEach(msg => {
                         const chatId = msg.chat_id;
                         if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                        
                         if (!messages[chatId]) messages[chatId] = [];
-                        const exists = messages[chatId].some(m => m.id === msg.id);
-                        if (!exists) {
+                        if (!messages[chatId].some(m => m.id === msg.id)) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                            
                             messages[chatId].push({
-                                id: msg.id,
-                                chatId: msg.chat_id,
-                                sender: msg.sender_id,
-                                senderName: sender.username,
-                                senderIsVip: sender.is_vip,
-                                senderIsAdmin: sender.is_admin,
-                                text: msg.text,
-                                audio: msg.audio,
-                                duration: msg.duration,
+                                id: msg.id, chatId: msg.chat_id, sender: msg.sender_id,
+                                senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                                text: msg.text, audio: msg.audio, duration: msg.duration,
                                 time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
                                 timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                                isAdmin: msg.is_admin || false,
-                                edited: msg.edited || false,
+                                isAdmin: msg.is_admin || false, edited: msg.edited || false,
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in'
                             });
-                            
                             if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
                                 messageStatuses[msg.id] = { status: 'sent', deliveredAt: null, readAt: null };
                             }
                         }
                     });
-                    
                     localStorage.setItem(`lastSync_${currentUser.id}`, Date.now().toString());
                 }
-                
-                Object.keys(messages).forEach(chatId => {
-                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                });
-                
+                Object.keys(messages).forEach(chatId => messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)));
                 updateUnreadCounts();
-                
             } catch (err) {
                 console.error('Error loading all messages:', err);
             }
@@ -3652,50 +3084,29 @@
 
         async function loadChatHistory(chatId) {
             try {
-                const { data, error } = await db
-                    .from('messages')
-                    .select('*')
-                    .eq('chat_id', chatId)
-                    .order('created_at', { ascending: true })
-                    .limit(200);
-                
+                const { data, error } = await db.from('messages').select('*').eq('chat_id', chatId).order('created_at', { ascending: true }).limit(200);
                 if (error) return;
-                
                 if (data && data.length > 0) {
                     if (!messages[chatId]) messages[chatId] = [];
-                    
                     data.forEach(msg => {
                         if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                        
-                        const existingMsg = messages[chatId].find(m => m.id === msg.id);
-                        if (!existingMsg) {
+                        if (!messages[chatId].some(m => m.id === msg.id)) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                            
                             messages[chatId].push({
-                                id: msg.id,
-                                chatId: msg.chat_id,
-                                sender: msg.sender_id,
-                                senderName: sender.username,
-                                senderIsVip: sender.is_vip,
-                                senderIsAdmin: sender.is_admin,
-                                text: msg.text,
-                                audio: msg.audio,
-                                duration: msg.duration,
+                                id: msg.id, chatId: msg.chat_id, sender: msg.sender_id,
+                                senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                                text: msg.text, audio: msg.audio, duration: msg.duration,
                                 time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
                                 timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                                isAdmin: msg.is_admin || false,
-                                edited: msg.edited || false,
+                                isAdmin: msg.is_admin || false, edited: msg.edited || false,
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in'
                             });
-                            
                             if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
                                 messageStatuses[msg.id] = { status: 'sent', deliveredAt: null, readAt: null };
                             }
                         }
                     });
-                    
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
                     if (currentChat && currentChat.id === chatId) renderMessages();
                 }
             } catch (err) {
@@ -3705,15 +3116,11 @@
 
         function subscribeToChatChannel(chatId) {
             if (!ably || !currentUser) return;
-            
             const chatChannel = ably.channels.get(`tok_chat_${chatId}`, { params: { rewind: '1' } });
             chatChannel.unsubscribe();
-            
             function attachWithRetry(retries = 5, delay = 200) {
                 chatChannel.attach((err) => {
-                    if (err && retries > 0) {
-                        setTimeout(() => attachWithRetry(retries - 1, delay), delay);
-                    }
+                    if (err && retries > 0) setTimeout(() => attachWithRetry(retries - 1, delay), delay);
                 });
             }
             attachWithRetry(5, 200);
@@ -3722,80 +3129,49 @@
                 const msg = message.data;
                 if (!msg) return;
                 if (msg.sender_id === currentUser.id) return;
-                
                 const now = Date.now();
                 const msgTime = msg.created_at ? new Date(msg.created_at).getTime() : now;
                 if (now - msgTime > 60000) return;
-                
                 if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
                 if (!messages[chatId]) messages[chatId] = [];
-                
-                const exists = messages[chatId].some(m => m.id === msg.id);
-                if (!exists) {
+                if (!messages[chatId].some(m => m.id === msg.id)) {
                     const sender = allUsers.find(u => u.id === msg.sender_id) || { username: msg.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                    
                     const newMsg = {
-                        id: msg.id,
-                        chatId: msg.chat_id,
-                        sender: msg.sender_id,
-                        senderName: sender.username,
-                        senderIsVip: sender.is_vip,
-                        senderIsAdmin: sender.is_admin,
-                        text: msg.text,
-                        audio: msg.audio,
-                        duration: msg.duration,
+                        id: msg.id, chatId: msg.chat_id, sender: msg.sender_id,
+                        senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                        text: msg.text, audio: msg.audio, duration: msg.duration,
                         time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
                         timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                        isAdmin: msg.is_admin || false,
-                        edited: msg.edited || false,
-                        type: 'in'
+                        isAdmin: msg.is_admin || false, edited: msg.edited || false, type: 'in'
                     };
-                    
                     messages[chatId].push(newMsg);
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
                     if (getNotificationState(chatId)) playIncomingMessageSound();
-                    
                     chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id });
-                    
                     if (currentChat?.id !== chatId) {
                         unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                        
                         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                            try {
-                                new Notification(`Новое сообщение от ${sender.username}`, {
-                                    body: msg.text || 'Голосовое сообщение',
-                                    icon: sender.avatar
-                                });
-                            } catch (e) {}
+                            try { new Notification(`Новое сообщение от ${sender.username}`, { body: msg.text || 'Голосовое', icon: sender.avatar }); } catch (e) {}
                         }
                     }
-                    
                     if (currentChat && currentChat.id === chatId) {
                         renderMessages();
                         unreadCounts[chatId] = 0;
                         markMessagesAsRead(chatId);
                     }
-                    
                     updateChatsList();
                 }
             });
             
             chatChannel.subscribe('delivery_receipt', (data) => {
                 const { messageId } = data.data;
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'delivered';
-                    saveMessageStatuses();
-                }
+                if (messageStatuses[messageId]) { messageStatuses[messageId].status = 'delivered'; saveMessageStatuses(); }
                 if (currentChat && currentChat.id === chatId) renderMessages();
             });
             
             chatChannel.subscribe('read_receipt', (data) => {
                 const { messageId } = data.data;
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'read';
-                    saveMessageStatuses();
-                }
+                if (messageStatuses[messageId]) { messageStatuses[messageId].status = 'read'; saveMessageStatuses(); }
                 if (currentChat && currentChat.id === chatId) renderMessages();
             });
             
@@ -3825,93 +3201,50 @@
                 }
             });
 
-            // FIX 2: подписка на удаление чата собеседником
             chatChannel.subscribe('chat_deleted', (data) => {
                 const { chatId: deletedChatId } = data.data || {};
                 if (deletedChatId !== chatId) return;
-                
-                // Удаляем у себя
                 locallyDeletedChats.add(chatId);
                 saveLocallyDeletedChats();
-                
                 myChats = myChats.filter(c => c.id !== chatId);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                
                 delete messages[chatId];
                 delete unreadCounts[chatId];
-                
                 if (currentChat && currentChat.id === chatId) {
                     currentChat = null;
                     renderMessages();
                     updateUrlWithChat(null);
                 }
-                
                 updateChatsList();
-                
-                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                    try {
-                        new Notification('Чат удалён', { body: 'Собеседник удалил чат' });
-                    } catch (e) {}
-                }
             });
         }
 
         // ========== ЧАТЫ ==========
         async function createPublicChat() {
             const name = document.getElementById('chatNameInput').value.trim();
-            
-            if (!name) {
-                alert('Введите название чата');
-                return;
-            }
-            
-            if (!currentUser.is_admin && publicChats.length >= 10) {
-                alert('Вы можете создать не более 10 публичных чатов');
-                return;
-            }
-            
+            if (!name) { alert('Введите название чата'); return; }
+            if (!currentUser.is_admin && publicChats.length >= 10) { alert('Вы можете создать не более 10 публичных чатов'); return; }
             try {
-                const newChat = {
-                    name: name,
-                    is_public: true,
-                    type: 'public',
-                    created_at: new Date().toISOString()
-                };
-                
-                const { data, error } = await db
-                    .from('chats')
-                    .insert([newChat])
-                    .select();
-                
+                const newChat = { name, is_public: true, type: 'public', created_at: new Date().toISOString() };
+                const { data, error } = await db.from('chats').insert([newChat]).select();
                 if (error) throw error;
-                
                 const createdChat = {
-                    id: data[0].id,
-                    name: data[0].name,
-                    is_public: data[0].is_public,
-                    type: data[0].type,
-                    created_at: data[0].created_at,
-                    avatar: '👥'
+                    id: data[0].id, name: data[0].name, is_public: data[0].is_public,
+                    type: data[0].type, created_at: data[0].created_at, avatar: '👥'
                 };
-                
                 await db.from('chat_members').insert([{ chat_id: createdChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
-                
                 publicChats.push(createdChat);
-                
                 if (ably) {
                     const globalChatsChannel = ably.channels.get('tok_global_chats');
                     globalChatsChannel.publish('new-chat', createdChat);
                 }
-                
                 if (!myChats.find(c => c.id === createdChat.id)) {
                     myChats.push(createdChat);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                 }
-                
                 joinChat(createdChat);
                 closeCreateChatModal();
                 document.getElementById('chatNameInput').value = '';
-                
             } catch (err) {
                 console.error('Error creating chat:', err);
                 alert('Ошибка при создании чата: ' + err.message);
@@ -3920,100 +3253,52 @@
 
         async function createPrivateChat(user) {
             if (!currentUser || !user) return;
-            
             const ids = [currentUser.id, user.id].sort();
             const pairKey = ids.join('_');
-            
-            let { data: existingChat, error } = await db
-                .from('chats')
-                .select('*')
-                .eq('pair_key', pairKey)
-                .eq('type', 'private')
-                .maybeSingle();
-            
+            let { data: existingChat, error } = await db.from('chats').select('*').eq('pair_key', pairKey).eq('type', 'private').maybeSingle();
             if (existingChat) {
-                const { data: member } = await db
-                    .from('chat_members')
-                    .select('*')
-                    .eq('chat_id', existingChat.id)
-                    .eq('user_id', currentUser.id)
-                    .maybeSingle();
-                
-                if (!member) {
-                    await db.from('chat_members').insert([{ chat_id: existingChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
-                }
-                
+                const { data: member } = await db.from('chat_members').select('*').eq('chat_id', existingChat.id).eq('user_id', currentUser.id).maybeSingle();
+                if (!member) await db.from('chat_members').insert([{ chat_id: existingChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
                 const privateChat = {
-                    id: existingChat.id,
-                    name: existingChat.name,
-                    pair_key: pairKey,
-                    avatar: user.avatar,
-                    is_public: false,
-                    type: 'private',
+                    id: existingChat.id, name: existingChat.name, pair_key: pairKey,
+                    avatar: user.avatar, is_public: false, type: 'private',
                     created_at: existingChat.created_at
                 };
-                
                 if (!myChats.some(c => c.id === privateChat.id)) {
                     myChats.push(privateChat);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                 }
-                
-                // FIX 2: если чат был локально удалён, восстанавливаем
                 if (locallyDeletedChats.has(privateChat.id)) {
                     locallyDeletedChats.delete(privateChat.id);
                     saveLocallyDeletedChats();
                 }
-                
                 joinChat(privateChat);
             } else {
                 try {
-                    const newChat = {
-                        name: '',
-                        is_public: false,
-                        type: 'private',
-                        pair_key: pairKey,
-                        created_at: new Date().toISOString()
-                    };
-                    
-                    const { data, error } = await db                        .from('chats')
-                        .insert([newChat])
-                        .select();
-                    
+                    const newChat = { name: '', is_public: false, type: 'private', pair_key: pairKey, created_at: new Date().toISOString() };
+                    const { data, error } = await db.from('chats').insert([newChat]).select();
                     if (error) throw error;
-                    
                     await db.from('chat_members').insert([
                         { chat_id: data[0].id, user_id: currentUser.id, joined_at: new Date().toISOString() },
                         { chat_id: data[0].id, user_id: user.id, joined_at: new Date().toISOString() }
                     ]);
-                    
                     const privateChat = {
-                        id: data[0].id,
-                        name: '',
-                        pair_key: pairKey,
-                        avatar: user.avatar,
-                        is_public: false,
-                        type: 'private',
+                        id: data[0].id, name: '', pair_key: pairKey,
+                        avatar: user.avatar, is_public: false, type: 'private',
                         created_at: data[0].created_at
                     };
-                    
                     myChats.push(privateChat);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
                     if (ably) {
                         subscribeToChatChannel(privateChat.id);
                         const chatChannel = ably.channels.get(`tok_chat_${privateChat.id}`);
                         chatChannel.publish('user_joined', { userId: currentUser.id, userName: currentUser.name });
-                        
                         const userChannel = ably.channels.get(`user-${user.id}`);
                         userChannel.publish('new-private-chat', {
-                            chatId: privateChat.id,
-                            pairKey: pairKey,
-                            participants: [currentUser.id, user.id],
-                            avatar: privateChat.avatar,
-                            timestamp: Date.now()
+                            chatId: privateChat.id, pairKey, participants: [currentUser.id, user.id],
+                            avatar: privateChat.avatar, timestamp: Date.now()
                         });
                     }
-                    
                     joinChat(privateChat);
                 } catch (err) {
                     console.error('Error creating private chat:', err);
@@ -4024,17 +3309,10 @@
 
         function joinChat(chat) {
             if (!chat || !currentUser) return;
-            
             if (chat.is_public) {
                 (async () => {
                     try {
-                        const { data: member } = await db
-                            .from('chat_members')
-                            .select('*')
-                            .eq('chat_id', chat.id)
-                            .eq('user_id', currentUser.id)
-                            .maybeSingle();
-                        
+                        const { data: member } = await db.from('chat_members').select('*').eq('chat_id', chat.id).eq('user_id', currentUser.id).maybeSingle();
                         if (!member) {
                             await db.from('chat_members').insert([{ chat_id: chat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
                             if (!myChats.some(c => c.id === chat.id)) {
@@ -4045,7 +3323,6 @@
                     } catch (e) {}
                 })();
             }
-            
             currentChat = chat;
             updateUrlWithChat(chat);
             
@@ -4074,38 +3351,28 @@
             
             document.getElementById('currentChatName').innerHTML = escapeHtml(displayName);
             
-            // FIX RF: нормализуем аватар (убираем ui-avatars.com)
-            const safeAvatar = window.normalizeAvatar(avatar, usernameForAvatar);
+            // FIX 1: используем getAvatarBackground — эмодзи НЕ попадает в url()
             const avatarHeader = document.getElementById('chatHeaderAvatar');
-            if (safeAvatar && safeAvatar.startsWith('data:image/svg')) {
-                avatarHeader.style.backgroundImage = `url('${safeAvatar}')`;
-                avatarHeader.textContent = '';
-            } else if (safeAvatar && safeAvatar.includes('http')) {
-                avatarHeader.style.backgroundImage = `url('${safeAvatar}')`;
+            if (window.isImageUrl(avatar)) {
+                avatarHeader.style.backgroundImage = `url('${avatar}')`;
                 avatarHeader.textContent = '';
             } else {
-                avatarHeader.style.backgroundImage = '';
-                avatarHeader.textContent = safeAvatar || '👤';
+                // Генерируем SVG аватар, эмодзи не кладём в URL
+                avatarHeader.style.backgroundImage = `url('${window.getAvatarBackground(avatar, usernameForAvatar)}')`;
+                avatarHeader.textContent = '';
             }
             
             document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : 'Приватный чат';
             document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists && displayName !== 'Избранное') ? 'flex' : 'none';
-            
             updateNotificationBell(chat.id);
             loadChatHistory(chat.id);
-            
             if (!messages[chat.id]) messages[chat.id] = [];
             messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
             markAllMessagesAsRead(chat.id);
             renderMessages();
             updateChatsList();
             updateChatStatus();
-            
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('active');
-            }
-            
+            if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('active');
             setTimeout(() => {
                 try { document.getElementById('messageInput').focus(); } catch (e) {}
                 forceShowInput();
@@ -4114,38 +3381,27 @@
 
         function updateChatStatus() {
             if (!currentChat || currentChat.is_public) return;
-            
             if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) {
                 document.getElementById('chatStatus').innerHTML = '';
                 return;
             }
-            
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
             const otherUser = allUsers.find(u => u.id === otherId);
             if (!otherUser) return;
-            
             const userOnline = onlineUsers[otherUser.id];
             const statusElement = document.getElementById('chatStatus');
-            
             if (userOnline && userOnline.online) {
-                if (userOnline.dnd) {
-                    statusElement.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
-                } else {
-                    statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
-                }
+                if (userOnline.dnd) statusElement.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
+                else statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
             } else {
                 const lastSeen = otherUser?.last_seen ? new Date(otherUser.last_seen).getTime() : null;
-                if (lastSeen) {
-                    statusElement.innerHTML = `был(а) ${formatLastSeen(lastSeen)}`;
-                } else {
-                    statusElement.innerHTML = 'был(а) давно';
-                }
+                if (lastSeen) statusElement.innerHTML = `был(а) ${formatLastSeen(lastSeen)}`;
+                else statusElement.innerHTML = 'был(а) давно';
             }
         }
 
         function markAllMessagesAsRead(chatId) {
             if (!messages[chatId] || !currentUser) return;
-            
             let changed = false;
             messages[chatId].forEach(msg => {
                 if (msg.sender !== currentUser.id) {
@@ -4155,21 +3411,17 @@
                     }
                 }
             });
-            
             if (changed) saveMessageStatuses();
-            
             unreadCounts[chatId] = 0;
             updateChatsList();
         }
 
-        // FIX 2: удаление чата с выбором
+        // ========== УДАЛЕНИЕ ЧАТА ==========
         function openDeleteChatModal(chatId, event) {
             if (event) event.stopPropagation();
             if (!currentUser) return;
-            
             const chat = myChats.find(c => c.id === chatId) || publicChats.find(c => c.id === chatId);
             if (!chat) return;
-            
             chatToDelete = chat;
             document.getElementById('deleteChatModal').classList.add('active');
         }
@@ -4181,87 +3433,49 @@
 
         async function confirmDeleteChat(mode) {
             if (!chatToDelete || !currentUser) return;
-            
             const chat = chatToDelete;
             const chatId = chat.id;
-            
             try {
                 if (mode === 'self') {
-                    // FIX 2: удалить только у себя
-                    // 1) Удаляем членство в chat_members
-                    await db
-                        .from('chat_members')
-                        .delete()
-                        .eq('chat_id', chatId)
-                        .eq('user_id', currentUser.id);
-                    
-                    // 2) Помечаем чат как локально удалённый
+                    await db.from('chat_members').delete().eq('chat_id', chatId).eq('user_id', currentUser.id);
                     locallyDeletedChats.add(chatId);
                     saveLocallyDeletedChats();
-                    
-                    // 3) Удаляем из локального списка
                     myChats = myChats.filter(c => c.id !== chatId);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
-                    // 4) Удаляем локальные сообщения
                     delete messages[chatId];
                     delete unreadCounts[chatId];
-                    
-                    // 5) Если чат открыт — закрываем
                     if (currentChat && currentChat.id === chatId) {
                         currentChat = null;
                         renderMessages();
                         updateUrlWithChat(null);
                     }
-                    
                     updateChatsList();
                     closeDeleteChatModal();
-                    
                 } else if (mode === 'both') {
-                    // FIX 2: удалить у себя и у собеседника
-                    // 1) Уведомляем собеседника через Ably
                     if (ably && chat.type === 'private' && chat.pair_key) {
                         try {
                             const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
-                            chatChannel.publish('chat_deleted', {
-                                chatId: chatId,
-                                deletedBy: currentUser.id
-                            });
-                            
+                            chatChannel.publish('chat_deleted', { chatId, deletedBy: currentUser.id });
                             const otherId = chat.pair_key.split('_').find(id => id !== currentUser.id);
                             if (otherId) {
                                 const otherUserChannel = ably.channels.get(`user-${otherId}`);
-                                otherUserChannel.publish('chat_deleted', {
-                                    chatId: chatId,
-                                    deletedBy: currentUser.id
-                                });
+                                otherUserChannel.publish('chat_deleted', { chatId, deletedBy: currentUser.id });
                             }
-                        } catch (e) {
-                            console.warn('Failed to notify peer about chat deletion:', e);
-                        }
+                        } catch (e) {}
                     }
-                    
-                    // 2) Удаляем все сообщения
                     await db.from('messages').delete().eq('chat_id', chatId);
-                    // 3) Удаляем членство
                     await db.from('chat_members').delete().eq('chat_id', chatId);
-                    // 4) Удаляем сам чат
                     await db.from('chats').delete().eq('id', chatId);
-                    
-                    // 5) Локальная очистка
                     myChats = myChats.filter(c => c.id !== chatId);
                     publicChats = publicChats.filter(c => c.id !== chatId);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
                     delete messages[chatId];
                     delete unreadCounts[chatId];
-                    
                     if (currentChat && currentChat.id === chatId) {
                         currentChat = null;
                         renderMessages();
                         updateUrlWithChat(null);
                     }
-                    
                     updateChatsList();
                     closeDeleteChatModal();
                 }
@@ -4271,115 +3485,70 @@
             }
         }
 
-        async function deleteChat(chatId, event) {
-            // Алиас для старой функции — открывает модалку
+        function deleteChat(chatId, event) {
             openDeleteChatModal(chatId, event);
         }
 
+        // ========== СООБЩЕНИЯ ==========
         async function sendMessage() {
-            if (sendBtnDisabled) {
-                alert('Слишком часто! Подождите секунду.');
-                return;
-            }
-
+            if (sendBtnDisabled) { alert('Слишком часто! Подождите секунду.'); return; }
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
+            if (!currentChat) { alert('Сначала выберите чат'); return; }
             if (!text) return;
-            
             disableSendButton();
-
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const timestamp = now.getTime();
             const clientId = generateUUID();
-            
             const localMessage = {
-                id: clientId,
-                chatId: currentChat.id,
-                sender: currentUser.id,
-                senderName: currentUser.name,
-                senderIsVip: currentUser.is_vip,
-                senderIsAdmin: currentUser.is_admin,
-                text: text,
-                time: timeString,
-                timestamp: timestamp,
-                isAdmin: currentUser.is_admin,
-                edited: false,
-                type: 'out'
+                id: clientId, chatId: currentChat.id, sender: currentUser.id,
+                senderName: currentUser.name, senderIsVip: currentUser.is_vip, senderIsAdmin: currentUser.is_admin,
+                text, time: timeString, timestamp, isAdmin: currentUser.is_admin,
+                edited: false, type: 'out'
             };
-            
             if (!messages[currentChat.id]) messages[currentChat.id] = [];
             messages[currentChat.id].push(localMessage);
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
             messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
             saveMessageStatuses();
-            
             input.value = '';
             input.style.height = 'auto';
-            
             renderMessages();
             updateChatsList();
             forceShowInput();
-            
             const dbMessage = {
-                chat_id: currentChat.id,
-                sender_id: currentUser.id,
-                text: text,
-                is_admin: currentUser.is_admin,
-                created_at: now.toISOString()
+                chat_id: currentChat.id, sender_id: currentUser.id,
+                text, is_admin: currentUser.is_admin, created_at: now.toISOString()
             };
-            
             try {
-                const { data, error } = await db
-                    .from('messages')
-                    .insert([dbMessage])
-                    .select();
-                
+                const { data, error } = await db.from('messages').insert([dbMessage]).select();
                 if (error) {
-                    console.error('Ошибка сохранения сообщения:', error);
                     if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
                     pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
                     localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
-                    
-                    if (error.code === '42501') {
-                        alert('Ошибка прав доступа к таблице messages.');
-                    }
+                    if (error.code === '42501') alert('Ошибка прав доступа к таблице messages.');
                 } else {
                     const realId = data[0].id;
                     const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
                     if (msgIndex !== -1) messages[currentChat.id][msgIndex].id = realId;
-                    
                     if (messageStatuses[clientId]) {
                         messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
                         delete messageStatuses[clientId];
                     }
                     saveMessageStatuses();
-                    
                     if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                         const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                        chatChannel.publish('message', { 
-                            ...dbMessage, 
-                            id: realId, 
-                            sender_name: currentUser.name 
-                        }, (err) => {
+                        chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name }, (err) => {
                             if (err) {
                                 const otherUserId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
                                 const otherUser = allUsers.find(u => u.id === otherUserId);
-                                if (otherUser) {
-                                    addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
-                                }
+                                if (otherUser) addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
                             }
                         });
                     }
                 }
             } catch (err) {
-                console.error('Ошибка при сохранении:', err);
                 if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
                 pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
                 localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
@@ -4387,63 +3556,35 @@
         }
 
         async function sendAudioMessage(audioBlob, duration) {
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-
+            if (!currentChat) { alert('Сначала выберите чат'); return; }
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const clientId = generateUUID();
             const timestamp = now.getTime();
-
             const reader = new FileReader();
             reader.readAsDataURL(audioBlob);
             reader.onloadend = async () => {
                 const base64Audio = reader.result;
-
                 const localMessage = {
-                    id: clientId,
-                    chatId: currentChat.id,
-                    sender: currentUser.id,
-                    senderName: currentUser.name,
-                    senderIsVip: currentUser.is_vip,
-                    senderIsAdmin: currentUser.is_admin,
-                    audio: base64Audio,
-                    duration: duration,
-                    time: timeString,
-                    timestamp: timestamp,
-                    isAdmin: currentUser.is_admin,
-                    edited: false,
-                    type: 'out'
+                    id: clientId, chatId: currentChat.id, sender: currentUser.id,
+                    senderName: currentUser.name, senderIsVip: currentUser.is_vip, senderIsAdmin: currentUser.is_admin,
+                    audio: base64Audio, duration, time: timeString, timestamp,
+                    isAdmin: currentUser.is_admin, edited: false, type: 'out'
                 };
-
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
                 messages[currentChat.id].push(localMessage);
                 messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                
                 messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
                 saveMessageStatuses();
-                
                 renderMessages();
                 updateChatsList();
                 forceShowInput();
-
                 const dbMessage = {
-                    chat_id: currentChat.id,
-                    sender_id: currentUser.id,
-                    audio: base64Audio,
-                    duration: duration,
-                    is_admin: currentUser.is_admin,
-                    created_at: now.toISOString()
+                    chat_id: currentChat.id, sender_id: currentUser.id,
+                    audio: base64Audio, duration, is_admin: currentUser.is_admin, created_at: now.toISOString()
                 };
-
                 try {
-                    const { data, error } = await db
-                        .from('messages')
-                        .insert([dbMessage])
-                        .select();
-                    
+                    const { data, error } = await db.from('messages').insert([dbMessage]).select();
                     if (error) {
                         if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
                         pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
@@ -4452,20 +3593,14 @@
                         const realId = data[0].id;
                         const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
                         if (msgIndex !== -1) messages[currentChat.id][msgIndex].id = realId;
-                        
                         if (messageStatuses[clientId]) {
                             messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
                             delete messageStatuses[clientId];
                         }
                         saveMessageStatuses();
-                        
                         if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                             const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                            chatChannel.publish('message', { 
-                                ...dbMessage, 
-                                id: realId, 
-                                sender_name: currentUser.name 
-                            });
+                            chatChannel.publish('message', { ...dbMessage, id: realId, sender_name: currentUser.name });
                         }
                     }
                 } catch (err) {
@@ -4478,18 +3613,12 @@
 
         async function sendPendingMessages() {
             if (!currentUser || !pendingMessages[currentUser.id]) return;
-            
             const pending = pendingMessages[currentUser.id];
             if (pending.length === 0) return;
-            
             for (const item of pending) {
                 const { tempId, ...dbMessage } = item;
                 try {
-                    const { data, error } = await db
-                        .from('messages')
-                        .insert([dbMessage])
-                        .select();
-                    
+                    const { data, error } = await db.from('messages').insert([dbMessage]).select();
                     if (!error) {
                         const realId = data[0].id;
                         for (const chatId in messages) {
@@ -4507,17 +3636,14 @@
                     }
                 } catch (err) {}
             }
-            
             delete pendingMessages[currentUser.id];
             localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
         }
 
         function processMessageQueue() {
             if (!ably || !currentUser) return;
-            
             Object.keys(messageQueue).forEach(userId => {
-                const userOnline = onlineUsers[userId] && onlineUsers[userId].online;
-                if (userOnline) sendQueuedMessagesToUser(userId);
+                if (onlineUsers[userId] && onlineUsers[userId].online) sendQueuedMessagesToUser(userId);
             });
         }
 
@@ -4529,11 +3655,9 @@
 
         function sendQueuedMessagesToUser(userId) {
             if (!messageQueue[userId] || messageQueue[userId].length === 0) return;
-            
             const messagesToSend = [...messageQueue[userId]];
             delete messageQueue[userId];
             localStorage.setItem('messageQueue', JSON.stringify(messageQueue));
-            
             messagesToSend.forEach(message => {
                 if (ably) {
                     const chatChannel = ably.channels.get(`tok_chat_${message.chat_id}`);
@@ -4545,34 +3669,23 @@
         function deleteMessage(messageId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             if (!currentChat) return;
-            
             const msg = messages[currentChat.id]?.find(m => m.id === messageId);
             if (!msg) return;
-            
-            if (!currentUser.is_admin && msg.sender != currentUser.id) {
-                alert('Вы можете удалять только свои сообщения');
-                return;
-            }
-            
+            if (!currentUser.is_admin && msg.sender != currentUser.id) { alert('Вы можете удалять только свои сообщения'); return; }
             if (!confirm('Удалить сообщение?')) return;
-            
             if (!deletedMessages[currentChat.id]) deletedMessages[currentChat.id] = [];
             if (!deletedMessages[currentChat.id].includes(messageId)) {
                 deletedMessages[currentChat.id].push(messageId);
                 localStorage.setItem('deletedMessages', JSON.stringify(deletedMessages));
             }
-            
             messages[currentChat.id] = messages[currentChat.id].filter(m => m.id !== messageId);
-            
             db.from('messages').delete().eq('id', messageId).then(({ error }) => {
-                if (error) console.error('Error deleting message from DB:', error);
+                if (error) console.error('Error deleting message:', error);
             });
-            
             if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                 const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
                 chatChannel.publish('delete', { messageId, senderId: currentUser.id });
             }
-            
             hideMessageActions();
             renderMessages();
             updateChatsList();
@@ -4582,15 +3695,9 @@
         function editMessage(messageId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             if (!currentChat) return;
-            
             const msg = messages[currentChat.id]?.find(m => m.id === messageId);
             if (!msg) return;
-            
-            if (msg.sender != currentUser.id) {
-                alert('Вы можете редактировать только свои сообщения');
-                return;
-            }
-            
+            if (msg.sender != currentUser.id) { alert('Вы можете редактировать только свои сообщения'); return; }
             messageToEdit = msg;
             document.getElementById('editMessageText').value = msg.text || '';
             document.getElementById('editMessageModal').classList.add('active');
@@ -4600,19 +3707,15 @@
         function saveEditedMessage() {
             const newText = document.getElementById('editMessageText').value.trim();
             if (!newText || !messageToEdit || !currentChat) return;
-            
             const msgIndex = messages[currentChat.id].findIndex(m => m.id === messageToEdit.id);
             if (msgIndex !== -1) {
                 messages[currentChat.id][msgIndex].text = newText;
                 messages[currentChat.id][msgIndex].edited = true;
-                
                 db.from('messages').update({ text: newText, edited: true }).eq('id', messageToEdit.id);
-                
                 if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                     const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
                     chatChannel.publish('edit', { messageId: messageToEdit.id, newText, editor: currentUser.id });
                 }
-                
                 renderMessages();
                 closeEditMessageModal();
             }
@@ -4621,38 +3724,28 @@
         function renderMessages() {
             const container = document.getElementById('messagesContainer');
             if (!container) return;
-            
             const oldScrollHeight = container.scrollHeight;
             const oldScrollTop = container.scrollTop;
             const isAtBottom = oldScrollHeight - oldScrollTop - container.clientHeight < 50;
-            
             let newMessages = '';
-            
             if (!currentChat) {
                 newMessages = '<div class="empty-state">👈 Выберите чат</div>';
             } else if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
                 newMessages = '<div class="empty-state">Нет сообщений</div>';
             } else {
                 messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                
                 const fragment = [];
                 let lastDayKey = null;
-                
                 messages[currentChat.id].forEach(msg => {
                     if (deletedMessages[currentChat.id] && deletedMessages[currentChat.id].includes(msg.id)) return;
-                    
                     const dayKey = getDayKey(msg.timestamp || Date.now());
                     if (dayKey !== lastDayKey) {
-                        const dividerText = formatDateDivider(msg.timestamp || Date.now());
-                        fragment.push(`<div class="date-divider">${escapeHtml(dividerText)}</div>`);
+                        fragment.push(`<div class="date-divider">${escapeHtml(formatDateDivider(msg.timestamp || Date.now()))}</div>`);
                         lastDayKey = dayKey;
                     }
-                    
                     const status = messageStatuses[msg.id] || { status: msg.sender == currentUser.id ? 'sent' : 'delivered' };
-                    
                     let content = '';
                     let statusHtml = '';
-                    
                     if (msg.type === 'out') {
                         let statusIcon = '';
                         if (status.status === 'pending') statusIcon = '⏳';
@@ -4661,34 +3754,28 @@
                         else if (status.status === 'read') statusIcon = '✓✓';
                         statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${statusIcon}</span></span>`;
                     }
-                    
                     if (msg.text) {
                         content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
                     } else if (msg.audio) {
-                        const messageId = msg.id;
-                        const duration = msg.duration || 0;
-                        
                         content = `
                             <div class="message-bubble audio-message">
                                 <div class="audio-player">
-                                    <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
+                                    <button class="play-pause-btn" data-message-id="${msg.id}" onclick="toggleAudio('${msg.id}', '${msg.audio}')">▶️</button>
                                     <div class="audio-progress-container">
-                                        <div class="audio-progress-bar" onclick="seekAudio('${messageId}', event)">
-                                            <div class="audio-progress-fill" data-message-id="${messageId}" style="width: 0%"></div>
+                                        <div class="audio-progress-bar" onclick="seekAudio('${msg.id}', event)">
+                                            <div class="audio-progress-fill" data-message-id="${msg.id}" style="width: 0%"></div>
                                         </div>
                                         <div class="audio-time-container">
-                                            <span class="audio-current-time" data-message-id="${messageId}">0:00</span>
-                                            <span class="audio-duration" data-message-id="${messageId}">${formatTime(duration)}</span>
+                                            <span class="audio-current-time" data-message-id="${msg.id}">0:00</span>
+                                            <span class="audio-duration" data-message-id="${msg.id}">${formatTime(msg.duration || 0)}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         `;
                     }
-                    
                     const canDelete = currentUser.is_admin || msg.sender == currentUser.id;
                     const canEdit = msg.sender == currentUser.id;
-                    
                     let actions = '';
                     if (canDelete || canEdit) {
                         actions = `
@@ -4698,11 +3785,9 @@
                             </div>
                         `;
                     }
-                    
                     let senderDisplay = escapeHtml(msg.senderName);
                     if (msg.senderIsVip) senderDisplay += ' 👑';
                     if (msg.senderIsAdmin) senderDisplay += ' ⚡';
-                    
                     fragment.push(`
                         <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)">
                             ${actions}
@@ -4715,81 +3800,52 @@
                         </div>
                     `);
                 });
-                
                 newMessages = fragment.join('');
             }
-            
             container.innerHTML = newMessages;
-            
-            if (isAtBottom) {
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-            }
-            
+            if (isAtBottom) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
             if (currentChat) markMessagesAsRead(currentChat.id);
             updateUnreadCounts();
         }
 
         function markMessagesAsRead(chatId) {
             if (!ably || !messages[chatId] || !currentChat || currentChat.is_public) return;
-            
             let changed = false;
             messages[chatId].forEach(msg => {
-                if (msg.sender != currentUser.id && 
-                    (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
-                    
-                    if (!messageStatuses[msg.id]) {
-                        messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
-                    } else {
-                        messageStatuses[msg.id].status = 'read';
-                        messageStatuses[msg.id].readAt = Date.now();
-                    }
+                if (msg.sender != currentUser.id && (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
+                    if (!messageStatuses[msg.id]) messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
+                    else { messageStatuses[msg.id].status = 'read'; messageStatuses[msg.id].readAt = Date.now(); }
                     changed = true;
-                    
                     const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
                     chatChannel.publish('read_receipt', { messageId: msg.id, reader: currentUser.id });
                 }
             });
-            
             if (changed) saveMessageStatuses();
         }
 
         function updateUnreadCounts() {
             if (!currentUser) return;
-            
             Object.keys(messages).forEach(chatId => {
                 if (currentChat && chatId === currentChat.id) {
                     unreadCounts[chatId] = 0;
                 } else {
                     let count = 0;
                     messages[chatId]?.forEach(msg => {
-                        if (msg.sender !== currentUser.id && 
-                            (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
-                            count++;
-                        }
+                        if (msg.sender !== currentUser.id && (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) count++;
                     });
                     unreadCounts[chatId] = count;
                 }
             });
-            
             updateChatsList();
         }
 
         // ========== ABLY ==========
         function initAbly() {
             if (!currentUser) return;
-            
-            if (typeof Ably === 'undefined') {
-                console.warn('Ably library not loaded. Realtime features disabled.');
-                return;
-            }
-            
-            if (ably) {
-                try { ably.close(); } catch (e) {}
-            }
-            
+            if (typeof Ably === 'undefined') { console.warn('Ably not loaded'); return; }
+            if (ably) { try { ably.close(); } catch (e) {} }
             ablyUserChannel = null;
             userChannelSubscribed = false;
-            
             try {
                 ably = new Ably.Realtime({
                     key: ABLY_API_KEY,
@@ -4799,7 +3855,6 @@
                     realtimeRequestTimeout: 20000,
                     echoMessages: false,
                     idleTimeout: 60000,
-                    // FIX RF: приоритет транспортов для нестабильных сетей
                     transports: ['web_socket', 'xhr_streaming', 'xhr_polling']
                 });
             } catch (e) {
@@ -4809,45 +3864,29 @@
 
             ably.connection.on('connected', () => {
                 console.log('Connected to Ably');
-                
-                if (ablyReconnectTimer) {
-                    clearTimeout(ablyReconnectTimer);
-                    ablyReconnectTimer = null;
-                }
-                
-                // FIX 3: подписываемся на user-канал ПЕРВЫМ делом — до presence
+                if (ablyReconnectTimer) { clearTimeout(ablyReconnectTimer); ablyReconnectTimer = null; }
                 setupUserChannel();
                 
                 const presenceChannel = ably.channels.get('tok_global_online');
-                
                 presenceChannel.attach((err) => {
                     if (err) return;
-                    
                     try {
-                        presenceChannel.presence.enter({ 
-                            name: currentUser.name, 
-                            avatar: currentUser.avatar || '👤',
-                            bio: currentUser.bio || '',
-                            is_vip: currentUser.is_vip || false,
-                            is_admin: currentUser.is_admin || false,
-                            dnd: currentUser.dnd || false,
+                        presenceChannel.presence.enter({
+                            name: currentUser.name, avatar: currentUser.avatar || '👤',
+                            bio: currentUser.bio || '', is_vip: currentUser.is_vip || false,
+                            is_admin: currentUser.is_admin || false, dnd: currentUser.dnd || false,
                             lastSeen: Date.now()
                         });
                     } catch (e) {}
-                    
                     presenceChannel.presence.get((err, members) => {
                         if (members) {
                             members.forEach(member => {
                                 if (member.clientId !== currentUser.id.toString()) {
                                     onlineUsers[member.clientId] = {
-                                        id: member.clientId,
-                                        name: member.data.name,
-                                        avatar: member.data.avatar || '👤',
-                                        bio: member.data.bio || '',
-                                        online: true,
-                                        is_vip: member.data.is_vip || false,
-                                        is_admin: member.data.is_admin || false,
-                                        dnd: member.data.dnd || false,
+                                        id: member.clientId, name: member.data.name,
+                                        avatar: member.data.avatar || '👤', bio: member.data.bio || '',
+                                        online: true, is_vip: member.data.is_vip || false,
+                                        is_admin: member.data.is_admin || false, dnd: member.data.dnd || false,
                                         lastSeen: Date.now()
                                     };
                                 }
@@ -4860,14 +3899,9 @@
                 presenceChannel.subscribe('enter', (member) => {
                     if (member.clientId !== currentUser.id.toString()) {
                         onlineUsers[member.clientId] = {
-                            id: member.clientId,
-                            name: member.data.name,
-                            avatar: member.data.avatar || '👤',
-                            bio: member.data.bio || '',
-                            online: true,
-                            is_vip: member.data.is_vip || false,
-                            is_admin: member.data.is_admin || false,
-                            dnd: member.data.dnd || false,
+                            id: member.clientId, name: member.data.name, avatar: member.data.avatar || '👤',
+                            bio: member.data.bio || '', online: true, is_vip: member.data.is_vip || false,
+                            is_admin: member.data.is_admin || false, dnd: member.data.dnd || false,
                             lastSeen: Date.now()
                         };
                         sendQueuedMessagesToUser(member.clientId);
@@ -4879,15 +3913,10 @@
                 presenceChannel.subscribe('update', (member) => {
                     if (member.clientId !== currentUser.id.toString()) {
                         onlineUsers[member.clientId] = {
-                            ...onlineUsers[member.clientId],
-                            name: member.data.name,
-                            avatar: member.data.avatar,
-                            bio: member.data.bio,
-                            is_vip: member.data.is_vip,
-                            is_admin: member.data.is_admin,
-                            online: true,
-                            dnd: member.data.dnd,
-                            lastSeen: Date.now()
+                            ...onlineUsers[member.clientId], name: member.data.name,
+                            avatar: member.data.avatar, bio: member.data.bio,
+                            is_vip: member.data.is_vip, is_admin: member.data.is_admin,
+                            online: true, dnd: member.data.dnd, lastSeen: Date.now()
                         };
                         if (currentTab === 'users' || currentTab === 'chats') updateChatsList();
                         updateChatStatus();
@@ -4912,13 +3941,11 @@
                     }
                 });
 
-                myChats.forEach(chat => {
-                    if (!chat.is_public) subscribeToChatChannel(chat.id);
-                });
+                myChats.forEach(chat => { if (!chat.is_public) subscribeToChatChannel(chat.id); });
             });
 
             ably.connection.on('disconnected', () => {
-                console.log('Ably disconnected, attempting to reconnect...');
+                console.log('Ably disconnected');
                 if (ablyReconnectTimer) clearTimeout(ablyReconnectTimer);
                 ablyReconnectTimer = setTimeout(() => {
                     if (currentUser && ably && ably.connection.state !== 'connected') {
@@ -4928,28 +3955,21 @@
             });
 
             ably.connection.on('failed', () => {
-                console.log('Ably failed, reinitializing...');
+                console.log('Ably failed');
                 if (ablyReconnectTimer) clearTimeout(ablyReconnectTimer);
-                ablyReconnectTimer = setTimeout(() => {
-                    if (currentUser) initAbly();
-                }, 3000);
+                ablyReconnectTimer = setTimeout(() => { if (currentUser) initAbly(); }, 3000);
             });
         }
 
-        // FIX 3: подписка на персональный user-канал для звонков
+        // FIX 2: подписка на user-канал с полным набором обработчиков
         function setupUserChannel() {
             if (!ably || !currentUser) return;
-            
             const channelName = `user-${currentUser.id}`;
             const userChannel = ably.channels.get(channelName);
-            
-            // Отписываемся от предыдущей подписки, если была
             try { userChannel.unsubscribe(); } catch (e) {}
-            
             ablyUserChannel = userChannel;
             userChannelSubscribed = true;
-            
-            // Подписки на звонки
+
             userChannel.subscribe('call_request', (message) => {
                 handleIncomingCallRequest(message.data);
             });
@@ -4959,29 +3979,19 @@
                 if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (currentCall.status !== 'calling') return;
-                
                 clearTimeout(currentCall.timeout);
                 currentCall.status = 'connecting';
-
                 initAudioContext();
-
                 try {
                     localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                     peerConnection = createPeerConnection();
                     localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                    const offer = await peerConnection.createOffer({
-                        offerToReceiveAudio: true,
-                        offerToReceiveVideo: false
-                    });
+                    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
                     await peerConnection.setLocalDescription(offer);
-
                     if (ably) {
                         const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
                         userChannel2.publish('webrtc_offer', {
-                            callId,
-                            offer: { type: offer.type, sdp: offer.sdp },
-                            timestamp: Date.now()
+                            callId, offer: { type: offer.type, sdp: offer.sdp }, timestamp: Date.now()
                         });
                     }
                 } catch (err) {
@@ -4994,8 +4004,7 @@
             userChannel.subscribe('call_rejected', (message) => {
                 const { callId, reason } = message.data;
                 if (!currentCall || currentCall.callId !== callId) return;
-                if (reason === 'busy') alert('Абонент занят');
-                else alert('Вызов отклонен');
+                alert(reason === 'busy' ? 'Абонент занят' : 'Вызов отклонен');
                 resetCallState();
             });
 
@@ -5013,25 +4022,19 @@
                 if (currentCall.isInitiator) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (!peerConnection) return;
-
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
                     remoteDescriptionSet = true;
-                    
                     for (const candidate of pendingIceCandidates) {
                         try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
                     }
                     pendingIceCandidates = [];
-
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
-
                     if (ably) {
                         const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
                         userChannel2.publish('webrtc_answer', {
-                            callId,
-                            answer: { type: answer.type, sdp: answer.sdp },
-                            timestamp: Date.now()
+                            callId, answer: { type: answer.type, sdp: answer.sdp }, timestamp: Date.now()
                         });
                     }
                 } catch (err) {
@@ -5044,11 +4047,9 @@
                 if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (!peerConnection) return;
-
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
                     remoteDescriptionSet = true;
-                    
                     for (const candidate of pendingIceCandidates) {
                         try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
                     }
@@ -5063,45 +4064,28 @@
                 if (!currentCall || currentCall.callId !== callId) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (!peerConnection) return;
-
                 if (!remoteDescriptionSet) {
                     pendingIceCandidates.push(candidate);
                     return;
                 }
-
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (err) {}
+                try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (err) {}
             });
 
-            // FIX 2: уведомление об удалении чата собеседником
             userChannel.subscribe('chat_deleted', (message) => {
                 const { chatId, deletedBy } = message.data || {};
                 if (!chatId || deletedBy === currentUser.id) return;
-                
-                // Удаляем у себя
                 locallyDeletedChats.add(chatId);
                 saveLocallyDeletedChats();
-                
                 myChats = myChats.filter(c => c.id !== chatId);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                
                 delete messages[chatId];
                 delete unreadCounts[chatId];
-                
                 if (currentChat && currentChat.id === chatId) {
                     currentChat = null;
                     renderMessages();
                     updateUrlWithChat(null);
                 }
-                
                 updateChatsList();
-                
-                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                    try {
-                        new Notification('Чат удалён', { body: 'Собеседник удалил чат' });
-                    } catch (e) {}
-                }
             });
 
             userChannel.subscribe('new-private-chat', (message) => {
@@ -5110,22 +4094,15 @@
                 if (!participants.includes(currentUser.id)) return;
                 if (myChats.some(c => c.id === chatId)) return;
                 if (locallyDeletedChats.has(chatId)) return;
-                
                 const otherUserId = participants.find(id => id !== currentUser.id);
                 const otherUser = allUsers.find(u => u.id === otherUserId);
                 const newChat = {
-                    id: chatId,
-                    name: '',
-                    pair_key: pairKey,
+                    id: chatId, name: '', pair_key: pairKey,
                     avatar: otherUser ? otherUser.avatar : '👤',
-                    is_public: false,
-                    type: 'private',
-                    created_at: new Date().toISOString()
+                    is_public: false, type: 'private', created_at: new Date().toISOString()
                 };
-                
                 myChats.push(newChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                
                 if (ably) subscribeToChatChannel(newChat.id);
                 updateChatsList();
             });
@@ -5138,13 +4115,10 @@
                     try {
                         const presenceChannel = ably.channels.get('tok_global_online');
                         if (presenceChannel.state === 'attached') {
-                            presenceChannel.presence.update({ 
-                                name: currentUser.name,
-                                avatar: currentUser.avatar || '👤',
-                                bio: currentUser.bio || '',
-                                is_vip: currentUser.is_vip || false,
-                                is_admin: currentUser.is_admin || false,
-                                dnd: currentUser.dnd || false,
+                            presenceChannel.presence.update({
+                                name: currentUser.name, avatar: currentUser.avatar || '👤',
+                                bio: currentUser.bio || '', is_vip: currentUser.is_vip || false,
+                                is_admin: currentUser.is_admin || false, dnd: currentUser.dnd || false,
                                 lastSeen: Date.now()
                             });
                         }
@@ -5160,13 +4134,10 @@
                     try {
                         const presenceChannel = ably.channels.get('tok_global_online');
                         if (presenceChannel.state === 'attached') {
-                            presenceChannel.presence.update({ 
-                                name: currentUser.name,
-                                avatar: currentUser.avatar || '👤',
-                                bio: currentUser.bio || '',
-                                is_vip: currentUser.is_vip || false,
-                                is_admin: currentUser.is_admin || false,
-                                dnd: currentUser.dnd || false,
+                            presenceChannel.presence.update({
+                                name: currentUser.name, avatar: currentUser.avatar || '👤',
+                                bio: currentUser.bio || '', is_vip: currentUser.is_vip || false,
+                                is_admin: currentUser.is_admin || false, dnd: currentUser.dnd || false,
                                 lastSeen: Date.now()
                             });
                         }
@@ -5197,34 +4168,23 @@
         function updateChatsList() {
             const list = document.getElementById('chatsList');
             if (!list) return;
-            
             let items = [];
-            
             if (currentTab === 'chats') {
-                // FIX 1: фильтруем — только чаты с моими сообщениями, кроме "Избранное"
                 const filteredChats = myChats.filter(chat => {
-                    // Избранное всегда показываем
                     if (chat.type === 'private' && chat.pair_key === `${currentUser.id}_${currentUser.id}`) return true;
-                    // Локально удалённые — не показываем
                     if (locallyDeletedChats.has(chat.id)) return false;
-                    // Публичные чаты — показываем (пользователь сам зашёл)
                     if (chat.is_public) return true;
-                    // Приватные — только если есть мои сообщения
                     return hasMyMessages(chat.id);
                 });
-                
                 items = [...filteredChats].sort((a, b) => {
                     const aIsSaved = a.type === 'private' && a.pair_key === `${currentUser.id}_${currentUser.id}`;
                     const bIsSaved = b.type === 'private' && b.pair_key === `${currentUser.id}_${currentUser.id}`;
                     if (aIsSaved && !bIsSaved) return -1;
                     if (!aIsSaved && bIsSaved) return 1;
-                    
                     const aPinned = isChatPinned(a.id);
                     const bPinned = isChatPinned(b.id);
                     if (aPinned && !bPinned) return -1;
                     if (!aPinned && bPinned) return 1;
-                    
-                    // Сортируем по последнему сообщению
                     const aMsgs = messages[a.id];
                     const bMsgs = messages[b.id];
                     const aLast = aMsgs && aMsgs.length > 0 ? aMsgs[aMsgs.length - 1].timestamp : new Date(a.created_at).getTime();
@@ -5234,37 +4194,27 @@
             } else if (currentTab === 'public') {
                 items = [...publicChats].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             } else if (currentTab === 'users') {
-                const allUsersList = allUsers.map(user => {
+                items = allUsers.map(user => {
                     const onlineUser = onlineUsers[user.id];
                     if (user.id === currentUser.id) return null;
-                    
                     return {
-                        id: user.id,
-                        name: user.username,
-                        avatar: user.avatar || '👤',
-                        bio: user.bio || '',
-                        online: onlineUser ? onlineUser.online : false,
-                        is_vip: user.is_vip || false,
-                        is_admin: user.is_admin || false,
+                        id: user.id, name: user.username, avatar: user.avatar || '👤',
+                        bio: user.bio || '', online: onlineUser ? onlineUser.online : false,
+                        is_vip: user.is_vip || false, is_admin: user.is_admin || false,
                         dnd: onlineUser ? onlineUser.dnd : (user.dnd || false),
                         lastSeen: onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null)
                     };
                 }).filter(Boolean);
-                
-                items = allUsersList;
             }
-            
             const searchInput = document.getElementById('searchInput');
             const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
             if (searchTerm) {
-                items = items.filter(item => 
+                items = items.filter(item =>
                     (item.name || '').toLowerCase().includes(searchTerm) ||
                     (item.bio || '').toLowerCase().includes(searchTerm)
                 );
             }
-            
             let newHTML = '';
-            
             if (items.length === 0) {
                 newHTML = '<div class="empty-state">Ничего не найдено</div>';
             } else {
@@ -5275,24 +4225,23 @@
                 });
                 newHTML = fragment.join('');
             }
-            
             list.innerHTML = newHTML;
         }
 
+        // FIX 1: renderUserItem — не кладём эмодзи в url()
         function renderUserItem(user) {
             const statusClass = user.online ? (user.dnd ? 'dnd' : 'online') : 'offline';
             const lastSeenText = !user.online && user.lastSeen ? formatLastSeen(user.lastSeen) : '';
-            
             let badges = '';
             if (user.is_vip) badges += ' 👑';
             if (user.is_admin) badges += ' ⚡';
-            
-            const safeAvatar = window.normalizeAvatar(user.avatar, user.name);
-            const avatarStyle = safeAvatar ? `background-image: url('${safeAvatar}');` : '';
-            
+            // Безопасный аватар: если URL — используем его. Иначе — генерируем SVG.
+            const avatarBg = window.isImageUrl(user.avatar)
+                ? user.avatar
+                : window.generateAvatarUrl(user.name);
             return `
                 <div class="chat-item" onclick="createPrivateChat({id: '${user.id}', name: '${escapeHtml(user.name)}', avatar: '${escapeHtml(user.avatar)}'})">
-                    <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center; color: transparent;">${escapeHtml(user.avatar)}</div>
+                    <div class="chat-avatar" style="background-image: url('${avatarBg}'); background-size: cover; background-position: center;"></div>
                     <div class="chat-details">
                         <div class="chat-name">
                             ${escapeHtml(user.name)}${badges}
@@ -5308,22 +4257,20 @@
             `;
         }
 
+        // FIX 1: renderChatItem — не кладём эмодзи в url()
         function renderChatItem(chat) {
             const lastMsg = messages[chat.id] && messages[chat.id].length > 0 ? messages[chat.id][messages[chat.id].length - 1] : null;
             const unread = unreadCounts[chat.id] || 0;
             const isPinned = isChatPinned(chat.id);
-            
             let lastMessageText = 'Нет сообщений';
             let lastMessageDate = '';
             if (lastMsg) {
                 lastMessageText = lastMsg.text ? lastMsg.text : (lastMsg.audio ? '🎤 Голосовое' : '📷 Медиа');
                 lastMessageDate = formatChatListDate(lastMsg.timestamp);
             }
-            
             let displayName = chat.name;
             let avatar = chat.avatar || '👥';
             let usernameForAvatar = displayName;
-            
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
                     displayName = 'Избранное';
@@ -5342,13 +4289,13 @@
                     }
                 }
             }
-            
-            const safeAvatar = window.normalizeAvatar(avatar, usernameForAvatar);
-            const avatarStyle = safeAvatar ? `background-image: url('${safeAvatar}');` : '';
-            
+            // FIX 1: не кладём эмодзи в url()
+            const avatarBg = window.isImageUrl(avatar)
+                ? avatar
+                : window.generateAvatarUrl(usernameForAvatar);
             return `
                 <div class="chat-item ${currentChat?.id === chat.id ? 'active' : ''}" onclick='joinChat(${JSON.stringify(chat).replace(/'/g, "&apos;")})'>
-                    <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center; color: transparent;">${escapeHtml(avatar)}</div>
+                    <div class="chat-avatar" style="background-image: url('${avatarBg}'); background-size: cover; background-position: center;"></div>
                     <div class="chat-details">
                         <div class="chat-name">
                             ${escapeHtml(displayName)}
@@ -5369,15 +4316,12 @@
             `;
         }
 
+        // FIX 1: updateProfileUI — не кладём эмодзи в url()
         function updateProfileUI() {
             if (!currentUser) return;
-            
             const nameSpan = document.getElementById('profileName');
             nameSpan.innerHTML = '';
-            
-            const nameText = document.createTextNode(currentUser.name + ' ');
-            nameSpan.appendChild(nameText);
-            
+            nameSpan.appendChild(document.createTextNode(currentUser.name + ' '));
             if (currentUser.is_vip) {
                 const badge = document.createElement('span');
                 badge.className = 'vip-badge';
@@ -5390,72 +4334,42 @@
                 badge.textContent = '⚡ Админ';
                 nameSpan.appendChild(badge);
             }
-            
             const statusDisplay = document.getElementById('profileStatusDisplay');
-            if (currentUser.dnd) {
-                statusDisplay.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
-            } else {
-                statusDisplay.innerHTML = '<span class="online-indicator"></span> в сети';
-            }
-            
+            if (currentUser.dnd) statusDisplay.innerHTML = '<span class="dnd-indicator"></span> Не беспокоить';
+            else statusDisplay.innerHTML = '<span class="online-indicator"></span> в сети';
             const avatarElement = document.getElementById('profileAvatar');
             const avatarLarge = document.getElementById('profileAvatarLarge');
-            const safeAvatar = window.normalizeAvatar(currentUser.avatar, currentUser.name);
-            
-            if (safeAvatar) {
-                avatarElement.style.backgroundImage = `url('${safeAvatar}')`;
-                avatarElement.style.backgroundSize = 'cover';
-                avatarElement.style.backgroundPosition = 'center';
-                avatarElement.textContent = '';
-                
-                avatarLarge.style.backgroundImage = `url('${safeAvatar}')`;
-                avatarLarge.style.backgroundSize = 'cover';
-                avatarLarge.style.backgroundPosition = 'center';
-                avatarLarge.textContent = '';
-            } else {
-                avatarElement.style.backgroundImage = '';
-                avatarElement.textContent = currentUser.avatar || '👤';
-                avatarLarge.style.backgroundImage = '';
-                avatarLarge.textContent = currentUser.avatar || '👤';
-            }
-            
+            const avatarBg = window.isImageUrl(currentUser.avatar)
+                ? currentUser.avatar
+                : window.generateAvatarUrl(currentUser.name);
+            avatarElement.style.backgroundImage = `url('${avatarBg}')`;
+            avatarElement.style.backgroundSize = 'cover';
+            avatarElement.style.backgroundPosition = 'center';
+            avatarElement.textContent = '';
+            avatarLarge.style.backgroundImage = `url('${avatarBg}')`;
+            avatarLarge.style.backgroundSize = 'cover';
+            avatarLarge.style.backgroundPosition = 'center';
+            avatarLarge.textContent = '';
             document.getElementById('profileBioInput').value = currentUser.bio || '';
             document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
         }
 
         // ========== АУДИО ==========
-        function toggleRecording() {
-            if (isRecording) stopRecording();
-            else startRecording();
-        }
+        function toggleRecording() { if (isRecording) stopRecording(); else startRecording(); }
 
         function startRecording() {
             const messageInput = document.getElementById('messageInput');
             if (messageInput.value.trim().length > 0) return;
-            
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-            
-            if (!isMediaRecorderSupported()) {
-                alert('Ваш браузер не поддерживает запись аудио.');
-                return;
-            }
-            
+            if (!currentChat) { alert('Сначала выберите чат'); return; }
+            if (!isMediaRecorderSupported()) { alert('Ваш браузер не поддерживает запись аудио.'); return; }
             recordingStartTime = Date.now();
-            
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaStream = stream;
                     const mimeType = getSupportedMimeType();
-                    let options = {};
-                    if (mimeType) options = { mimeType: mimeType };
-                    
+                    let options = mimeType ? { mimeType } : {};
                     try {
-                        mediaRecorder = Object.keys(options).length > 0 
-                            ? new MediaRecorder(stream, options) 
-                            : new MediaRecorder(stream);
+                        mediaRecorder = Object.keys(options).length > 0 ? new MediaRecorder(stream, options) : new MediaRecorder(stream);
                     } catch (e) {
                         try { mediaRecorder = new MediaRecorder(stream); }
                         catch (e2) {
@@ -5465,52 +4379,29 @@
                             return;
                         }
                     }
-                    
                     audioChunks = [];
-
-                    mediaRecorder.ondataavailable = event => {
-                        if (event.data && event.data.size > 0) audioChunks.push(event.data);
-                    };
-
+                    mediaRecorder.ondataavailable = event => { if (event.data && event.data.size > 0) audioChunks.push(event.data); };
                     mediaRecorder.onstop = async () => {
-                        const finalMime = (mediaRecorder.mimeType || mimeType || 'audio/webm');
+                        const finalMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
                         const audioBlob = new Blob(audioChunks, { type: finalMime });
                         const duration = Math.round((Date.now() - recordingStartTime) / 1000);
-                        
-                        if (mediaStream) {
-                            mediaStream.getTracks().forEach(track => track.stop());
-                            mediaStream = null;
-                        }
-                        
-                        if (audioBlob.size > 0 && duration > 0.1) {
-                            await sendAudioMessage(audioBlob, duration);
-                        }
-                        
+                        if (mediaStream) { mediaStream.getTracks().forEach(track => track.stop()); mediaStream = null; }
+                        if (audioBlob.size > 0 && duration > 0.1) await sendAudioMessage(audioBlob, duration);
                         const micBtn = document.getElementById('micBtn');
                         if (micBtn) micBtn.classList.remove('recording');
                     };
-
                     mediaRecorder.start();
                     isRecording = true;
                     const micBtn = document.getElementById('micBtn');
                     if (micBtn) micBtn.classList.add('recording');
-                    
-                    recordingTimeout = setTimeout(() => {
-                        if (isRecording) stopRecording();
-                    }, 60000);
+                    recordingTimeout = setTimeout(() => { if (isRecording) stopRecording(); }, 60000);
                 })
-                .catch(err => {
-                    let msg = 'Не удалось получить доступ к микрофону';
-                    if (err.name === 'NotAllowedError') msg = 'Доступ к микрофону запрещён.';
-                    alert(msg);
-                });
+                .catch(err => { alert('Не удалось получить доступ к микрофону'); });
         }
 
         function stopRecording() {
             if (!isRecording) return;
-            try {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-            } catch (e) {}
+            try { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); } catch (e) {}
             isRecording = false;
             if (recordingTimeout) { clearTimeout(recordingTimeout); recordingTimeout = null; }
         }
@@ -5526,31 +4417,15 @@
                     audioElements[messageId].onended = () => { updateAudioButton(messageId, false); updateAudioProgress(messageId); };
                     audioElements[messageId].onpause = () => updateAudioButton(messageId, false);
                     audioElements[messageId].onplay = () => updateAudioButton(messageId, true);
-                } catch (e) {
-                    alert('Не удалось создать аудио элемент');
-                    return;
-                }
+                } catch (e) { alert('Не удалось создать аудио элемент'); return; }
             }
-            
             const audio = audioElements[messageId];
-            
             if (activeAudioId === messageId && activeAudio) {
-                if (!activeAudio.paused) {
-                    activeAudio.pause();
-                    updateAudioButton(messageId, false);
-                } else {
-                    activeAudio.play().catch(e => {});
-                    updateAudioButton(messageId, true);
-                }
+                if (!activeAudio.paused) { activeAudio.pause(); updateAudioButton(messageId, false); }
+                else { activeAudio.play().catch(e => {}); updateAudioButton(messageId, true); }
                 return;
             }
-            
-            if (activeAudio) {
-                activeAudio.pause();
-                activeAudio.currentTime = 0;
-                updateAudioButton(activeAudioId, false);
-            }
-            
+            if (activeAudio) { activeAudio.pause(); activeAudio.currentTime = 0; updateAudioButton(activeAudioId, false); }
             activeAudio = audio;
             activeAudioId = messageId;
             activeAudio.play().catch(e => {});
@@ -5559,24 +4434,16 @@
 
         function updateAudioButton(messageId, isPlaying) {
             const btn = document.querySelector(`.play-pause-btn[data-message-id="${messageId}"]`);
-            if (btn) {
-                btn.innerHTML = isPlaying ? '⏸️' : '▶️';
-                btn.classList.toggle('playing', isPlaying);
-            }
+            if (btn) { btn.innerHTML = isPlaying ? '⏸️' : '▶️'; btn.classList.toggle('playing', isPlaying); }
         }
 
         function updateAudioProgress(messageId) {
             const audio = audioElements[messageId];
             if (!audio) return;
-            
             const progressFill = document.querySelector(`.audio-progress-fill[data-message-id="${messageId}"]`);
             const currentTimeSpan = document.querySelector(`.audio-current-time[data-message-id="${messageId}"]`);
             const durationSpan = document.querySelector(`.audio-duration[data-message-id="${messageId}"]`);
-            
-            if (progressFill) {
-                const percent = (audio.currentTime / audio.duration) * 100 || 0;
-                progressFill.style.width = percent + '%';
-            }
+            if (progressFill) progressFill.style.width = ((audio.currentTime / audio.duration) * 100 || 0) + '%';
             if (currentTimeSpan) currentTimeSpan.textContent = formatTime(audio.currentTime);
             if (durationSpan && audio.duration && !isNaN(audio.duration)) durationSpan.textContent = formatTime(audio.duration);
         }
@@ -5599,13 +4466,10 @@
                     callRingtone = new Audio();
                     callRingtone.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
                     callRingtone.loop = true;
-                    
                     callAcceptedSound = new Audio();
                     callAcceptedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-                    
                     callEndedSound = new Audio();
                     callEndedSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
-
                     incomingMessageSound = new Audio();
                     incomingMessageSound.src = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4LjI5LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMD//8kAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
                 } catch (e) {}
@@ -5618,9 +4482,7 @@
             try {
                 const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
                 await db.from('calls').delete().lt('created_at', fiveMinutesAgo);
-            } catch (err) {
-                if (err.code === 'PGRST116') callsTableExists = false;
-            }
+            } catch (err) { if (err.code === 'PGRST116') callsTableExists = false; }
         }
 
         function getIceServers() {
@@ -5641,9 +4503,7 @@
                     const Ctx = window.AudioContext || window.webkitAudioContext;
                     if (Ctx) audioCtx = new Ctx();
                 }
-                if (audioCtx && audioCtx.state === 'suspended') {
-                    audioCtx.resume().catch(() => {});
-                }
+                if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
             } catch (e) {}
         }
 
@@ -5652,71 +4512,43 @@
             if (!remoteAudioDiv) return;
             try {
                 const audios = remoteAudioDiv.querySelectorAll('audio');
-                audios.forEach(a => {
-                    try { a.pause(); a.srcObject = null; a.remove(); } catch (e) {}
-                });
+                audios.forEach(a => { try { a.pause(); a.srcObject = null; a.remove(); } catch (e) {} });
                 remoteAudioDiv.innerHTML = '';
             } catch (e) {}
         }
 
         function resetCallState() {
-            if (peerConnection) {
-                try { peerConnection.close(); } catch (e) {}
-                peerConnection = null;
-            }
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
+            if (peerConnection) { try { peerConnection.close(); } catch (e) {} peerConnection = null; }
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
             if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
             if (currentCall.timeout) { clearTimeout(currentCall.timeout); currentCall.timeout = null; }
-            
             callMuted = false;
-            currentCall = {
-                status: null, peerId: null, callId: null, dbId: null,
-                isInitiator: false, callerInfo: null, startTime: null, timeout: null
-            };
-            
+            currentCall = { status: null, peerId: null, callId: null, dbId: null, isInitiator: false, callerInfo: null, startTime: null, timeout: null };
             pendingIceCandidates = [];
             remoteDescriptionSet = false;
             clearRemoteAudios();
-            
             if (callModal) callModal.classList.remove('active');
-            if (callRingtone) {
-                try { callRingtone.pause(); callRingtone.currentTime = 0; } catch (e) {}
-            }
+            if (callRingtone) { try { callRingtone.pause(); callRingtone.currentTime = 0; } catch (e) {} }
         }
 
         function createPeerConnection() {
             const pc = new RTCPeerConnection(getIceServers());
-            
             pendingIceCandidates = [];
             remoteDescriptionSet = false;
-            
             pc.onicecandidate = (event) => {
                 if (event.candidate && ably && currentCall.peerId) {
                     try {
                         const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                        userChannel.publish('ice_candidate', {
-                            callId: currentCall.callId,
-                            candidate: event.candidate,
-                            timestamp: Date.now()
-                        });
+                        userChannel.publish('ice_candidate', { callId: currentCall.callId, candidate: event.candidate, timestamp: Date.now() });
                     } catch (e) {}
                 }
             };
-            
-            pc.oniceconnectionstatechange = () => {
-                console.log('ICE connection state:', pc.iceConnectionState);
-            };
-            
+            pc.oniceconnectionstatechange = () => console.log('ICE state:', pc.iceConnectionState);
             pc.ontrack = (event) => {
                 const remoteStream = event.streams[0];
                 if (!remoteStream) return;
-                
                 const remoteAudioDiv = document.getElementById('remote-audios');
                 clearRemoteAudios();
-                
                 const audioElement = document.createElement('audio');
                 audioElement.srcObject = remoteStream;
                 audioElement.autoplay = true;
@@ -5725,14 +4557,8 @@
                 audioElement.controls = false;
                 audioElement.style.display = 'none';
                 remoteAudioDiv.appendChild(audioElement);
-                
-                const tryPlay = () => {
-                    audioElement.play().catch(e => {
-                        setTimeout(() => audioElement.play().catch(() => {}), 500);
-                    });
-                };
+                const tryPlay = () => audioElement.play().catch(e => setTimeout(() => audioElement.play().catch(() => {}), 500));
                 tryPlay();
-                
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
@@ -5740,47 +4566,46 @@
                     const peerAvatar = currentCall.callerInfo ? currentCall.callerInfo.avatar : '👤';
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
-                    
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
-                    
-                    if (currentCall.dbId) {
-                        db.from('calls').update({ status: 'active' }).eq('id', currentCall.dbId);
-                    }
+                    if (currentCall.dbId) db.from('calls').update({ status: 'active' }).eq('id', currentCall.dbId);
                 }
             };
-            
             return pc;
         }
 
+        // FIX 2: startCall — не блокируем при state !== 'connected', а ждём подключения
         async function startCall() {
             if (!callsTableExists) {
                 await checkCallsTable();
-                if (!callsTableExists) {
-                    alert('Функция звонков недоступна.');
-                    return;
-                }
+                if (!callsTableExists) { alert('Функция звонков недоступна.'); return; }
             }
             if (!currentChat || currentChat.is_public) return;
-            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) {
-                alert('Нельзя звонить самому себе');
-                return;
-            }
-            if (currentCall.status) {
-                alert('У вас уже есть активный звонок');
-                return;
-            }
+            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) { alert('Нельзя звонить самому себе'); return; }
+            if (currentCall.status) { alert('У вас уже есть активный звонок'); return; }
 
+            // FIX 2: если Ably не подключён — ждём до 10 секунд, потом пробуем
             if (!ably || ably.connection.state !== 'connected') {
-                alert('Нет соединения с сервером. Подождите немного и попробуйте снова.');
-                return;
+                // Пытаемся принудительно подключиться
+                try {
+                    if (ably) ably.connection.connect();
+                } catch (e) {}
+                
+                // Ждём до 10 секунд
+                const waitStart = Date.now();
+                while ((!ably || ably.connection.state !== 'connected') && Date.now() - waitStart < 10000) {
+                    await new Promise(r => setTimeout(r, 200));
+                }
+                
+                // Если Ably так и не подключился — всё равно пробуем (может быть connecting)
+                if (!ably) {
+                    alert('Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.');
+                    return;
+                }
             }
 
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
             const otherUser = allUsers.find(u => u.id === otherId);
-            if (!otherUser) {
-                alert('Не удалось определить собеседника');
-                return;
-            }
+            if (!otherUser) { alert('Не удалось определить собеседника'); return; }
             const receiverId = otherUser.id;
 
             const callId = generateUUID();
@@ -5788,53 +4613,42 @@
 
             let dbCallId = null;
             try {
-                const { data, error } = await db
-                    .from('calls')
-                    .insert([{
-                        caller_id: currentUser.id,
-                        receiver_id: receiverId,
-                        status: 'calling',
-                        created_at: new Date().toISOString()
-                    }])
-                    .select();
+                const { data, error } = await db.from('calls').insert([{
+                    caller_id: currentUser.id, receiver_id: receiverId,
+                    status: 'calling', created_at: new Date().toISOString()
+                }]).select();
                 if (!error && data) dbCallId = data[0].id;
             } catch (err) {}
 
             currentCall = {
-                status: 'calling',
-                peerId: receiverId,
-                callId: callId,
-                dbId: dbCallId,
+                status: 'calling', peerId: receiverId, callId, dbId: dbCallId,
                 isInitiator: true,
                 callerInfo: { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar },
-                startTime: null,
-                timeout: null
+                startTime: null, timeout: null
             };
 
             try {
                 const userChannel = ably.channels.get(`user-${receiverId}`);
-                userChannel.publish('call_request', {
-                    callId,
-                    dbCallId,
-                    callerId: currentUser.id,
-                    callerName: currentUser.name,
-                    callerAvatar: currentUser.avatar,
-                    timestamp
+                await new Promise((resolve, reject) => {
+                    userChannel.publish('call_request', {
+                        callId, dbCallId, callerId: currentUser.id,
+                        callerName: currentUser.name, callerAvatar: currentUser.avatar,
+                        timestamp
+                    }, (err) => {
+                        if (err) reject(err);
+                        else resolve();
+                    });
                 });
             } catch (e) {
                 console.error('Failed to publish call request:', e);
-                alert('Не удалось отправить запрос на звонок');
+                alert('Не удалось отправить запрос на звонок. Проверьте соединение.');
                 resetCallState();
                 return;
             }
 
             showCallModal('calling', otherUser.name, otherUser.avatar);
-
             currentCall.timeout = setTimeout(() => {
-                if (currentCall.status === 'calling') {
-                    alert('Абонент не ответил');
-                    endCall();
-                }
+                if (currentCall.status === 'calling') { alert('Абонент не ответил'); endCall(); }
             }, CALL_RING_TIMEOUT);
         }
 
@@ -5845,7 +4659,6 @@
             const callerAvatarEl = document.getElementById('callAvatar');
             const incomingControls = document.getElementById('incomingCallControls');
             const outgoingControls = document.getElementById('outgoingCallControls');
-
             if (status === 'calling') {
                 statusEl.textContent = 'Идет гудок...';
                 incomingControls.style.display = 'none';
@@ -5859,7 +4672,6 @@
                 incomingControls.style.display = 'none';
                 outgoingControls.style.display = 'flex';
             }
-
             callerNameEl.textContent = peerName || 'Пользователь';
             callerAvatarEl.textContent = peerAvatar || '👤';
             callModal.classList.add('active');
@@ -5867,9 +4679,7 @@
 
         function handleIncomingCallRequest(data) {
             const { callId, dbCallId, callerId, callerName, callerAvatar, timestamp } = data;
-            
             if (Date.now() - timestamp > 30000) return;
-            
             if (currentCall.status) {
                 if (ably) {
                     try {
@@ -5879,62 +4689,41 @@
                 }
                 return;
             }
-
             currentCall = {
-                status: 'ringing',
-                peerId: callerId,
-                callId: callId,
-                dbId: dbCallId,
+                status: 'ringing', peerId: callerId, callId, dbId: dbCallId,
                 isInitiator: false,
                 callerInfo: { id: callerId, name: callerName, avatar: callerAvatar },
-                startTime: null,
-                timeout: null
+                startTime: null, timeout: null
             };
-
             showCallModal('ringing', callerName, callerAvatar);
-
-            currentCall.timeout = setTimeout(() => {
-                if (currentCall.status === 'ringing') rejectCall();
-            }, CALL_RING_TIMEOUT);
-
-            if (!currentUser.dnd && callRingtone) {
-                try { callRingtone.play().catch(() => {}); } catch (e) {}
-            }
-            
-            showBackgroundNotification('Входящий звонок', {
-                body: `${callerName} звонит вам`,
-                tag: 'incoming-call'
-            });
+            currentCall.timeout = setTimeout(() => { if (currentCall.status === 'ringing') rejectCall(); }, CALL_RING_TIMEOUT);
+            if (!currentUser.dnd && callRingtone) { try { callRingtone.play().catch(() => {}); } catch (e) {} }
+            showBackgroundNotification('Входящий звонок', { body: `${callerName} звонит вам`, tag: 'incoming-call' });
         }
 
         async function answerCall() {
             if (!currentCall || currentCall.status !== 'ringing') return;
             if (currentCall.isInitiator) return;
-
             clearTimeout(currentCall.timeout);
             currentCall.status = 'connecting';
-
             initAudioContext();
-
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
                 peerConnection = createPeerConnection();
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
                 if (ably) {
                     const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
                     userChannel.publish('call_accepted', { callId: currentCall.callId, timestamp: Date.now() });
                 }
             } catch (err) {
                 console.error('Error answering call:', err);
-                alert('Не удалось ответить на звонок: ' + (err.message || 'ошибка доступа к микрофону'));
+                alert('Не удалось ответить: ' + (err.message || 'ошибка доступа к микрофону'));
                 endCall();
             }
         }
 
         async function rejectCall() {
             if (!currentCall || currentCall.status === 'ended') return;
-            
             if (currentCall.isInitiator) {
                 if (ably && currentCall.peerId) {
                     try {
@@ -5950,25 +4739,20 @@
                     } catch (e) {}
                 }
             }
-            
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
-            
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
         }
 
         function endCall() {
             if (!currentCall) return;
-
             if (ably && currentCall.peerId && currentCall.status) {
                 try {
                     const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
                     userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() });
                 } catch (e) {}
             }
-
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
-
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
         }
@@ -5980,14 +4764,10 @@
             const enabled = !audioTracks[0].enabled;
             audioTracks.forEach(track => track.enabled = enabled);
             callMuted = !enabled;
-
             const muteBtn = document.getElementById('muteCallBtn');
             const incomingMuteBtn = document.getElementById('incomingMuteBtn');
             [muteBtn, incomingMuteBtn].forEach(btn => {
-                if (btn) {
-                    btn.textContent = callMuted ? '🔇' : '🎤';
-                    btn.classList.toggle('muted', callMuted);
-                }
+                if (btn) { btn.textContent = callMuted ? '🔇' : '🎤'; btn.classList.toggle('muted', callMuted); }
             });
         }
 
@@ -5996,113 +4776,71 @@
             const startTime = Date.now();
             callTimerInterval = setInterval(() => {
                 const elapsed = Date.now() - startTime;
-                if (elapsed >= CALL_DURATION_LIMIT) {
-                    alert('Длительность звонка превысила 30 минут.');
-                    endCall();
-                    return;
-                }
+                if (elapsed >= CALL_DURATION_LIMIT) { alert('Длительность звонка превысила 30 минут.'); endCall(); return; }
                 const timerEl = document.getElementById('callTimer');
                 if (timerEl) timerEl.textContent = formatCallTime(elapsed);
             }, 1000);
         }
 
-        // listenForIncomingCalls больше не нужен — вся логика в setupUserChannel
-
         // ========== МОДАЛЬНЫЕ ОКНА ==========
-        function openCreateChatModal() {
-            document.getElementById('createChatModal').classList.add('active');
-        }
+        function openCreateChatModal() { document.getElementById('createChatModal').classList.add('active'); }
+        function closeCreateChatModal() { document.getElementById('createChatModal').classList.remove('active'); document.getElementById('chatNameInput').value = ''; }
+        function closeEditMessageModal() { document.getElementById('editMessageModal').classList.remove('active'); document.getElementById('editMessageText').value = ''; messageToEdit = null; }
 
-        function closeCreateChatModal() {
-            document.getElementById('createChatModal').classList.remove('active');
-            document.getElementById('chatNameInput').value = '';
-        }
-
-        function closeEditMessageModal() {
-            document.getElementById('editMessageModal').classList.remove('active');
-            document.getElementById('editMessageText').value = '';
-            messageToEdit = null;
-        }
-
+        // FIX 1: openProfileModal — не кладём эмодзи в url()
         function openProfileModal() {
             if (!currentUser) return;
             document.getElementById('profileNameInput').value = currentUser.name;
             document.getElementById('profileBioInput').value = currentUser.bio || '';
             document.getElementById('profileDNDCheckbox').checked = currentUser.dnd || false;
-            
-            const safeAvatar = window.normalizeAvatar(currentUser.avatar, currentUser.name);
             const avatarLarge = document.getElementById('profileAvatarLarge');
-            if (safeAvatar) {
-                avatarLarge.style.backgroundImage = `url('${safeAvatar}')`;
-                avatarLarge.style.backgroundSize = 'cover';
-                avatarLarge.style.backgroundPosition = 'center';
-                avatarLarge.textContent = '';
-            } else {
-                avatarLarge.style.backgroundImage = '';
-                avatarLarge.textContent = currentUser.avatar || '👤';
-            }
-            
+            const avatarBg = window.isImageUrl(currentUser.avatar)
+                ? currentUser.avatar
+                : window.generateAvatarUrl(currentUser.name);
+            avatarLarge.style.backgroundImage = `url('${avatarBg}')`;
+            avatarLarge.style.backgroundSize = 'cover';
+            avatarLarge.style.backgroundPosition = 'center';
+            avatarLarge.textContent = '';
             populateThemeGrid();
             document.getElementById('profileModal').classList.add('active');
         }
 
-        function closeProfileModal() {
-            document.getElementById('profileModal').classList.remove('active');
-        }
+        function closeProfileModal() { document.getElementById('profileModal').classList.remove('active'); }
 
         async function saveProfile() {
             if (!currentUser) return;
             const newName = document.getElementById('profileNameInput').value.trim();
             const newBio = document.getElementById('profileBioInput').value.trim();
             const dnd = document.getElementById('profileDNDCheckbox').checked;
-            
             if (newName && newName !== currentUser.name) {
-                const { data: existingUsers } = await db
-                    .from('profiles')
-                    .select('username')
-                    .eq('username', newName)
-                    .neq('id', currentUser.id)
-                    .limit(1);
-                
-                if (existingUsers && existingUsers.length > 0) {
-                    alert('Пользователь с таким именем уже существует');
-                    return;
-                }
+                const { data: existingUsers } = await db.from('profiles').select('username').eq('username', newName).neq('id', currentUser.id).limit(1);
+                if (existingUsers && existingUsers.length > 0) { alert('Пользователь с таким именем уже существует'); return; }
                 currentUser.name = newName;
             }
-            
             currentUser.bio = newBio;
             currentUser.dnd = dnd;
-            
             try {
                 await db.from('profiles').update({
-                    username: currentUser.name,
-                    bio: currentUser.bio,
-                    dnd: currentUser.dnd,
-                    avatar: currentUser.avatar
+                    username: currentUser.name, bio: currentUser.bio,
+                    dnd: currentUser.dnd, avatar: currentUser.avatar
                 }).eq('id', currentUser.id);
-                
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
                 if (ably) {
                     try {
                         const presenceChannel = ably.channels.get('tok_global_online');
                         if (presenceChannel.state === 'attached') {
-                            presenceChannel.presence.update({ 
+                            presenceChannel.presence.update({
                                 name: currentUser.name, avatar: currentUser.avatar,
                                 bio: currentUser.bio, is_vip: currentUser.is_vip,
-                                is_admin: currentUser.is_admin, dnd: dnd, lastSeen: Date.now()
+                                is_admin: currentUser.is_admin, dnd, lastSeen: Date.now()
                             });
                         }
                     } catch (e) {}
                 }
-                
                 updateProfileUI();
                 closeProfileModal();
                 await loadAllUsers();
-            } catch (err) {
-                alert('Ошибка при сохранении профиля');
-            }
+            } catch (err) { alert('Ошибка при сохранении профиля'); }
         }
 
         function openAvatarModal() {
@@ -6133,48 +4871,35 @@
                     await db.from('profiles').update({ avatar: currentUser.avatar }).eq('id', currentUser.id);
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     updateProfileUI();
-                } catch (err) {
-                    alert('Ошибка при сохранении аватара');
-                }
+                } catch (err) { alert('Ошибка при сохранении аватара'); }
             }
             closeAvatarModal();
         }
 
-        function closeAvatarModal() {
-            document.getElementById('avatarModal').classList.remove('active');
-            selectedAvatar = null;
-        }
+        function closeAvatarModal() { document.getElementById('avatarModal').classList.remove('active'); selectedAvatar = null; }
 
+        // FIX 1: openChatUserProfile — не кладём эмодзи в url()
         function openChatUserProfile() {
             if (!currentChat || currentChat.is_public || !currentUser) return;
-            
-            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) {
-                openProfileModal();
-                return;
-            }
-            
+            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) { openProfileModal(); return; }
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
             const user = allUsers.find(u => u.id === otherId);
             if (!user) return;
-            
             const onlineUser = onlineUsers[user.id];
             const isOnline = onlineUser ? onlineUser.online : false;
             const dnd = onlineUser ? onlineUser.dnd : user.dnd;
             const lastSeen = onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null);
-            
             let statusText = '';
             if (isOnline) statusText = dnd ? 'Не беспокоит' : 'В сети';
             else statusText = lastSeen ? `Был(а) ${formatLastSeen(lastSeen)}` : 'Был(а) давно';
-            
             let badges = '';
             if (user.is_vip) badges += ' 👑';
             if (user.is_admin) badges += ' ⚡';
-            
-            const safeAvatar = window.normalizeAvatar(user.avatar, user.username);
-            const avatarStyle = safeAvatar ? `background-image: url('${safeAvatar}');` : '';
-            
+            const avatarBg = window.isImageUrl(user.avatar)
+                ? user.avatar
+                : window.generateAvatarUrl(user.username);
             const content = `
-                <div class="user-profile-avatar" style="${avatarStyle}">${safeAvatar ? '' : escapeHtml(user.avatar || '👤')}</div>
+                <div class="user-profile-avatar" style="background-image: url('${avatarBg}'); background-size: cover; background-position: center;"></div>
                 <div class="user-profile-name">${escapeHtml(user.username)}${badges}</div>
                 <div class="user-profile-bio">${escapeHtml(user.bio || 'Нет информации')}</div>
                 <div class="user-profile-status">
@@ -6182,7 +4907,6 @@
                     ${statusText}
                 </div>
             `;
-            
             document.getElementById('userProfileContent').innerHTML = content;
             document.getElementById('userProfileModal').classList.add('active');
         }
@@ -6191,11 +4915,7 @@
             const modal = document.getElementById('userProfileModal');
             modal.style.transition = 'opacity 0.2s ease';
             modal.style.opacity = '0';
-            setTimeout(() => {
-                modal.classList.remove('active');
-                modal.style.opacity = '';
-                modal.style.transition = '';
-            }, 200);
+            setTimeout(() => { modal.classList.remove('active'); modal.style.opacity = ''; modal.style.transition = ''; }, 200);
         }
 
         // ========== ВСПОМОГАТЕЛЬНЫЕ UI ФУНКЦИИ ==========
@@ -6223,7 +4943,6 @@
             document.getElementById('tabPublic').className = tab === 'public' ? 'tab active' : 'tab';
             document.getElementById('tabUsers').className = tab === 'users' ? 'tab active' : 'tab';
             document.getElementById('searchInput').value = '';
-            
             if (tab === 'users') loadAllUsers();
             updateChatsList();
             updateCreateChatButtonVisibility();
@@ -6237,17 +4956,12 @@
         function handleSearch() { updateChatsList(); }
 
         function handleKeyPress(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
         }
 
         function handleTextInput() {}
 
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('active');
-        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('active'); }
 
         function handleBackButton() {
             const sidebar = document.getElementById('sidebar');
@@ -6255,7 +4969,6 @@
             renderMessages();
             updateUrlWithChat(null);
             if (window.innerWidth <= 768) sidebar.classList.add('active');
-            
             document.getElementById('currentChatName').innerHTML = 'Выберите чат';
             document.getElementById('chatHeaderAvatar').style.backgroundImage = '';
             document.getElementById('chatHeaderAvatar').textContent = '👤';
@@ -6335,7 +5048,6 @@
             const emojiBtn = document.querySelector('.emoji-toggle-btn');
             const micBtn = document.getElementById('micBtn');
             const sendBtn = document.getElementById('sendBtn');
-            
             if (inputContainer) { inputContainer.style.display = 'flex'; inputContainer.style.visibility = 'visible'; inputContainer.style.opacity = '1'; }
             if (emojiBtn) { emojiBtn.style.display = 'flex'; emojiBtn.style.visibility = 'visible'; emojiBtn.style.opacity = '1'; }
             if (micBtn) { micBtn.style.display = 'flex'; micBtn.style.visibility = 'visible'; micBtn.style.opacity = '1'; }
@@ -6388,14 +5100,11 @@
                 const prevActive = document.querySelector(`.message-actions[data-message-id="${activeMessageId}"]`);
                 if (prevActive) prevActive.classList.remove('visible');
             }
-            
             const actions = document.querySelector(`.message-actions[data-message-id="${messageId}"]`);
             if (actions) {
                 actions.classList.add('visible');
                 activeMessageId = messageId;
-                setTimeout(() => {
-                    if (activeMessageId === messageId) hideMessageActions();
-                }, 5000);
+                setTimeout(() => { if (activeMessageId === messageId) hideMessageActions(); }, 5000);
             }
         }
 
@@ -6481,19 +5190,13 @@
                 if (document.readyState === 'loading') {
                     await new Promise(resolve => document.addEventListener('DOMContentLoaded', resolve, { once: true }));
                 }
-                
                 let session = null;
                 try {
                     const sessionPromise = db.auth.getSession();
-                    const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('session check timeout')), 8000)
-                    );
+                    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('session check timeout')), 8000));
                     const result = await Promise.race([sessionPromise, timeoutPromise]);
                     session = result.data ? result.data.session : null;
-                } catch (e) {
-                    session = null;
-                }
-                
+                } catch (e) { session = null; }
                 if (!session?.user) {
                     document.getElementById('splashScreen').classList.add('hidden');
                     document.getElementById('loginModal').classList.add('active');
@@ -6502,9 +5205,7 @@
                 document.getElementById('splashScreen').classList.add('hidden');
                 document.getElementById('loginModal').classList.add('active');
             }
-
             try { populateEmojiPicker(); } catch (e) {}
-            
             try { await init(); } catch (e) {
                 console.error('Init failed:', e);
                 document.getElementById('splashScreen').classList.add('hidden');
