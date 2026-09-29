@@ -5,30 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Tok Web</title>
-    <!-- FIX RF: используем fastly.jsdelivr.net (реже блокируется) + fallback -->
+    <!-- FIX: Убран document.write и fallback. Оставлен только один источник для Ably. -->
     <script src="https://fastly.jsdelivr.net/npm/ably@2.4.1/dist/ably.min.js"></script>
-    <script>
-      // FIX RF: fallback если fastly не загрузился
-      if (typeof Ably === 'undefined') {
-        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/ably/2.4.1/ably.min.js"><\/script>');
-      }
-    </script>
-    <script>
-      if (typeof Ably === 'undefined') {
-        document.write('<script src="https://unpkg.com/ably@2.4.1/dist/ably.min.js"><\/script>');
-      }
-    </script>
     <script src="https://fastly.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-    <script>
-      if (typeof supabase === 'undefined') {
-        document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/supabase-js/2.45.4/supabase.js"><\/script>');
-      }
-    </script>
-    <script>
-      if (typeof supabase === 'undefined') {
-        document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>');
-      }
-    </script>
     <style>
         * {
             margin: 0;
@@ -2450,7 +2429,6 @@
         </div>
     </div>
 
-    <!-- FIX 2: Модалка удаления чата -->
     <div class="modal" id="deleteChatModal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeDeleteChatModal()">×</button>
@@ -2488,7 +2466,6 @@
 
     <script>
         // ========== FIX RF: локальная генерация аватаров (без ui-avatars.com) ==========
-        // Генерируем SVG data URI — работает без сетевых запросов
         window.generateAvatarUrl = function(name, bgColor) {
             try {
                 const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
@@ -2511,7 +2488,6 @@
             }
         };
 
-        // FIX RF: если аватар — это URL на ui-avatars.com, заменяем на локальный
         window.normalizeAvatar = function(avatar, name) {
             if (!avatar) return window.generateAvatarUrl(name || '?');
             if (typeof avatar === 'string' && avatar.indexOf('ui-avatars.com') !== -1) {
@@ -2572,7 +2548,10 @@
             throw new Error('Библиотека Supabase не загрузилась. Проверьте подключение к интернету.');
         }
 
-        // FIX RF: Supabase клиент с увеличенными таймаутами для медленного интернета
+        if (typeof Ably === 'undefined') {
+            console.warn('Библиотека Ably не загрузилась. Функции реального времени (звонки, статусы) отключены.');
+        }
+
         const db = supabase.createClient(DB_URL, DB_ANON_KEY, {
             auth: {
                 persistSession: true,
@@ -2674,7 +2653,6 @@
         let loadingComplete = false;
         let ablyReconnectTimer = null;
         let audioCtx = null;
-        let swRegistration = null;
 
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
@@ -2753,7 +2731,6 @@
             applyTheme(themeId);
         }
 
-        // FIX: корректное отображение последнего посещения — "давно" только если больше месяца
         function formatLastSeen(timestamp) {
             if (!timestamp || isNaN(timestamp)) return 'давно';
             
@@ -2922,7 +2899,6 @@
             return '';
         }
 
-        // FIX RF: request с таймаутом и retry для Supabase
         async function dbQueryWithRetry(queryFn, retries = 2, timeoutMs = 15000) {
             for (let attempt = 0; attempt <= retries; attempt++) {
                 try {
@@ -2939,41 +2915,14 @@
             }
         }
 
-        // ========== SERVICE WORKER ==========
-        async function registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) return;
-            try {
-                const swCode = `
-                    self.addEventListener('push', function(event) {
-                        try {
-                            var data = event.data ? event.data.json() : {};
-                            self.registration.showNotification(data.title || 'Tok Web', {
-                                body: data.body || '',
-                                icon: data.icon,
-                                vibrate: [200, 100, 200],
-                                data: data.url
-                            });
-                        } catch (e) {}
-                    });
-                    self.addEventListener('notificationclick', function(event) {
-                        event.notification.close();
-                        event.waitUntil(clients.openWindow(event.notification.data || '/'));
-                    });
-                `;
-                const blob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(blob);
-                swRegistration = await navigator.serviceWorker.register(swUrl, { scope: './' });
-            } catch (err) {
-                console.warn('Service Worker registration failed:', err);
-            }
-        }
+        // ========== SERVICE WORKER (УДАЛЕН ИЗ-ЗА ОШИБКИ BLOB URL) ==========
+        // Функция registerServiceWorker была удалена, так как браузеры не поддерживают
+        // регистрацию Service Worker из blob: URL.
 
         function showBackgroundNotification(title, options) {
             if (document.visibilityState === 'hidden') {
                 try {
-                    if (swRegistration && swRegistration.showNotification) {
-                        swRegistration.showNotification(title, options);
-                    } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                         new Notification(title, options);
                     }
                 } catch (e) {}
@@ -3016,7 +2965,6 @@
             return pinnedChats.includes(chatId);
         }
 
-        // FIX 2: локально удалённые чаты
         function loadLocallyDeletedChats() {
             if (!currentUser) return;
             try {
@@ -3039,7 +2987,6 @@
             } catch (e) {}
         }
 
-        // FIX 1: фильтрация чатов — только где есть хотя бы одно сообщение от меня
         function hasMyMessages(chatId) {
             if (!currentUser) return false;
             const chatMsgs = messages[chatId];
@@ -3387,7 +3334,6 @@
                         if (myChats.length === 0) updateChatsList();
 
                         document.addEventListener('visibilitychange', handleVisibilityChange);
-                        await registerServiceWorker();
                     } else {
                         document.getElementById('loginModal').classList.add('active');
                         document.getElementById('splashScreen').classList.add('hidden');
@@ -3498,8 +3444,6 @@
                     if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
                         try { Notification.requestPermission(); } catch (e) {}
                     }
-
-                    await registerServiceWorker();
                 }
                 
             } catch (err) {
@@ -3540,7 +3484,6 @@
                     return;
                 }
                 
-                // FIX RF: локальный аватар вместо ui-avatars.com
                 const generatedAvatar = window.generateAvatarUrl(username);
                 
                 const newUser = {
@@ -3663,12 +3606,10 @@
             }
         }
 
-        // FIX: загрузка всех сообщений (не только новых) — чтобы отображались последние сообщения в списке чатов
         async function loadAllMessages() {
             if (!currentUser) return;
             
             try {
-                // Загружаем все сообщения за последние 30 дней (или все, если их немного)
                 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
                 
                 const { data, error } = await db
@@ -3905,7 +3846,6 @@
                 }
             });
 
-            // FIX 2: подписка на удаление чата собеседником
             chatChannel.subscribe('chat_deleted', (data) => {
                 const { chatId: deletedChatId } = data.data || {};
                 if (deletedChatId !== chatId) return;
@@ -4975,7 +4915,6 @@
                 return;
             }
 
-            // FIX: логирование всех состояний Ably
             ably.connection.on((stateChange) => {
                 console.log('ABLY STATE:', stateChange.current, 'REASON:', stateChange.reason);
             });
@@ -5800,7 +5739,6 @@
             }
         }
 
-        // FIX: добавлен TURN-сервер для работы звонков в РФ
         function getIceServers() {
             return {
                 iceServers: [
@@ -5958,7 +5896,6 @@
                 return;
             }
 
-            // FIX: ждём подключения Ably до 10 секунд
             if (!ably) {
                 alert('Соединение не инициализировано. Попробуйте перезагрузить страницу.');
                 return;
