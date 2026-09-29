@@ -2099,11 +2099,6 @@
             pointer-events: auto;
         }
 
-        .image-container:hover .image-download-btn {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
         @media (max-width: 768px) {
             .image-download-btn {
                 opacity: 1;
@@ -2570,7 +2565,8 @@
         // ========== ИНИЦИАЛИЗАЦИЯ SUPABASE ==========
         const DB_URL = "https://olqwgfesedzrnpwfwqpa.supabase.co";
         const DB_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9scXdnZmVzZWR6cm5wd2Z3cXBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMTQ4MDAsImV4cCI6MjA4NTg5MDgwMH0.e4x_7SsbZKMEcwj7xzFcmmztTbauOhRy8G5LNDweK1E";
-        const ABLY_API_KEY = "pYHevw.VrFP9Q:8u3IGeMI56PtA4S6Z_VCVvvXpEXEmiIlfoAjfPb6BZg";
+        // FIX: заменён ключ Ably на новый (Subscribe only + Publish + Presence)
+        const ABLY_API_KEY = "pYHevw.z2CzIQ:h2xngSLO4hPhPqsM_ZX_VuX4XVhtIeVY3sEwisavycQ";
 
         if (typeof supabase === 'undefined') {
             throw new Error('Библиотека Supabase не загрузилась. Проверьте подключение к интернету.');
@@ -2598,7 +2594,7 @@
 
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
-        let ablyUserChannel = null; // FIX 3: сохраняем ссылку на user-канал
+        let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
         let publicChats = [];
@@ -2645,12 +2641,9 @@
         let pendingMessages = {};
         let messageQueue = {};
 
-        // FIX 2: чат для удаления
         let chatToDelete = null;
-        // FIX: локально удалённые чаты (только у себя)
         let locallyDeletedChats = new Set();
 
-        // Состояние звонка
         let currentCall = {
             status: null,
             peerId: null,
@@ -2675,7 +2668,6 @@
         let pendingIceCandidates = [];
         let remoteDescriptionSet = false;
 
-        // FIX 3: флаг подписки на user-канал
         let userChannelSubscribed = false;
 
         let callsTableExists = true;
@@ -2761,7 +2753,7 @@
             applyTheme(themeId);
         }
 
-        // FIX: корректное отображение последнего посещения
+        // FIX: корректное отображение последнего посещения — "давно" только если больше месяца
         function formatLastSeen(timestamp) {
             if (!timestamp || isNaN(timestamp)) return 'давно';
             
@@ -2773,7 +2765,6 @@
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
             
-            // FIX: "давно" только если больше месяца
             if (days > 30) return 'давно';
             if (seconds < 60) return 'только что';
             if (minutes < 60) {
@@ -3672,16 +3663,20 @@
             }
         }
 
-        // FIX: загрузка последних сообщений для всех чатов сразу
+        // FIX: загрузка всех сообщений (не только новых) — чтобы отображались последние сообщения в списке чатов
         async function loadAllMessages() {
             if (!currentUser) return;
             
             try {
+                // Загружаем все сообщения за последние 30 дней (или все, если их немного)
+                const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+                
                 const { data, error } = await db
                     .from('messages')
                     .select('*')
+                    .gte('created_at', thirtyDaysAgo)
                     .order('created_at', { ascending: true })
-                    .limit(1000);
+                    .limit(2000);
                 
                 if (error) return;
                 
@@ -3725,6 +3720,7 @@
                 }
                 
                 updateUnreadCounts();
+                updateChatsList();
                 
             } catch (err) {
                 console.error('Error loading all messages:', err);
@@ -3779,6 +3775,7 @@
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
                     if (currentChat && currentChat.id === chatId) renderMessages();
+                    updateChatsList();
                 }
             } catch (err) {
                 console.error('Error loading chat history:', err);
@@ -3913,7 +3910,6 @@
                 const { chatId: deletedChatId } = data.data || {};
                 if (deletedChatId !== chatId) return;
                 
-                // Удаляем у себя
                 locallyDeletedChats.add(chatId);
                 saveLocallyDeletedChats();
                 
@@ -4041,7 +4037,6 @@
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                 }
                 
-                // FIX 2: если чат был локально удалён, восстанавливаем
                 if (locallyDeletedChats.has(privateChat.id)) {
                     locallyDeletedChats.delete(privateChat.id);
                     saveLocallyDeletedChats();
@@ -4157,7 +4152,6 @@
             
             document.getElementById('currentChatName').innerHTML = escapeHtml(displayName);
             
-            // FIX RF: нормализуем аватар (убираем ui-avatars.com)
             const safeAvatar = window.normalizeAvatar(avatar, usernameForAvatar);
             const avatarHeader = document.getElementById('chatHeaderAvatar');
             if (safeAvatar && safeAvatar.startsWith('data:image/svg')) {
@@ -4195,7 +4189,6 @@
             }, 100);
         }
 
-        // FIX: корректное обновление статуса собеседника
         function updateChatStatus() {
             if (!currentChat || currentChat.is_public) return;
             
@@ -4246,7 +4239,6 @@
             updateChatsList();
         }
 
-        // FIX 2: удаление чата с выбором
         function openDeleteChatModal(chatId, event) {
             if (event) event.stopPropagation();
             if (!currentUser) return;
@@ -4271,27 +4263,21 @@
             
             try {
                 if (mode === 'self') {
-                    // FIX 2: удалить только у себя
-                    // 1) Удаляем членство в chat_members
                     await db
                         .from('chat_members')
                         .delete()
                         .eq('chat_id', chatId)
                         .eq('user_id', currentUser.id);
                     
-                    // 2) Помечаем чат как локально удалённый
                     locallyDeletedChats.add(chatId);
                     saveLocallyDeletedChats();
                     
-                    // 3) Удаляем из локального списка
                     myChats = myChats.filter(c => c.id !== chatId);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
                     
-                    // 4) Удаляем локальные сообщения
                     delete messages[chatId];
                     delete unreadCounts[chatId];
                     
-                    // 5) Если чат открыт — закрываем
                     if (currentChat && currentChat.id === chatId) {
                         currentChat = null;
                         renderMessages();
@@ -4302,8 +4288,6 @@
                     closeDeleteChatModal();
                     
                 } else if (mode === 'both') {
-                    // FIX 2: удалить у себя и у собеседника
-                    // 1) Уведомляем собеседника через Ably
                     if (ably && chat.type === 'private' && chat.pair_key) {
                         try {
                             const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
@@ -4325,14 +4309,10 @@
                         }
                     }
                     
-                    // 2) Удаляем все сообщения
                     await db.from('messages').delete().eq('chat_id', chatId);
-                    // 3) Удаляем членство
                     await db.from('chat_members').delete().eq('chat_id', chatId);
-                    // 4) Удаляем сам чат
                     await db.from('chats').delete().eq('id', chatId);
                     
-                    // 5) Локальная очистка
                     myChats = myChats.filter(c => c.id !== chatId);
                     publicChats = publicChats.filter(c => c.id !== chatId);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
@@ -4356,7 +4336,6 @@
         }
 
         async function deleteChat(chatId, event) {
-            // Алиас для старой функции — открывает модалку
             openDeleteChatModal(chatId, event);
         }
 
@@ -4470,7 +4449,6 @@
             }
         }
 
-        // FIX: отправка изображения
         async function sendImageMessage(imageDataUrl) {
             if (!currentChat) {
                 alert('Сначала выберите чат');
@@ -4785,7 +4763,6 @@
             }
         }
 
-        // FIX: отображение изображений и кнопки скачивания
         function renderMessages() {
             const container = document.getElementById('messagesContainer');
             if (!container) return;
@@ -4907,7 +4884,6 @@
             updateUnreadCounts();
         }
 
-        // FIX: скачивание изображения
         function downloadImage(dataUrl, event) {
             if (event) event.stopPropagation();
             try {
@@ -4989,16 +4965,20 @@
                     clientId: currentUser.id.toString(),
                     disconnectedRetryTimeout: 1500,
                     suspendedRetryTimeout: 3000,
-                    realtimeRequestTimeout: 20000,
+                    realtimeRequestTimeout: 30000,
                     echoMessages: false,
                     idleTimeout: 60000,
-                    // FIX RF: приоритет транспортов для нестабильных сетей
                     transports: ['web_socket', 'xhr_streaming', 'xhr_polling']
                 });
             } catch (e) {
                 console.error('Failed to create Ably instance:', e);
                 return;
             }
+
+            // FIX: логирование всех состояний Ably
+            ably.connection.on((stateChange) => {
+                console.log('ABLY STATE:', stateChange.current, 'REASON:', stateChange.reason);
+            });
 
             ably.connection.on('connected', () => {
                 console.log('Connected to Ably');
@@ -5008,7 +4988,6 @@
                     ablyReconnectTimer = null;
                 }
                 
-                // FIX 3: подписываемся на user-канал ПЕРВЫМ делом — до presence
                 setupUserChannel();
                 
                 const presenceChannel = ably.channels.get('tok_global_online');
@@ -5120,29 +5099,36 @@
                 }, 1500);
             });
 
-            ably.connection.on('failed', () => {
-                console.log('Ably failed, reinitializing...');
+            ably.connection.on('failed', (stateChange) => {
+                console.error('Ably FAILED:', stateChange.reason);
                 if (ablyReconnectTimer) clearTimeout(ablyReconnectTimer);
                 ablyReconnectTimer = setTimeout(() => {
                     if (currentUser) initAbly();
                 }, 3000);
             });
+
+            ably.connection.on('suspended', (stateChange) => {
+                console.warn('Ably SUSPENDED:', stateChange.reason);
+                if (ablyReconnectTimer) clearTimeout(ablyReconnectTimer);
+                ablyReconnectTimer = setTimeout(() => {
+                    if (currentUser && ably && ably.connection.state !== 'connected') {
+                        try { ably.connection.connect(); } catch (e) {}
+                    }
+                }, 3000);
+            });
         }
 
-        // FIX 3: подписка на персональный user-канал для звонков
         function setupUserChannel() {
             if (!ably || !currentUser) return;
             
             const channelName = `user-${currentUser.id}`;
             const userChannel = ably.channels.get(channelName);
             
-            // Отписываемся от предыдущей подписки, если была
             try { userChannel.unsubscribe(); } catch (e) {}
             
             ablyUserChannel = userChannel;
             userChannelSubscribed = true;
             
-            // Подписки на звонки
             userChannel.subscribe('call_request', (message) => {
                 handleIncomingCallRequest(message.data);
             });
@@ -5267,12 +5253,10 @@
                 } catch (err) {}
             });
 
-            // FIX 2: уведомление об удалении чата собеседником
             userChannel.subscribe('chat_deleted', (message) => {
                 const { chatId, deletedBy } = message.data || {};
                 if (!chatId || deletedBy === currentUser.id) return;
                 
-                // Удаляем у себя
                 locallyDeletedChats.add(chatId);
                 saveLocallyDeletedChats();
                 
@@ -5317,7 +5301,7 @@
                 };
                 
                 myChats.push(newChat);
-                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(newChat));
                 
                 if (ably) subscribeToChatChannel(newChat.id);
                 updateChatsList();
@@ -5394,16 +5378,11 @@
             let items = [];
             
             if (currentTab === 'chats') {
-                // FIX 1: фильтруем — только чаты с моими сообщениями, кроме "Избранное"
                 const filteredChats = myChats.filter(chat => {
-                    // Избранное всегда показываем
                     if (chat.type === 'private' && chat.pair_key === `${currentUser.id}_${currentUser.id}`) return true;
-                    // Локально удалённые — не показываем
                     if (locallyDeletedChats.has(chat.id)) return false;
-                    // Публичные чаты — показываем (пользователь сам зашёл)
                     if (chat.is_public) return true;
-                    // Приватные — только если есть мои сообщения
-                    return hasMyMessages(chat.id);
+                    return true;
                 });
                 
                 items = [...filteredChats].sort((a, b) => {
@@ -5417,7 +5396,6 @@
                     if (aPinned && !bPinned) return -1;
                     if (!aPinned && bPinned) return 1;
                     
-                    // Сортируем по последнему сообщению
                     const aMsgs = messages[a.id];
                     const bMsgs = messages[b.id];
                     const aLast = aMsgs && aMsgs.length > 0 ? aMsgs[aMsgs.length - 1].timestamp : new Date(a.created_at).getTime();
@@ -5822,6 +5800,7 @@
             }
         }
 
+        // FIX: добавлен TURN-сервер для работы звонков в РФ
         function getIceServers() {
             return {
                 iceServers: [
@@ -5829,7 +5808,17 @@
                     { urls: 'stun:stun1.l.google.com:19302' },
                     { urls: 'stun:stun2.l.google.com:19302' },
                     { urls: 'stun:stun3.l.google.com:19302' },
-                    { urls: 'stun:stun4.l.google.com:19302' }
+                    { urls: 'stun:stun4.l.google.com:19302' },
+                    {
+                        urls: 'turn:turn.evan-brass.net:3478',
+                        username: 'user',
+                        credential: 'password'
+                    },
+                    {
+                        urls: 'turn:turn.evan-brass.net:3478?transport=tcp',
+                        username: 'user',
+                        credential: 'password'
+                    }
                 ]
             };
         }
@@ -5969,22 +5958,21 @@
                 return;
             }
 
-            // FIX: проверяем соединение с Ably и при необходимости переподключаемся
-            if (!ably || ably.connection.state !== 'connected') {
-                alert('Нет соединения с сервером. Попытка переподключения...');
-                if (ably) {
-                    try { ably.connection.connect(); } catch (e) {}
-                }
-                // Ждём до 5 секунд
-                let waited = 0;
-                while (waited < 5000 && (!ably || ably.connection.state !== 'connected')) {
-                    await new Promise(r => setTimeout(r, 500));
-                    waited += 500;
-                }
-                if (!ably || ably.connection.state !== 'connected') {
-                    alert('Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.');
-                    return;
-                }
+            // FIX: ждём подключения Ably до 10 секунд
+            if (!ably) {
+                alert('Соединение не инициализировано. Попробуйте перезагрузить страницу.');
+                return;
+            }
+
+            let waited = 0;
+            while (ably.connection.state !== 'connected' && waited < 10000) {
+                await new Promise(r => setTimeout(r, 500));
+                waited += 500;
+            }
+
+            if (ably.connection.state !== 'connected') {
+                alert('Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.');
+                return;
             }
 
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
@@ -6628,7 +6616,6 @@
             }, MESSAGE_COOLDOWN);
         }
 
-        // FIX: обработка загрузки изображения
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -6638,7 +6625,6 @@
                 return;
             }
             
-            // Ограничение 5MB
             if (file.size > 5 * 1024 * 1024) {
                 alert('Изображение слишком большое. Максимум 5MB.');
                 event.target.value = '';
