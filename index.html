@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tok Web">
     <meta name="format-detection" content="telephone=no">
-    <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <title>Tok Web</title>
     <script src="ably.min-2.js"></script>
@@ -268,10 +267,13 @@
             touch-action: manipulation;
         }
 
+        /* ===== ИСПРАВЛЕНИЕ iOS PWA: правильная высота, без double safe-area ===== */
         body {
             background-color: var(--bg-color);
             color: var(--text-primary);
             height: 100%;
+            height: 100dvh;
+            min-height: 100dvh;
             width: 100%;
             overflow: hidden;
             line-height: 1.4;
@@ -281,7 +283,7 @@
             overscroll-behavior: none;
             touch-action: manipulation;
             transition: background-color 0.3s ease;
-            padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+            /* УБРАЛИ padding: var(--safe-*) — иначе на iOS двойной отступ */
         }
 
         body::before {
@@ -298,7 +300,7 @@
 
         .app-container {
             display: flex;
-            height: 100%;
+            height: 100dvh;
             width: 100%;
             background-color: var(--bg-color);
             position: relative;
@@ -839,6 +841,10 @@
             z-index: 10;
             position: relative;
             width: 100%;
+            /* ===== FIX iOS: safe-top именно тут ===== */
+            padding-top: calc(8px + var(--safe-top));
+            height: calc(var(--header-height) + var(--safe-top));
+            min-height: calc(var(--header-height) + var(--safe-top));
         }
 
         .back-button {
@@ -1137,7 +1143,7 @@
             display: flex !important;
             gap: 8px;
             align-items: flex-end;
-            min-height: var(--input-height);
+            min-height: calc(var(--input-height) + var(--safe-bottom));
             flex-shrink: 0;
             z-index: 10;
             position: relative;
@@ -1497,6 +1503,11 @@
             background-color: #d63026;
         }
 
+        .modal-btn:disabled {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
         .close-btn {
             background: none;
             border: none;
@@ -1517,6 +1528,11 @@
         .password-input-container {
             position: relative;
             margin-bottom: 16px;
+        }
+
+        .password-input-container .modal-input {
+            margin-bottom: 0;
+            padding-right: 48px;
         }
 
         .toggle-password {
@@ -2201,7 +2217,7 @@
             background-color: rgba(255, 59, 48, 0.2);
         }
 
-        /* НОВЫЕ СТИЛИ: Экран загрузки чатов */
+        /* Экран загрузки чатов */
         .chats-loading {
             display: flex;
             flex-direction: column;
@@ -2336,6 +2352,7 @@
                 font-size: 24px;
             }
 
+            /* ===== FIX iOS PWA: chat-area position fixed, но БЕЗ padding (safe-area внутри) ===== */
             .chat-area {
                 position: fixed;
                 top: 0;
@@ -2343,12 +2360,9 @@
                 right: 0;
                 bottom: 0;
                 z-index: 500;
-                padding-top: var(--safe-top);
-                padding-bottom: var(--safe-bottom);
-                padding-left: var(--safe-left);
-                padding-right: var(--safe-right);
                 display: flex;
                 background-color: var(--bg-chat);
+                /* УБРАЛИ padding: var(--safe-*) — иначе двойной отступ */
             }
         }
 
@@ -2496,7 +2510,7 @@
                     <input type="checkbox" id="rememberMe" checked>
                     <label for="rememberMe">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="login()">Войти</button>
+                <button class="modal-btn" id="loginBtn" onclick="login()">Войти</button>
             </div>
 
             <div id="registerForm" style="display: none;">
@@ -2513,7 +2527,7 @@
                     <input type="checkbox" id="rememberMeRegister" checked>
                     <label for="rememberMeRegister">Запомнить меня</label>
                 </div>
-                <button class="modal-btn" onclick="register()">Зарегистрироваться</button>
+                <button class="modal-btn" id="registerBtn" onclick="register()">Зарегистрироваться</button>
             </div>
         </div>
     </div>
@@ -2697,14 +2711,9 @@
     <div id="remote-audios"></div>
 
     <script>
-        // ========== SERVICE WORKER ==========
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then((reg) => {
-                console.log('SW registered:', reg.scope);
-            }).catch((err) => {
-                console.warn('SW registration failed:', err);
-            });
-        }
+        // ========== SERVICE WORKER (регистрация отключена чтобы не было 404 в консоли) ==========
+        // Если хочешь включить — положи sw.js в корень сайта и раскомментируй:
+        // if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
 
         // ========== FIX RF: локальная генерация аватаров ==========
         window.generateAvatarUrl = function(name, bgColor) {
@@ -2903,9 +2912,11 @@
 
         let lastOnlineUpdate = 0;
 
-        // НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ЗАГРУЗКИ
         let isLoadingChats = false;
         let loadedChatsCache = null;
+
+        // НОВОЕ: защита от двойного логина
+        let loginInProgress = false;
 
         const emojiList = [
             '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', 
@@ -3200,6 +3211,29 @@
                     await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
                 }
             }
+        }
+
+        // ========== НОВОЕ: безопасный вызов с ретраями при сетевых сбоях ==========
+        async function safeDbCall(fn, retries = 3, delayMs = 800) {
+            let lastErr = null;
+            for (let i = 0; i <= retries; i++) {
+                try {
+                    const result = await fn();
+                    if (result && result.error) {
+                        const msg = String(result.error.message || '');
+                        if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('connection')) {
+                            throw result.error;
+                        }
+                        return result;
+                    }
+                    return result;
+                } catch (err) {
+                    lastErr = err;
+                    console.warn(`safeDbCall attempt ${i + 1} failed:`, err.message);
+                    if (i < retries) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
+                }
+            }
+            throw lastErr;
         }
 
         // ========== УВЕДОМЛЕНИЯ ==========
@@ -3623,7 +3657,6 @@
             const list = document.getElementById('chatsList');
             if (!list) return;
             
-            // Скелетон-загрузка
             let skeletonHTML = '<div class="chats-loading"><div class="spinner"></div><div class="chats-loading-text">Загрузка чатов...</div></div>';
             skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 70%"></div><div class="skeleton-line short"></div></div></div>';
             skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 50%"></div><div class="skeleton-line short"></div></div></div>';
@@ -3693,15 +3726,10 @@
                         document.getElementById('appContainer').style.display = 'flex';
                         document.getElementById('splashScreen').classList.add('hidden');
                         
-                        // Показываем загрузку чатов
                         showChatsLoading();
-                        
-                        // Показываем сайдбар на мобильном
                         showSidebarOnMobile();
-                        
                         updateProfileUI();
                         
-                        // Загружаем данные
                         await loadAllUsers();
                         await loadUserChats();
                         await loadAllMessages();
@@ -3729,7 +3757,6 @@
                         await requestNotificationPermission();
                         updateAppBadge();
                         
-                        // Скрываем загрузку и показываем чаты
                         hideChatsLoading();
                         
                         if (myChats.length === 0) updateChatsList();
@@ -3788,10 +3815,15 @@
                 loadAllMessages();
                 if (currentChat) loadChatHistory(currentChat.id);
                 updateAppBadge();
+            } else if (document.visibilityState === 'hidden' && currentUser) {
+                // НОВОЕ: сохраняем last_seen при сворачивании
+                updateUserLastSeen();
             }
         }
 
+        // ========== ИСПРАВЛЕННЫЙ LOGIN ==========
         async function login() {
+            if (loginInProgress) return;
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             
@@ -3800,81 +3832,106 @@
                 return;
             }
             
+            if (!navigator.onLine) {
+                alert('Нет подключения к интернету. Проверьте сеть.');
+                return;
+            }
+            
+            loginInProgress = true;
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Вход...'; }
+            
             try {
-                const { data: authData, error: authError } = await db.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+                const { data: authData, error: authError } = await safeDbCall(() =>
+                    db.auth.signInWithPassword({ email, password }), 2, 1000
+                );
                 
                 if (authError) {
-                    alert('Неверный email или пароль');
+                    console.error('Login error:', authError);
+                    const msg = String(authError.message || '').toLowerCase();
+                    if (msg.includes('invalid') || msg.includes('credentials')) {
+                        alert('Неверный email или пароль');
+                    } else if (msg.includes('fetch') || msg.includes('network') || msg.includes('connection')) {
+                        alert('Ошибка сети. Проверьте интернет и попробуйте снова.');
+                    } else {
+                        alert('Ошибка входа: ' + authError.message);
+                    }
                     return;
                 }
                 
-                // Показываем загрузку
+                if (!authData || !authData.user) {
+                    alert('Не удалось войти. Попробуйте ещё раз.');
+                    return;
+                }
+                
                 document.getElementById('loginModal').classList.remove('active');
                 document.getElementById('appContainer').style.display = 'flex';
                 showChatsLoading();
                 
-                const { data: userData } = await db
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', authData.user.id)
-                    .single();
+                const { data: userData, error: profileErr } = await safeDbCall(() =>
+                    db.from('profiles').select('*').eq('id', authData.user.id).single()
+                );
                 
-                if (userData) {
-                    currentUser = {
-                        id: userData.id,
-                        name: userData.username,
-                        avatar: userData.avatar || '👤',
-                        bio: userData.bio || '',
-                        is_vip: userData.is_vip || false,
-                        is_admin: userData.is_admin || false,
-                        dnd: userData.dnd || false
-                    };
-                    
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    
-                    // Показываем сайдбар на мобильном
-                    showSidebarOnMobile();
-                    
-                    updateProfileUI();
-                    
-                    await loadAllUsers();
-                    await loadUserChats();
-                    await loadAllMessages();
-                    
-                    await ensureSavedMessagesChat();
-                    
-                    loadPinnedChats();
-                    loadLocallyDeletedChats();
-                    
-                    initAbly();
-                    startHeartbeat();
-                    startPresenceUpdates();
-                    startStatusUpdates();
-                    
-                    cleanupOldCalls();
-                    checkUrlForChat();
-                    forceShowInput();
-                    
-                    updateBackButtonVisibility();
-                    updateCreateChatButtonVisibility();
-                    
-                    populateThemeGrid();
-                    
-                    await requestNotificationPermission();
-                    updateAppBadge();
-                    
-                    hideChatsLoading();
-                    updateChatsList();
+                if (profileErr || !userData) {
+                    console.error('Profile load error:', profileErr);
+                    alert('Не удалось загрузить профиль. Попробуйте снова.');
+                    document.getElementById('appContainer').style.display = 'none';
+                    document.getElementById('loginModal').classList.add('active');
+                    return;
                 }
+                
+                currentUser = {
+                    id: userData.id,
+                    name: userData.username,
+                    avatar: userData.avatar || '👤',
+                    bio: userData.bio || '',
+                    is_vip: userData.is_vip || false,
+                    is_admin: userData.is_admin || false,
+                    dnd: userData.dnd || false
+                };
+                
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                showSidebarOnMobile();
+                updateProfileUI();
+                
+                await loadAllUsers();
+                await loadUserChats();
+                await loadAllMessages();
+                
+                await ensureSavedMessagesChat();
+                
+                loadPinnedChats();
+                loadLocallyDeletedChats();
+                
+                initAbly();
+                startHeartbeat();
+                startPresenceUpdates();
+                startStatusUpdates();
+                
+                cleanupOldCalls();
+                checkUrlForChat();
+                forceShowInput();
+                
+                updateBackButtonVisibility();
+                updateCreateChatButtonVisibility();
+                
+                populateThemeGrid();
+                
+                await requestNotificationPermission();
+                updateAppBadge();
+                
+                hideChatsLoading();
+                updateChatsList();
                 
             } catch (err) {
                 console.error('Login error:', err);
-                alert('Ошибка при входе');
+                alert('Ошибка входа. Проверьте подключение и попробуйте снова.');
                 document.getElementById('appContainer').style.display = 'none';
                 document.getElementById('loginModal').classList.add('active');
+            } finally {
+                loginInProgress = false;
+                if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Войти'; }
             }
         }
 
@@ -3891,14 +3948,22 @@
                 alert('Пароли не совпадают');
                 return;
             }
+            if (password.length < 6) {
+                alert('Пароль должен быть не менее 6 символов');
+                return;
+            }
+            
+            const regBtn = document.getElementById('registerBtn');
+            if (regBtn) { regBtn.disabled = true; regBtn.textContent = 'Регистрация...'; }
             
             const username = email.split('@')[0];
             
             try {
-                const { data: authData, error: authError } = await db.auth.signUp({
-                    email: email,
-                    password: password
-                });
+                if (!navigator.onLine) { alert('Нет подключения к интернету'); return; }
+                
+                const { data: authData, error: authError } = await safeDbCall(() =>
+                    db.auth.signUp({ email, password }), 2, 1000
+                );
                 
                 if (authError) {
                     alert('Ошибка при регистрации: ' + authError.message);
@@ -3920,12 +3985,14 @@
                     is_vip: false,
                     is_admin: false,
                     dnd: false,
+                    last_seen: new Date().toISOString(),
                     created_at: new Date().toISOString()
                 };
                 
+                // upsert чтобы не падать если триггер уже создал профиль
                 const { error } = await db
                     .from('profiles')
-                    .insert([newUser]);
+                    .upsert([newUser], { onConflict: 'id' });
                 
                 if (error) {
                     alert('Ошибка при регистрации: ' + error.message);
@@ -3934,10 +4001,13 @@
                 
                 alert('Регистрация успешна! Теперь вы можете войти.');
                 switchAuthMode('login');
+                document.getElementById('loginEmail').value = email;
                 
             } catch (err) {
                 console.error('Registration error:', err);
                 alert('Ошибка при регистрации. Проверьте подключение к интернету.');
+            } finally {
+                if (regBtn) { regBtn.disabled = false; regBtn.textContent = 'Зарегистрироваться'; }
             }
         }
 
@@ -3971,7 +4041,9 @@
                     });
                     
                     const presenceChannel = ably.channels.get('tok_global_online');
-                    if (presenceChannel.state === 'attached') presenceChannel.presence.leave();
+                    if (presenceChannel.state === 'attached') {
+                        try { presenceChannel.presence.leave(); } catch (e) {}
+                    }
                     
                     ably.close();
                 } catch (e) {}
@@ -3992,6 +4064,7 @@
             allUsers = [];
             pinnedChats = [];
             unreadCounts = {};
+            messages = {};
             
             updateAppBadge();
             
@@ -4030,9 +4103,9 @@
                 
                 const newUsers = data || [];
                 newUsers.forEach(newUser => {
-                    const online = onlineUsers[newUser.id];
+                    const online = onlineUsers[String(newUser.id)];
                     if (online && online.online) {
-                        onlineUsers[newUser.id] = {
+                        onlineUsers[String(newUser.id)] = {
                             ...online,
                             name: newUser.username,
                             avatar: newUser.avatar || '👤',
@@ -4569,7 +4642,6 @@
             updateUnreadCounts();
             updateAppBadge();
             
-            // Скрываем сайдбар на мобильном
             if (window.innerWidth <= 768) {
                 document.getElementById('sidebar').classList.remove('active');
                 document.getElementById('chatArea').style.display = 'flex';
@@ -4593,7 +4665,8 @@
             const otherUser = allUsers.find(u => u.id === otherId);
             if (!otherUser) return;
             
-            const userOnline = onlineUsers[otherUser.id];
+            // ИСПРАВЛЕНО: ключи onlineUsers — всегда строки
+            const userOnline = onlineUsers[String(otherUser.id)];
             const statusElement = document.getElementById('chatStatus');
             
             if (userOnline && userOnline.online) {
@@ -4603,7 +4676,6 @@
                     statusElement.innerHTML = '<span class="online-indicator"></span> в сети';
                 }
             } else {
-                // Статус оффлайн с правильным отображением
                 const lastSeen = (userOnline && userOnline.lastSeen) 
                     ? userOnline.lastSeen 
                     : (otherUser?.last_seen ? new Date(otherUser.last_seen).getTime() : null);
@@ -5112,7 +5184,7 @@
             if (!ably || !currentUser) return;
             
             Object.keys(messageQueue).forEach(userId => {
-                const userOnline = onlineUsers[userId] && onlineUsers[userId].online;
+                const userOnline = onlineUsers[String(userId)] && onlineUsers[String(userId)].online;
                 if (userOnline) sendQueuedMessagesToUser(userId);
             });
         }
@@ -5395,7 +5467,7 @@
             updateAppBadge();
         }
 
-        // ========== ABLY ==========
+        // ========== ABLY (ИСПРАВЛЕНА ЛОГИКА PRESENCE) ==========
         function initAbly() {
             if (!currentUser) return;
             
@@ -5414,7 +5486,8 @@
             try {
                 ably = new Ably.Realtime({
                     key: ABLY_API_KEY,
-                    clientId: currentUser.id.toString(),
+                    // ИСПРАВЛЕНО: строка
+                    clientId: String(currentUser.id),
                     disconnectedRetryTimeout: 1500,
                     suspendedRetryTimeout: 3000,
                     realtimeRequestTimeout: 30000,
@@ -5440,129 +5513,8 @@
                 }
                 
                 setupUserChannel();
-                
-                const presenceChannel = ably.channels.get('tok_global_online');
-                
-                presenceChannel.attach((err) => {
-                    if (err) return;
-                    
-                    try {
-                        presenceChannel.presence.enter({ 
-                            name: currentUser.name, 
-                            avatar: currentUser.avatar || '👤',
-                            bio: currentUser.bio || '',
-                            is_vip: currentUser.is_vip || false,
-                            is_admin: currentUser.is_admin || false,
-                            dnd: currentUser.dnd || false,
-                            lastSeen: Date.now()
-                        });
-                    } catch (e) {}
-                    
-                    presenceChannel.presence.get((err, members) => {
-                        if (members) {
-                            members.forEach(member => {
-                                if (member.clientId !== currentUser.id.toString()) {
-                                    onlineUsers[member.clientId] = {
-                                        id: member.clientId,
-                                        name: member.data.name,
-                                        avatar: member.data.avatar || '👤',
-                                        bio: member.data.bio || '',
-                                        online: true,
-                                        is_vip: member.data.is_vip || false,
-                                        is_admin: member.data.is_admin || false,
-                                        dnd: member.data.dnd || false,
-                                        lastSeen: Date.now()
-                                    };
-                                }
-                            });
-                        }
-                        updateChatsList();
-                        updateChatStatus();
-                        if (currentTab === 'users') updateChatsList();
-                    });
-                });
-                
-                presenceChannel.subscribe('enter', (member) => {
-                    if (member.clientId !== currentUser.id.toString()) {
-                        onlineUsers[member.clientId] = {
-                            id: member.clientId,
-                            name: member.data.name,
-                            avatar: member.data.avatar || '👤',
-                            bio: member.data.bio || '',
-                            online: true,
-                            is_vip: member.data.is_vip || false,
-                            is_admin: member.data.is_admin || false,
-                            dnd: member.data.dnd || false,
-                            lastSeen: Date.now()
-                        };
-                        sendQueuedMessagesToUser(member.clientId);
-                        updateChatsList();
-                        updateChatStatus();
-                    }
-                });
-                
-                presenceChannel.subscribe('update', (member) => {
-                    if (member.clientId !== currentUser.id.toString()) {
-                        onlineUsers[member.clientId] = {
-                            ...onlineUsers[member.clientId],
-                            name: member.data.name,
-                            avatar: member.data.avatar,
-                            bio: member.data.bio,
-                            is_vip: member.data.is_vip,
-                            is_admin: member.data.is_admin,
-                            online: true,
-                            dnd: member.data.dnd,
-                            lastSeen: Date.now()
-                        };
-                        updateChatsList();
-                        updateChatStatus();
-                    }
-                });
-                
-                presenceChannel.subscribe('leave', (member) => {
-                    if (onlineUsers[member.clientId]) {
-                        onlineUsers[member.clientId].online = false;
-                        onlineUsers[member.clientId].lastSeen = Date.now();
-                        updateChatsList();
-                        updateChatStatus();
-                    }
-                });
-
-                const globalChatsChannel = ably.channels.get('tok_global_chats');
-                globalChatsChannel.subscribe('new-chat', (message) => {
-                    const newChat = message.data;
-                    if (!publicChats.find(c => c.id === newChat.id)) {
-                        publicChats.push(newChat);
-                        if (currentTab === 'public') updateChatsList();
-                    }
-                });
-
-                globalChatsChannel.subscribe('chat_deleted', (message) => {
-                    const { chatId, deletedBy } = message.data || {};
-                    if (!chatId || deletedBy === currentUser.id) return;
-                    
-                    publicChats = publicChats.filter(c => c.id !== chatId);
-                    
-                    if (myChats.some(c => c.id === chatId && c.is_public)) {
-                        locallyDeletedChats.add(chatId);
-                        saveLocallyDeletedChats();
-                        myChats = myChats.filter(c => c.id !== chatId);
-                        localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                        delete messages[chatId];
-                        delete unreadCounts[chatId];
-                        
-                        if (currentChat && currentChat.id === chatId) {
-                            currentChat = null;
-                            renderMessages();
-                            updateUrlWithChat(null);
-                            showSidebarOnMobile();
-                        }
-                    }
-                    
-                    updateChatsList();
-                    updateUnreadCounts();
-                    updateAppBadge();
-                });
+                setupPresenceChannel();
+                setupGlobalChatsChannel();
 
                 myChats.forEach(chat => {
                     if (!chat.is_public) subscribeToChatChannel(chat.id);
@@ -5595,6 +5547,147 @@
                         try { ably.connection.connect(); } catch (e) {}
                     }
                 }, 3000);
+            });
+        }
+
+        // НОВОЕ: отдельная функция для presence с правильным порядком
+        function setupPresenceChannel() {
+            if (!ably || !currentUser) return;
+            const presenceChannel = ably.channels.get('tok_global_online');
+            
+            presenceChannel.attach((err) => {
+                if (err) { console.warn('[presence] attach error:', err); return; }
+                
+                // ВАЖНО: сначала enter — чтобы мы появились в списке
+                presenceChannel.presence.enter({
+                    name: currentUser.name,
+                    avatar: currentUser.avatar || '👤',
+                    bio: currentUser.bio || '',
+                    is_vip: currentUser.is_vip || false,
+                    is_admin: currentUser.is_admin || false,
+                    dnd: currentUser.dnd || false,
+                    lastSeen: Date.now()
+                }, (enterErr) => {
+                    if (enterErr) { console.warn('[presence] enter error:', enterErr); return; }
+                    
+                    // ПОСЛЕ enter — get списка и подписки
+                    presenceChannel.presence.get((getErr, members) => {
+                        if (getErr) { console.warn('[presence] get error:', getErr); return; }
+                        (members || []).forEach(member => {
+                            const cid = String(member.clientId);
+                            onlineUsers[cid] = {
+                                id: cid,
+                                name: member.data?.name || 'Пользователь',
+                                avatar: member.data?.avatar || '👤',
+                                bio: member.data?.bio || '',
+                                online: true,
+                                is_vip: member.data?.is_vip || false,
+                                is_admin: member.data?.is_admin || false,
+                                dnd: member.data?.dnd || false,
+                                lastSeen: Date.now()
+                            };
+                        });
+                        updateChatsList();
+                        updateChatStatus();
+                    });
+                    
+                    presenceChannel.presence.subscribe('enter', (member) => {
+                        const cid = String(member.clientId);
+                        onlineUsers[cid] = {
+                            id: cid,
+                            name: member.data?.name || 'Пользователь',
+                            avatar: member.data?.avatar || '👤',
+                            bio: member.data?.bio || '',
+                            online: true,
+                            is_vip: member.data?.is_vip || false,
+                            is_admin: member.data?.is_admin || false,
+                            dnd: member.data?.dnd || false,
+                            lastSeen: Date.now()
+                        };
+                        sendQueuedMessagesToUser(cid);
+                        updateChatsList();
+                        updateChatStatus();
+                    });
+                    
+                    presenceChannel.presence.subscribe('update', (member) => {
+                        const cid = String(member.clientId);
+                        onlineUsers[cid] = {
+                            ...(onlineUsers[cid] || {}),
+                            id: cid,
+                            name: member.data?.name || 'Пользователь',
+                            avatar: member.data?.avatar || '👤',
+                            bio: member.data?.bio || '',
+                            online: true,
+                            is_vip: member.data?.is_vip || false,
+                            is_admin: member.data?.is_admin || false,
+                            dnd: member.data?.dnd || false,
+                            lastSeen: Date.now()
+                        };
+                        updateChatsList();
+                        updateChatStatus();
+                    });
+                    
+                    presenceChannel.presence.subscribe('leave', (member) => {
+                        const cid = String(member.clientId);
+                        if (onlineUsers[cid]) {
+                            onlineUsers[cid].online = false;
+                            // ВАЖНО: используем lastSeen из данных presence — иначе он потеряется
+                            if (member.data?.lastSeen) {
+                                onlineUsers[cid].lastSeen = member.data.lastSeen;
+                            } else {
+                                onlineUsers[cid].lastSeen = Date.now();
+                            }
+                            // Обновляем last_seen в БД
+                            try {
+                                db.from('profiles')
+                                  .update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() })
+                                  .eq('id', cid);
+                            } catch (e) {}
+                        }
+                        updateChatsList();
+                        updateChatStatus();
+                    });
+                });
+            });
+        }
+
+        function setupGlobalChatsChannel() {
+            if (!ably) return;
+            const channel = ably.channels.get('tok_global_chats');
+            
+            channel.subscribe('new-chat', (message) => {
+                const newChat = message.data;
+                if (!publicChats.find(c => c.id === newChat.id)) {
+                    publicChats.push(newChat);
+                    if (currentTab === 'public') updateChatsList();
+                }
+            });
+            
+            channel.subscribe('chat_deleted', (message) => {
+                const { chatId, deletedBy } = message.data || {};
+                if (!chatId || deletedBy === currentUser.id) return;
+                
+                publicChats = publicChats.filter(c => c.id !== chatId);
+                
+                if (myChats.some(c => c.id === chatId && c.is_public)) {
+                    locallyDeletedChats.add(chatId);
+                    saveLocallyDeletedChats();
+                    myChats = myChats.filter(c => c.id !== chatId);
+                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                    delete messages[chatId];
+                    delete unreadCounts[chatId];
+                    
+                    if (currentChat && currentChat.id === chatId) {
+                        currentChat = null;
+                        renderMessages();
+                        updateUrlWithChat(null);
+                        showSidebarOnMobile();
+                    }
+                }
+                
+                updateChatsList();
+                updateUnreadCounts();
+                updateAppBadge();
             });
         }
 
@@ -5892,7 +5985,8 @@
                 items = [...publicChats].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             } else if (currentTab === 'users') {
                 const allUsersList = allUsers.map(user => {
-                    const onlineUser = onlineUsers[user.id];
+                    // ИСПРАВЛЕНО: ключи всегда строки
+                    const onlineUser = onlineUsers[String(user.id)];
                     if (user.id === currentUser.id) return null;
                     
                     return {
@@ -5900,10 +5994,10 @@
                         name: user.username,
                         avatar: user.avatar || '👤',
                         bio: user.bio || '',
-                        online: onlineUser ? onlineUser.online : false,
+                        online: onlineUser ? !!onlineUser.online : false,
                         is_vip: user.is_vip || false,
                         is_admin: user.is_admin || false,
-                        dnd: onlineUser ? onlineUser.dnd : (user.dnd || false),
+                        dnd: onlineUser ? (onlineUser.dnd || false) : (user.dnd || false),
                         lastSeen: onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null)
                     };
                 }).filter(Boolean);
@@ -5958,6 +6052,7 @@
                             <div class="status-container">
                                 <span class="status-dot ${statusClass}"></span>
                                 ${!user.online && lastSeenText ? `<span class="last-seen">${lastSeenText}</span>` : ''}
+                                ${user.online && !user.dnd ? '<span class="last-seen" style="color:var(--online-green);">в сети</span>' : ''}
                                 ${user.dnd && user.online ? '<span class="dnd-badge">Не беспокоить</span>' : ''}
                             </div>
                         </div>
@@ -6003,7 +6098,8 @@
                         avatar = otherUser.avatar || '👤';
                         usernameForAvatar = otherUser.username;
                         
-                        const userOnline = onlineUsers[otherUser.id];
+                        // ИСПРАВЛЕНО: ключи всегда строки
+                        const userOnline = onlineUsers[String(otherUser.id)];
                         if (userOnline && userOnline.online) {
                             if (userOnline.dnd) {
                                 statusHtml = `<span class="status-dot dnd" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--dnd-red); font-size:12px;">Не беспокоить</span>`;
@@ -6011,7 +6107,6 @@
                                 statusHtml = `<span class="status-dot online" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--online-green); font-size:12px;">в сети</span>`;
                             }
                         } else {
-                            // Исправлено: показываем корректный статус последнего посещения
                             const lastSeen = (userOnline && userOnline.lastSeen) 
                                 ? userOnline.lastSeen 
                                 : (otherUser.last_seen ? new Date(otherUser.last_seen).getTime() : null);
@@ -6875,8 +6970,9 @@
             const user = allUsers.find(u => u.id === otherId);
             if (!user) return;
             
-            const onlineUser = onlineUsers[user.id];
-            const isOnline = onlineUser ? onlineUser.online : false;
+            // ИСПРАВЛЕНО: ключи всегда строки
+            const onlineUser = onlineUsers[String(user.id)];
+            const isOnline = onlineUser ? !!onlineUser.online : false;
             const dnd = onlineUser ? onlineUser.dnd : user.dnd;
             const lastSeen = onlineUser ? onlineUser.lastSeen : (user.last_seen ? new Date(user.last_seen).getTime() : null);
             
@@ -6979,7 +7075,6 @@
             renderMessages();
             updateUrlWithChat(null);
             
-            // Показываем сайдбар на мобильном
             if (window.innerWidth <= 768) {
                 sidebar.classList.add('active');
                 chatArea.style.display = 'none';
@@ -7051,7 +7146,6 @@
                 setTimeout(setVH, 100);
             });
             
-            // visualViewport для клавиатуры
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', () => {
                     setAppHeight();
@@ -7240,7 +7334,7 @@
             if (msgInput) {
                 msgInput.addEventListener('input', function() {
                     this.style.height = 'auto';
-                    this.style.height = (this.scrollHeight) + 'px';
+                    this.style.height = Math.min(this.scrollHeight, 120) + 'px';
                 });
             }
         })();
