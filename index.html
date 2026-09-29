@@ -2705,10 +2705,9 @@
     <div id="remote-audios"></div>
 
     <script>
-        // ========== SERVICE WORKER (регистрация отключена чтобы не было 404 в консоли) ==========
-        // if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+        // ========== SERVICE WORKER (регистрация отключена) ==========
 
-        // ========== FIX RF: локальная генерация аватаров ==========
+        // ========== ГЕНЕРАЦИЯ АВАТАРОВ ==========
         window.generateAvatarUrl = function(name, bgColor) {
             try {
                 const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
@@ -2900,8 +2899,6 @@
         let ablyReconnectTimer = null;
         let audioCtx = null;
 
-        let lastOnlineUpdate = 0;
-
         let isLoadingChats = false;
 
         // Защита от двойного логина
@@ -2935,6 +2932,23 @@
         ];
 
         // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
+        function showSidebarOnMobile() {
+            const sidebar = document.getElementById('sidebar');
+            const chatArea = document.getElementById('chatArea');
+            
+            if (!sidebar || !chatArea) return;
+            
+            if (window.innerWidth <= 768) {
+                sidebar.classList.add('active');
+                chatArea.style.display = 'none';
+            } else {
+                sidebar.classList.remove('active');
+                chatArea.style.display = 'flex';
+            }
+            
+            updateBackButtonVisibility();
+        }
+
         function applyTheme(themeId) {
             document.documentElement.setAttribute('data-theme', themeId);
             currentTheme = themeId;
@@ -3187,7 +3201,6 @@
             return '';
         }
 
-        // ========== НОВОЕ: с таймаутом, но без агрессивных ретраев для auth ==========
         async function safeDbCall(fn, retries = 3, delayMs = 800) {
             let lastErr = null;
             for (let i = 0; i <= retries; i++) {
@@ -3195,7 +3208,6 @@
                     const result = await fn();
                     if (result && result.error) {
                         const msg = String(result.error.message || '');
-                        // Для auth НЕ ретраим — возвращаем ошибку сразу
                         if (msg.includes('Invalid login') || 
                             msg.includes('Email not confirmed') || 
                             msg.includes('User already registered') ||
@@ -3645,7 +3657,140 @@
             isLoadingChats = false;
         }
 
-        // ========== ИСПРАВЛЕННЫЙ LOGIN ==========
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        async function init() {
+            if (isInitialized) return;
+            isInitialized = true;
+
+            try {
+                setAppHeight();
+                applyTheme(currentTheme);
+                loadMessageStatuses();
+                loadNotifications();
+                loadDeletedMessages();
+                loadPendingMessages();
+                loadMessageQueue();
+                
+                callModal = document.getElementById('callModal');
+                
+                await Promise.all([
+                    preloadSounds(),
+                    checkCallsTable()
+                ]);
+
+                let session = null;
+                try {
+                    const sessionPromise = db.auth.getSession();
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('getSession timeout')), 8000)
+                    );
+                    const result = await Promise.race([sessionPromise, timeoutPromise]);
+                    session = result.data ? result.data.session : null;
+                } catch (sessionErr) {
+                    console.warn('Session check failed:', sessionErr);
+                    session = null;
+                }
+                
+                if (session?.user) {
+                    const { data: userData } = await db
+                        .from('profiles')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+                    
+                    if (userData) {
+                        currentUser = {
+                            id: userData.id,
+                            name: userData.username,
+                            avatar: userData.avatar || '👤',
+                            bio: userData.bio || '',
+                            is_vip: userData.is_vip || false,
+                            is_admin: userData.is_admin || false,
+                            dnd: userData.dnd || false
+                        };
+                        
+                        document.getElementById('loginModal').classList.remove('active');
+                        document.getElementById('appContainer').style.display = 'flex';
+                        document.getElementById('splashScreen').classList.add('hidden');
+                        
+                        showChatsLoading();
+                        showSidebarOnMobile();
+                        updateProfileUI();
+                        
+                        await loadAllUsers();
+                        await loadUserChats();
+                        await loadAllMessages();
+                        
+                        await ensureSavedMessagesChat();
+                        
+                        loadPinnedChats();
+                        loadLocallyDeletedChats();
+                        
+                        initAbly();
+                        startHeartbeat();
+                        startPresenceUpdates();
+                        startStatusUpdates();
+                        
+                        cleanupOldCalls();
+                        
+                        checkUrlForChat();
+                        forceShowInput();
+                        
+                        sendPendingMessages();
+                        processMessageQueue();
+                        
+                        populateThemeGrid();
+                        
+                        await requestNotificationPermission();
+                        updateAppBadge();
+                        
+                        hideChatsLoading();
+                        
+                        if (myChats.length === 0) updateChatsList();
+
+                        document.addEventListener('visibilitychange', handleVisibilityChange);
+                    } else {
+                        document.getElementById('loginModal').classList.add('active');
+                        document.getElementById('splashScreen').classList.add('hidden');
+                    }
+                } else {
+                    document.getElementById('loginModal').classList.add('active');
+                    document.getElementById('splashScreen').classList.add('hidden');
+                }
+                
+                setupMobileHandlers();
+                updateBackButtonVisibility();
+                updateCreateChatButtonVisibility();
+                
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                setInterval(forceShowInput, 1000);
+                
+                loadingComplete = true;
+                
+            } catch (err) {
+                console.error('Init error:', err);
+                document.getElementById('loginModal').classList.add('active');
+                document.getElementById('appContainer').style.display = 'none';
+                document.getElementById('splashScreen').classList.add('hidden');
+                loadingComplete = true;
+            }
+        }
+
+        function handleVisibilityChange() {
+            if (document.visibilityState === 'visible' && currentUser) {
+                setAppHeight();
+                if (ably && ably.connection.state !== 'connected') {
+                    try { ably.connection.connect(); } catch (e) {}
+                }
+                loadAllMessages();
+                if (currentChat) loadChatHistory(currentChat.id);
+                updateAppBadge();
+            } else if (document.visibilityState === 'hidden' && currentUser) {
+                updateUserLastSeen();
+            }
+        }
+
+        // ========== LOGIN ==========
         async function login() {
             if (loginInProgress) return;
             
@@ -3667,7 +3812,6 @@
             if (loginBtn) { loginBtn.disabled = true; loginBtn.textContent = 'Вход...'; }
             
             try {
-                // ====== ИСПРАВЛЕНИЕ: прямой вызов auth без ретраев и с таймаутом 20 сек ======
                 const authPromise = db.auth.signInWithPassword({ email, password });
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Проверьте интернет.')), 20000)
@@ -3708,7 +3852,6 @@
                 document.getElementById('appContainer').style.display = 'flex';
                 showChatsLoading();
                 
-                // Загружаем профиль с retry
                 const { data: userData, error: profileErr } = await safeDbCall(() =>
                     db.from('profiles').select('*').eq('id', authData.user.id).single(), 2, 700
                 );
@@ -3776,7 +3919,7 @@
             }
         }
 
-        // ========== ИСПРАВЛЕННАЯ РЕГИСТРАЦИЯ ==========
+        // ========== REGISTER ==========
         async function register() {
             if (registerInProgress) return;
             
@@ -3809,7 +3952,6 @@
             const username = email.split('@')[0];
             
             try {
-                // ====== ИСПРАВЛЕНИЕ: прямой вызов signUp с таймаутом 20 сек ======
                 const signUpPromise = db.auth.signUp({ email, password });
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Проверьте интернет.')), 20000)
@@ -3848,7 +3990,6 @@
                     return;
                 }
                 
-                // Upsert профиля — не падаем, если триггер уже создал
                 const generatedAvatar = window.generateAvatarUrl(username);
                 const newUser = {
                     id: authData.user.id,
@@ -3868,7 +4009,6 @@
                 
                 if (upsertError) {
                     console.error('Profile upsert error:', upsertError);
-                    // Не критично — возможно, профиль уже создан триггером
                 }
                 
                 alert('Регистрация успешна! Теперь вы можете войти.');
@@ -4184,7 +4324,7 @@
                         markMessagesAsRead(chatId);
                         setTimeout(() => {
                             const container = document.getElementById('messagesContainer');
-                            if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'auto' });
+                            if (container) { container.style.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
                         }, 50);
                     }
                     
@@ -4440,7 +4580,6 @@
             }
         }
 
-        // ========== ИСПРАВЛЕНО: открытие чата сразу внизу ==========
         function joinChat(chat) {
             if (!chat || !currentUser) return;
             
@@ -4514,16 +4653,14 @@
             
             markAllMessagesAsRead(chat.id);
             
-            // ====== ИСПРАВЛЕНИЕ: мгновенно прокручиваем контейнер вниз ДО рендера ======
             const container = document.getElementById('messagesContainer');
             if (container) {
                 container.style.scrollBehavior = 'auto';
-                container.innerHTML = ''; // чтобы не было промежуточной высоты
+                container.innerHTML = '';
             }
             
             renderMessages();
             
-            // После рендера ставим скролл в конец без анимации
             requestAnimationFrame(() => {
                 const c = document.getElementById('messagesContainer');
                 if (c) {
@@ -4531,7 +4668,6 @@
                     c.scrollTop = c.scrollHeight;
                 }
             });
-            // И ещё раз чуть позже — на случай, если изображения/аудио добавили высоту
             setTimeout(() => {
                 const c = document.getElementById('messagesContainer');
                 if (c) {
@@ -4815,7 +4951,6 @@
             updateChatsList();
             forceShowInput();
             
-            // Скролл вниз
             const c = document.getElementById('messagesContainer');
             if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
             
@@ -5198,7 +5333,6 @@
             }
         }
 
-        // ========== ИСПРАВЛЕНО: рендер без плавной прокрутки ==========
         function renderMessages() {
             const container = document.getElementById('messagesContainer');
             if (!container) return;
@@ -5312,7 +5446,6 @@
             
             container.innerHTML = newMessages;
             
-            // ====== ИСПРАВЛЕНИЕ: мгновенный скролл в конец без smooth ======
             if (isAtBottom) {
                 container.style.scrollBehavior = 'auto';
                 container.scrollTop = container.scrollHeight;
@@ -5382,7 +5515,7 @@
             updateAppBadge();
         }
 
-        // ========== ABLY (ИСПРАВЛЕНА ЛОГИКА PRESENCE) ==========
+        // ========== ABLY ==========
         function initAbly() {
             if (!currentUser) return;
             
@@ -7038,6 +7171,7 @@
 
         function updateBackButtonVisibility() {
             const backButton = document.getElementById('backButton');
+            if (!backButton) return;
             if (window.innerWidth <= 768) backButton.classList.add('mobile-visible');
             else backButton.classList.remove('mobile-visible');
         }
