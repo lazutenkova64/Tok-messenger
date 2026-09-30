@@ -2551,12 +2551,23 @@
         <div class="modal-content">
             <button class="close-btn" onclick="closeForgotPasswordModal()">×</button>
             <h2>Восстановление пароля</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 15px; line-height: 1.5;">
-                Введите email вашей учётной записи. Мы отправим вам ссылку для сброса пароля.
-            </p>
-            <input type="email" class="modal-input" id="forgotEmail" placeholder="Ваш email">
-            <button class="modal-btn" onclick="sendPasswordReset()">Отправить ссылку</button>
-            <button class="modal-btn secondary" onclick="closeForgotPasswordModal()">Отмена</button>
+            <div id="forgotPasswordEmailSection">
+                <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 15px; line-height: 1.5;">
+                    Введите email вашей учётной записи. Мы отправим вам ссылку для сброса пароля.
+                </p>
+                <input type="email" class="modal-input" id="forgotEmail" placeholder="Ваш email">
+                <button class="modal-btn" onclick="sendPasswordReset()">Отправить ссылку</button>
+                <button class="modal-btn secondary" onclick="closeForgotPasswordModal()">Отмена</button>
+            </div>
+            <div id="newPasswordSection" style="display: none;">
+                <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 15px; line-height: 1.5;">
+                    Введите новый пароль для вашей учётной записи.
+                </p>
+                <input type="password" class="modal-input" id="newPassword" placeholder="Новый пароль" minlength="6">
+                <input type="password" class="modal-input" id="confirmNewPassword" placeholder="Подтвердите новый пароль" minlength="6">
+                <button class="modal-btn" onclick="saveNewPassword()">Сохранить пароль</button>
+                <button class="modal-btn secondary" onclick="resetToEmailSection()">Назад</button>
+            </div>
         </div>
     </div>
 
@@ -3001,6 +3012,7 @@
             const modal = document.getElementById('forgotPasswordModal');
             if (modal) {
                 modal.classList.add('active');
+                showNewPasswordForm(false);
                 const emailInput = document.getElementById('forgotEmail');
                 if (emailInput) {
                     emailInput.value = '';
@@ -3025,7 +3037,7 @@
             }
             try {
                 await db.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin
+                    redirectTo: window.location.origin + window.location.pathname
                 });
                 alert('Ссылка для сброса пароля отправлена на ' + email + '. Проверьте почту и перейдите по ссылке для создания нового пароля.');
                 closeForgotPasswordModal();
@@ -3035,9 +3047,93 @@
             }
         }
 
+        function showNewPasswordForm(show) {
+            const emailSection = document.getElementById('forgotPasswordEmailSection');
+            const passwordSection = document.getElementById('newPasswordSection');
+            if (!emailSection || !passwordSection) return;
+            if (show) {
+                emailSection.style.display = 'none';
+                passwordSection.style.display = 'block';
+                const pwInput = document.getElementById('newPassword');
+                if (pwInput) pwInput.focus();
+            } else {
+                emailSection.style.display = 'block';
+                passwordSection.style.display = 'none';
+                const emailInput = document.getElementById('forgotEmail');
+                if (emailInput) emailInput.focus();
+            }
+        }
+
+        function resetToEmailSection() {
+            showNewPasswordForm(false);
+        }
+
+        async function saveNewPassword() {
+            const pwInput = document.getElementById('newPassword');
+            const confirmInput = document.getElementById('confirmNewPassword');
+            const newPassword = pwInput ? pwInput.value : '';
+            const confirmPassword = confirmInput ? confirmInput.value : '';
+
+            if (!newPassword || newPassword.length < 6) {
+                alert('Пароль должен содержать минимум 6 символов.');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                alert('Пароли не совпадают. Попробуйте ещё раз.');
+                return;
+            }
+            try {
+                await db.auth.updateUser({ password: newPassword });
+                alert('Пароль успешно обновлён. Теперь вы можете войти с новым паролем.');
+                closeForgotPasswordModal();
+                // Очистим поля
+                if (pwInput) pwInput.value = '';
+                if (confirmInput) confirmInput.value = '';
+            } catch (error) {
+                console.error('Password update error:', error);
+                alert('Ошибка при обновлении пароля: ' + (error.message || 'Попробуйте ещё раз.'));
+            }
+        }
+
+        function checkPasswordResetLink() {
+            try {
+                const hash = window.location.hash.substring(1);
+                if (!hash) return;
+                const params = new URLSearchParams(hash);
+                const accessToken = params.get('access_token');
+                const type = params.get('type');
+                const refreshToken = params.get('refresh_token');
+                if (accessToken && type === 'recovery') {
+                    // Восстанавливаем сессию из токена
+                    db.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken || ''
+                    }).then(function() {
+                        // Показываем форму нового пароля
+                        const modal = document.getElementById('forgotPasswordModal');
+                        if (modal) {
+                            modal.classList.add('active');
+                            showNewPasswordForm(true);
+                        }
+                    }).catch(function(err) {
+                        console.error('Failed to set session:', err);
+                        alert('Ошибка при восстановлении сессии: ' + (err.message || 'Попробуйте открыть ссылку снова.'));
+                    });
+                    // Очищаем параметры из URL
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (e) {
+                console.error('checkPasswordResetLink error:', e);
+            }
+        }
+
         window.openForgotPasswordModal = openForgotPasswordModal;
         window.closeForgotPasswordModal = closeForgotPasswordModal;
         window.sendPasswordReset = sendPasswordReset;
+        window.showNewPasswordForm = showNewPasswordForm;
+        window.resetToEmailSection = resetToEmailSection;
+        window.saveNewPassword = saveNewPassword;
+        window.checkPasswordResetLink = checkPasswordResetLink;
 
         function populateThemeGrid() {
             const grid = document.getElementById('themeGrid');
@@ -7479,6 +7575,9 @@
                 }
                 
                 setAppHeight();
+                
+                // Проверяем ссылку восстановления пароля из URL
+                checkPasswordResetLink();
                 
                 let session = null;
                 try {
