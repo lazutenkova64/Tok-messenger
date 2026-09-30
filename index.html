@@ -4484,7 +4484,7 @@
                             showMessageNotification(sender.username, sender.avatar, msg.text || (msg.image ? '📷 Изображение' : '🎤 Голосовое'), chatId);
                         }
                         
-                        chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id });
+                        chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id }).catch(() => {});
                         
                         if (currentChat?.id !== chatId) {
                             unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
@@ -4630,7 +4630,7 @@
                 
                 if (ably) {
                     const globalChatsChannel = ably.channels.get('tok_global_chats');
-                    globalChatsChannel.publish('new-chat', createdChat);
+                    globalChatsChannel.publish('new-chat', createdChat).catch(() => {});
                 }
                 
                 if (!myChats.find(c => c.id === createdChat.id)) {
@@ -4733,7 +4733,7 @@
                     if (ably) {
                         subscribeToChatChannel(privateChat.id);
                         const chatChannel = ably.channels.get(`tok_chat_${privateChat.id}`);
-                        chatChannel.publish('user_joined', { userId: currentUser.id, userName: currentUser.name });
+                        chatChannel.publish('user_joined', { userId: currentUser.id, userName: currentUser.name }).catch(() => {});
                         
                         const userChannel = ably.channels.get(`user-${user.id}`);
                         userChannel.publish('new-private-chat', {
@@ -4742,7 +4742,7 @@
                             participants: [currentUser.id, user.id],
                             avatar: privateChat.avatar,
                             timestamp: Date.now()
-                        });
+                        }).catch(() => {});
                     }
                     
                     joinChat(privateChat);
@@ -5019,7 +5019,7 @@
                             chatChannel.publish('chat_deleted', {
                                 chatId: chatId,
                                 deletedBy: currentUser.id
-                            });
+                            }).catch(() => {});
                             
                             const otherId = chat.pair_key.split('_').find(id => id !== currentUser.id);
                             if (otherId) {
@@ -5027,6 +5027,7 @@
                                 otherUserChannel.publish('chat_deleted', {
                                     chatId: chatId,
                                     deletedBy: currentUser.id
+                                }).catch(() => {});
                                 });
                             }
                         } catch (e) {
@@ -5040,7 +5041,7 @@
                             globalChatsChannel.publish('chat_deleted', {
                                 chatId: chatId,
                                 deletedBy: currentUser.id
-                            });
+                            }).catch(() => {});
                         } catch (e) {}
                     }
                     
@@ -5170,7 +5171,7 @@
                             ...dbMessage, 
                             id: realId, 
                             sender_name: currentUser.name 
-                        }, (err) => {
+                        }).catch((err) => {
                             if (err && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                                 const otherUserId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
                                 const otherUser = allUsers.find(u => u.id === otherUserId);
@@ -5264,7 +5265,7 @@
                             ...dbMessage, 
                             id: realId, 
                             sender_name: currentUser.name 
-                        });
+                        }).catch(() => {});
                     }
                 }
             } catch (err) {
@@ -5356,7 +5357,7 @@
                                 ...dbMessage, 
                                 id: realId, 
                                 sender_name: currentUser.name 
-                            });
+                            }).catch(() => {});
                         }
                     }
                 } catch (err) {
@@ -5428,7 +5429,7 @@
             messagesToSend.forEach(message => {
                 if (ably) {
                     const chatChannel = ably.channels.get(`tok_chat_${message.chat_id}`);
-                    chatChannel.publish('message', message);
+                    chatChannel.publish('message', message).catch(() => {});
                 }
             });
         }
@@ -5461,7 +5462,7 @@
             
             if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                 const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                chatChannel.publish('delete', { messageId, senderId: currentUser.id });
+                chatChannel.publish('delete', { messageId, senderId: currentUser.id }).catch(() => {});
             }
             
             hideMessageActions();
@@ -5501,7 +5502,7 @@
                 
                 if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                     const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                    chatChannel.publish('edit', { messageId: messageToEdit.id, newText, editor: currentUser.id });
+                    chatChannel.publish('edit', { messageId: messageToEdit.id, newText, editor: currentUser.id }).catch(() => {});
                 }
                 
                 renderMessages();
@@ -5662,7 +5663,7 @@
                     changed = true;
                     
                     const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
-                    chatChannel.publish('read_receipt', { messageId: msg.id, reader: currentUser.id });
+                    chatChannel.publish('read_receipt', { messageId: msg.id, reader: currentUser.id }).catch(() => {});
                 }
             });
             
@@ -5952,7 +5953,7 @@
                             callId,
                             offer: { type: offer.type, sdp: offer.sdp },
                             timestamp: Date.now()
-                        });
+                        }).catch(() => {});
                     }
                 } catch (err) {
                     console.error('Error in call_accepted handler:', err);
@@ -6002,7 +6003,7 @@
                             callId,
                             answer: { type: answer.type, sdp: answer.sdp },
                             timestamp: Date.now()
-                        });
+                        }).catch(() => {});
                     }
                 } catch (err) {
                     console.error('Error handling webrtc_offer:', err);
@@ -6702,14 +6703,12 @@
             
             pc.onicecandidate = (event) => {
                 if (event.candidate && ably && currentCall.peerId) {
-                    try {
-                        const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                        userChannel.publish('ice_candidate', {
-                            callId: currentCall.callId,
-                            candidate: event.candidate,
-                            timestamp: Date.now()
-                        });
-                    } catch (e) {}
+                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
+                    userChannel.publish('ice_candidate', {
+                        callId: currentCall.callId,
+                        candidate: event.candidate,
+                        timestamp: Date.now()
+                    }).catch(() => {});
                 }
             };
             
@@ -6831,7 +6830,7 @@
 
             try {
                 const userChannel = ably.channels.get(`user-${receiverId}`);
-                userChannel.publish('call_request', {
+                await userChannel.publish('call_request', {
                     callId,
                     dbCallId,
                     callerId: currentUser.id,
@@ -6940,7 +6939,7 @@
 
                 if (ably) {
                     const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                    userChannel.publish('call_accepted', { callId: currentCall.callId, timestamp: Date.now() });
+                    userChannel.publish('call_accepted', { callId: currentCall.callId, timestamp: Date.now() }).catch(() => {});
                 }
             } catch (err) {
                 console.error('Error answering call:', err);
@@ -6954,17 +6953,13 @@
             
             if (currentCall.isInitiator) {
                 if (ably && currentCall.peerId) {
-                    try {
-                        const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                        userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'cancelled', timestamp: Date.now() });
-                    } catch (e) {}
+                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
+                    userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'cancelled', timestamp: Date.now() }).catch(() => {});
                 }
             } else {
                 if (ably && currentCall.callerInfo) {
-                    try {
-                        const userChannel = ably.channels.get(`user-${currentCall.callerInfo.id}`);
-                        userChannel.publish('call_rejected', { callId: currentCall.callId, reason: 'rejected', timestamp: Date.now() });
-                    } catch (e) {}
+                    const userChannel = ably.channels.get(`user-${currentCall.callerInfo.id}`);
+                    userChannel.publish('call_rejected', { callId: currentCall.callId, reason: 'rejected', timestamp: Date.now() }).catch(() => {});
                 }
             }
             
@@ -6978,10 +6973,8 @@
             if (!currentCall) return;
 
             if (ably && currentCall.peerId && currentCall.status) {
-                try {
-                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                    userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() });
-                } catch (e) {}
+                const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
+                userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() }).catch(() => {});
             }
 
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
@@ -7664,8 +7657,4 @@
         window.closeDeleteChatConfirmModal = closeDeleteChatConfirmModal;
         window.confirmDeleteChatWithWarning = confirmDeleteChatWithWarning;
         window.closeDeleteChatWarningModal = closeDeleteChatWarningModal;
-        window.finalDeleteChat = finalDeleteChat;
-        window.showSidebarOnMobile = showSidebarOnMobile;
-    </script>
-</body>
-</html>
+        window.fin                                    
