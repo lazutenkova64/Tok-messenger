@@ -5763,7 +5763,8 @@
                     httpMaxRetryDuration: 30000,
                     idleTimeout: 0,
                     connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
-                    transports: ['web_socket'],
+                    fallbackHostsUseDefault: true,
+                    transports: ['xhr_streaming', 'web_socket', 'xhr_polling'],
                     echoMessages: false
                 });
             } catch (e) {
