@@ -4611,69 +4611,6 @@
                 }
             });
             
-            // --- NEW MESSAGE (голосовые — догрузка из Supabase) ---
-            chatChannel.subscribe('new_message', async (message) => {
-                const { id: messageId, chat_id: chatId, sender_id } = message.data;
-                if (sender_id === currentUser.id) return;
-                if (!chatId) return;
-                
-                // Догружаем полное сообщение из Supabase
-                try {
-                    const { data, error } = await db
-                        .from('messages')
-                        .select('*')
-                        .eq('id', messageId)
-                        .single();
-                    if (error || !data) return;
-                    
-                    if (!messages[chatId]) messages[chatId] = [];
-                    const exists = messages[chatId].some(m => m.id === messageId);
-                    if (exists) return;
-                    
-                    const sender = allUsers.find(u => u.id === data.sender_id) || { username: message.data.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                    
-                    messages[chatId].push({
-                        id: data.id,
-                        chatId: data.chat_id,
-                        sender: data.sender_id,
-                        senderName: sender.username,
-                        senderIsVip: sender.is_vip,
-                        senderIsAdmin: sender.is_admin,
-                        text: data.text,
-                        audio: data.audio,
-                        image: data.image,
-                        duration: data.duration,
-                        time: new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        timestamp: new Date(data.created_at).getTime(),
-                        isAdmin: data.is_admin || false,
-                        edited: data.edited || false,
-                        type: 'in'
-                    });
-                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
-                    if (getNotificationState(chatId)) playIncomingMessageSound();
-                    
-                    if (currentChat?.id !== chatId) {
-                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                    }
-                    
-                    if (currentChat && currentChat.id === chatId) {
-                        renderMessages();
-                        markMessagesAsRead(chatId);
-                        setTimeout(() => {
-                            const container = document.getElementById('messagesContainer');
-                            if (container) { container.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
-                        }, 50);
-                    }
-                    
-                    updateChatsList();
-                    updateUnreadCounts();
-                    updateAppBadge();
-                } catch (e) {
-                    console.error('[new_message] Failed to fetch from Supabase:', e);
-                }
-            });
-            
             // Attach после подписок
             chatChannel.attach((err) => {
                 if (err) {
@@ -5452,13 +5389,10 @@
                         
                         if (ably) {
                             const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                            chatChannel.publish('new_message', {
-                                id: realId,
-                                chat_id: currentChat.id,
-                                sender_id: currentUser.id,
-                                sender_name: currentUser.name,
-                                created_at: now.toISOString(),
-                                has_audio: true
+                            chatChannel.publish('message', { 
+                                ...dbMessage, 
+                                id: realId, 
+                                sender_name: currentUser.name 
                             }).catch(() => {});
                         }
                     }
