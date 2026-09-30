@@ -5028,7 +5028,6 @@
                                     chatId: chatId,
                                     deletedBy: currentUser.id
                                 }).catch(() => {});
-                                });
                             }
                         } catch (e) {
                             console.warn('Failed to notify peer about chat deletion:', e);
@@ -7657,4 +7656,7 @@
         window.closeDeleteChatConfirmModal = closeDeleteChatConfirmModal;
         window.confirmDeleteChatWithWarning = confirmDeleteChatWithWarning;
         window.closeDeleteChatWarningModal = closeDeleteChatWarningModal;
-        window.fin                                    
+        window.finalDeleteChat = finalDeleteChat;
+    </script>
+</body>
+</html>                                    
