@@ -40,6 +40,8 @@
             --accent-green: #34c759;
             --accent-red: #ff3b30;
             --accent-gray: #8e8e93;
+            --accent-orange: #ff9500;
+            --accent-pink: #ff2d55;
             --message-out: #007aff;
             --message-in: #1e1e1e;
             --border-color: rgba(255, 255, 255, 0.1);
@@ -2475,6 +2477,24 @@
             font-size: 16px;
             cursor: pointer;
         }
+
+        .forgot-password-btn {
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+            padding: 4px 0;
+            width: 100%;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.2s;
+        }
+
+        .forgot-password-btn:active {
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
@@ -2505,6 +2525,7 @@
                     <label for="rememberMe">Запомнить меня</label>
                 </div>
                 <button class="modal-btn" id="loginBtn" onclick="login()">Войти</button>
+                <button type="button" class="forgot-password-btn" onclick="openForgotPasswordModal()">Забыли пароль?</button>
             </div>
 
             <div id="registerForm" style="display: none;">
@@ -2523,6 +2544,19 @@
                 </div>
                 <button class="modal-btn" id="registerBtn" onclick="register()">Зарегистрироваться</button>
             </div>
+        </div>
+    </div>
+
+    <div class="modal" id="forgotPasswordModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeForgotPasswordModal()">×</button>
+            <h2>Восстановление пароля</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 20px; text-align: center; font-size: 15px; line-height: 1.5;">
+                Введите email вашей учётной записи. Мы отправим вам ссылку для сброса пароля.
+            </p>
+            <input type="email" class="modal-input" id="forgotEmail" placeholder="Ваш email">
+            <button class="modal-btn" onclick="sendPasswordReset()">Отправить ссылку</button>
+            <button class="modal-btn secondary" onclick="closeForgotPasswordModal()">Отмена</button>
         </div>
     </div>
 
@@ -2961,6 +2995,49 @@
                 document.documentElement.style.setProperty('--app-height', h + 'px');
             } catch (e) {}
         }
+
+        // ========== ВОССТАНОВЛЕНИЕ ПАРОЛЯ ==========
+        function openForgotPasswordModal() {
+            const modal = document.getElementById('forgotPasswordModal');
+            if (modal) {
+                modal.classList.add('active');
+                const emailInput = document.getElementById('forgotEmail');
+                if (emailInput) {
+                    emailInput.value = '';
+                    const loginEmail = document.getElementById('loginEmail');
+                    if (loginEmail) emailInput.value = loginEmail.value;
+                    emailInput.focus();
+                }
+            }
+        }
+
+        function closeForgotPasswordModal() {
+            const modal = document.getElementById('forgotPasswordModal');
+            if (modal) modal.classList.remove('active');
+        }
+
+        async function sendPasswordReset() {
+            const emailInput = document.getElementById('forgotEmail');
+            const email = emailInput ? emailInput.value.trim() : '';
+            if (!email) {
+                alert('Пожалуйста, введите ваш email.');
+                return;
+            }
+            try {
+                await db.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin
+                });
+                alert('Ссылка для сброса пароля отправлена на ' + email + '. Проверьте почту и перейдите по ссылке для создания нового пароля.');
+                closeForgotPasswordModal();
+            } catch (error) {
+                console.error('Password reset error:', error);
+                alert('Ошибка: ' + (error.message || 'Не удалось отправить письмо. Проверьте email и попробуйте снова.'));
+            }
+        }
+
+        window.openForgotPasswordModal = openForgotPasswordModal;
+        window.closeForgotPasswordModal = closeForgotPasswordModal;
+        window.sendPasswordReset = sendPasswordReset;
 
         function populateThemeGrid() {
             const grid = document.getElementById('themeGrid');
