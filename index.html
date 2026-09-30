@@ -5717,11 +5717,10 @@
                     realtimeRequestTimeout: 20000,
                     httpMaxRetryCount: 5,
                     httpMaxRetryDuration: 30000,
-                    connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
-                    transportParams: { heartbeatInterval: 15000 },
                     idleTimeout: 0,
-                    echoMessages: false,
-                    transports: ['web_socket', 'xhr_streaming', 'xhr_polling']
+                    connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
+                    transports: ['web_socket'],
+                    echoMessages: false
                 });
             } catch (e) {
                 console.error('Failed to create Ably instance:', e);
@@ -5791,6 +5790,13 @@
                 } else {
                     console.log('[heartbeat] Ably connected OK');
                 }
+                // Отправляем ping через канал presence, чтобы Ably видел активность и не разрывал idle
+                try {
+                    const presenceChannel = ably.channels.get('tok_global_online');
+                    if (presenceChannel && presenceChannel.state === 'attached') {
+                        presenceChannel.presence.update({ lastSeen: Date.now() });
+                    }
+                } catch (e) {}
             }, 20000);
         }
 
