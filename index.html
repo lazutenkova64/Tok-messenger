@@ -4437,8 +4437,13 @@
             const channelName = `tok_chat_${chatId}`;
             const chatChannel = ably.channels.get(channelName, { params: { rewind: '1' } });
             
-            // Если канал уже attached — не пересоздаём подписки (защита от дублирования)
-            if (chatChannel.state === 'attached') {
+            // Защита от дублирования подписок через флаг на канале
+            if (chatChannel._subscriptionsSet) {
+                console.log('[channel] already subscribed:', chatId);
+                // Если канал не attached — просто присоединяем
+                if (chatChannel.state !== 'attached') {
+                    chatChannel.attach();
+                }
                 return;
             }
             
@@ -4464,155 +4469,162 @@
                 }, 5000);
             });
             
-            // Отписка перед повторной подпиской
+            // Подписки устанавливаем СРАЗУ, до attach()
+            chatChannel._subscriptionsSet = true;
             chatChannel.unsubscribe();
             
-            // Attach the channel first, then set up all subscriptions
-            chatChannel.attach((err) => {
-                if (err) {
-                    console.error('Failed to attach to channel ' + channelName + ':', err);
-                    return;
-                }
+            // --- MESSAGE ---
+            chatChannel.subscribe('message', (message) => {
+                const msg = message.data;
+                console.log('[channel] received message:', msg);
+                console.log('[channel] chatId arg:', chatId, 'currentChat:', currentChat?.id);
+                if (!msg) return;
+                if (msg.sender_id === currentUser.id) return;
                 
-                console.log('[channel] Attached to', channelName);
+                if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
+                if (!messages[chatId]) messages[chatId] = [];
                 
-                // Now that channel is attached, subscribe to all events
-                chatChannel.subscribe('message', (message) => {
-                    const msg = message.data;
-                    if (!msg) return;
-                    if (msg.sender_id === currentUser.id) return;
+                const exists = messages[chatId].some(m => m.id === msg.id);
+                if (!exists) {
+                    const sender = allUsers.find(u => u.id === msg.sender_id) || { username: msg.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
                     
-                    if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                    if (!messages[chatId]) messages[chatId] = [];
+                    const newMsg = {
+                        id: msg.id,
+                        chatId: msg.chat_id,
+                        sender: msg.sender_id,
+                        senderName: sender.username,
+                        senderIsVip: sender.is_vip,
+                        senderIsAdmin: sender.is_admin,
+                        text: msg.text,
+                        audio: msg.audio,
+                        image: msg.image,
+                        duration: msg.duration,
+                        time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                        timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+                        isAdmin: msg.is_admin || false,
+                        edited: msg.edited || false,
+                        type: 'in'
+                    };
                     
-                    const exists = messages[chatId].some(m => m.id === msg.id);
-                    if (!exists) {
-                        const sender = allUsers.find(u => u.id === msg.sender_id) || { username: msg.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                        
-                        const newMsg = {
-                            id: msg.id,
-                            chatId: msg.chat_id,
-                            sender: msg.sender_id,
-                            senderName: sender.username,
-                            senderIsVip: sender.is_vip,
-                            senderIsAdmin: sender.is_admin,
-                            text: msg.text,
-                            audio: msg.audio,
-                            image: msg.image,
-                            duration: msg.duration,
-                            time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                            isAdmin: msg.is_admin || false,
-                            edited: msg.edited || false,
-                            type: 'in'
-                        };
-                        
-                        messages[chatId].push(newMsg);
-                        messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                        
-                        if (getNotificationState(chatId)) playIncomingMessageSound();
-                        
-                        if (getNotificationState(chatId)) {
-                            showMessageNotification(sender.username, sender.avatar, msg.text || (msg.image ? '📷 Изображение' : '🎤 Голосовое'), chatId);
-                        }
-                        
-                        chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id }).catch(() => {});
-                        
-                        if (currentChat?.id !== chatId) {
-                            unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                        }
-                        
-                        if (currentChat && currentChat.id === chatId) {
-                            renderMessages();
-                            unreadCounts[chatId] = 0;
-                            markMessagesAsRead(chatId);
-                            setTimeout(() => {
-                                const container = document.getElementById('messagesContainer');
-                                if (container) { container.style.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
-                            }, 50);
-                        }
-                        
-                        updateChatsList();
-                        updateUnreadCounts();
-                        updateAppBadge();
-                    }
-                });
-                
-                chatChannel.subscribe('delivery_receipt', (data) => {
-                    const { messageId } = data.data;
-                    if (messageStatuses[messageId]) {
-                        messageStatuses[messageId].status = 'delivered';
-                        saveMessageStatuses();
-                    }
-                    if (currentChat && currentChat.id === chatId) renderMessages();
-                });
-                
-                chatChannel.subscribe('read_receipt', (data) => {
-                    const { messageId } = data.data;
-                    if (messageStatuses[messageId]) {
-                        messageStatuses[messageId].status = 'read';
-                        saveMessageStatuses();
-                    }
-                    if (currentChat && currentChat.id === chatId) renderMessages();
-                });
-                
-                chatChannel.subscribe('delete', (data) => {
-                    const { messageId } = data.data;
-                    if (!deletedMessages[chatId]) deletedMessages[chatId] = [];
-                    if (!deletedMessages[chatId].includes(messageId)) {
-                        deletedMessages[chatId].push(messageId);
-                        localStorage.setItem('deletedMessages', JSON.stringify(deletedMessages));
-                    }
-                    if (messages[chatId]) {
-                        messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
-                        if (currentChat?.id === chatId) renderMessages();
-                        updateChatsList();
-                    }
-                });
-                
-                chatChannel.subscribe('edit', (data) => {
-                    const { messageId, newText } = data.data;
-                    if (messages[chatId]) {
-                        const msgIndex = messages[chatId].findIndex(m => m.id === messageId);
-                        if (msgIndex !== -1) {
-                            messages[chatId][msgIndex].text = newText;
-                            messages[chatId][msgIndex].edited = true;
-                            if (currentChat?.id === chatId) renderMessages();
-                        }
-                    }
-                });
-
-                chatChannel.subscribe('chat_deleted', (data) => {
-                    const { chatId: deletedChatId } = data.data || {};
-                    if (deletedChatId !== chatId) return;
+                    messages[chatId].push(newMsg);
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
-                    locallyDeletedChats.add(chatId);
-                    saveLocallyDeletedChats();
+                    if (getNotificationState(chatId)) playIncomingMessageSound();
                     
-                    myChats = myChats.filter(c => c.id !== chatId);
-                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                    if (getNotificationState(chatId)) {
+                        showMessageNotification(sender.username, sender.avatar, msg.text || (msg.image ? '📷 Изображение' : '🎤 Голосовое'), chatId);
+                    }
                     
-                    delete messages[chatId];
-                    delete unreadCounts[chatId];
+                    chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id }).catch(() => {});
+                    
+                    if (currentChat?.id !== chatId) {
+                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
+                    }
                     
                     if (currentChat && currentChat.id === chatId) {
-                        currentChat = null;
                         renderMessages();
-                        updateUrlWithChat(null);
-                        closeUserProfileModal();
-                        showSidebarOnMobile();
+                        unreadCounts[chatId] = 0;
+                        markMessagesAsRead(chatId);
+                        setTimeout(() => {
+                            const container = document.getElementById('messagesContainer');
+                            if (container) { container.style.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
+                        }, 50);
                     }
                     
                     updateChatsList();
                     updateUnreadCounts();
                     updateAppBadge();
-                    
-                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                        try {
-                            new Notification('Чат удалён', { body: 'Собеседник удалил чат' });
-                        } catch (e) {}
+                }
+            });
+            
+            // --- DELIVERY RECEIPT ---
+            chatChannel.subscribe('delivery_receipt', (data) => {
+                const { messageId } = data.data;
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'delivered';
+                    saveMessageStatuses();
+                }
+                if (currentChat && currentChat.id === chatId) renderMessages();
+            });
+            
+            // --- READ RECEIPT ---
+            chatChannel.subscribe('read_receipt', (data) => {
+                const { messageId } = data.data;
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'read';
+                    saveMessageStatuses();
+                }
+                if (currentChat && currentChat.id === chatId) renderMessages();
+            });
+            
+            // --- DELETE ---
+            chatChannel.subscribe('delete', (data) => {
+                const { messageId } = data.data;
+                if (!deletedMessages[chatId]) deletedMessages[chatId] = [];
+                if (!deletedMessages[chatId].includes(messageId)) {
+                    deletedMessages[chatId].push(messageId);
+                    localStorage.setItem('deletedMessages', JSON.stringify(deletedMessages));
+                }
+                if (messages[chatId]) {
+                    messages[chatId] = messages[chatId].filter(m => m.id !== messageId);
+                    if (currentChat?.id === chatId) renderMessages();
+                    updateChatsList();
+                }
+            });
+            
+            // --- EDIT ---
+            chatChannel.subscribe('edit', (data) => {
+                const { messageId, newText } = data.data;
+                if (messages[chatId]) {
+                    const msgIndex = messages[chatId].findIndex(m => m.id === messageId);
+                    if (msgIndex !== -1) {
+                        messages[chatId][msgIndex].text = newText;
+                        messages[chatId][msgIndex].edited = true;
+                        if (currentChat?.id === chatId) renderMessages();
                     }
-                });
+                }
+            });
+
+            // --- CHAT DELETED ---
+            chatChannel.subscribe('chat_deleted', (data) => {
+                const { chatId: deletedChatId } = data.data || {};
+                if (deletedChatId !== chatId) return;
+                
+                locallyDeletedChats.add(chatId);
+                saveLocallyDeletedChats();
+                
+                myChats = myChats.filter(c => c.id !== chatId);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+                
+                delete messages[chatId];
+                delete unreadCounts[chatId];
+                
+                if (currentChat && currentChat.id === chatId) {
+                    currentChat = null;
+                    renderMessages();
+                    updateUrlWithChat(null);
+                    closeUserProfileModal();
+                    showSidebarOnMobile();
+                }
+                
+                updateChatsList();
+                updateUnreadCounts();
+                updateAppBadge();
+                
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    try {
+                        new Notification('Чат удалён', { body: 'Собеседник удалил чат' });
+                    } catch (e) {}
+                }
+            });
+            
+            // Attach после подписок
+            chatChannel.attach((err) => {
+                if (err) {
+                    console.error('Failed to attach to channel ' + channelName + ':', err);
+                    return;
+                }
+                console.log('[channel] Attached to', channelName);
             });
         }
 
