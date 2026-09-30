@@ -4453,13 +4453,20 @@
             chatChannel.off('attached');
             chatChannel.off('detached');
             
-            // Обработчики suspended/failed — только логирование, Ably сам переподключится
+            // Авто-переподключение при suspended
             chatChannel.on('suspended', () => {
-                console.warn(`[channel] ${channelName} suspended`);
+                console.warn(`[channel] ${channelName} suspended, retrying in 3s...`);
+                setTimeout(() => {
+                    try { chatChannel.attach(); } catch (e) {}
+                }, 3000);
             });
             
+            // Авто-переподключение при failed
             chatChannel.on('failed', () => {
-                console.warn(`[channel] ${channelName} failed`);
+                console.warn(`[channel] ${channelName} failed, retrying in 5s...`);
+                setTimeout(() => {
+                    try { chatChannel.attach(); } catch (e) {}
+                }, 5000);
             });
             
             // Подписки устанавливаем СРАЗУ, до attach()
@@ -5757,7 +5764,7 @@
                     idleTimeout: 0,
                     connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
                     fallbackHostsUseDefault: true,
-                    transports: ['web_socket', 'xhr_polling'],
+                    transports: ['xhr_streaming', 'web_socket', 'xhr_polling'],
                     echoMessages: false
                 });
             } catch (e) {
