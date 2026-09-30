@@ -5711,11 +5711,16 @@
                 ably = new Ably.Realtime({
                     key: ABLY_API_KEY,
                     clientId: String(currentUser.id),
-                    disconnectedRetryTimeout: 1500,
-                    suspendedRetryTimeout: 3000,
-                    realtimeRequestTimeout: 30000,
+                    disconnectedRetryTimeout: 5000,
+                    suspendedRetryTimeout: 15000,
+                    channelRetryTimeout: 15000,
+                    realtimeRequestTimeout: 20000,
+                    httpMaxRetryCount: 5,
+                    httpMaxRetryDuration: 30000,
+                    connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
+                    transportParams: { heartbeatInterval: 15000 },
+                    idleTimeout: 0,
                     echoMessages: false,
-                    idleTimeout: 60000,
                     transports: ['web_socket', 'xhr_streaming', 'xhr_polling']
                 });
             } catch (e) {
@@ -5740,7 +5745,7 @@
                 setupGlobalChatsChannel();
 
                 myChats.forEach(chat => {
-                    if (!chat.is_public) subscribeToChatChannel(chat.id);
+                    subscribeToChatChannel(chat.id);
                 });
             });
 
@@ -5771,6 +5776,22 @@
                     }
                 }, 3000);
             });
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && ably && ably.connection.state !== 'connected') {
+                    try { ably.connection.connect(); } catch (e) {}
+                }
+            });
+
+            setInterval(() => {
+                if (!ably) return;
+                if (ably.connection.state !== 'connected') {
+                    console.log('[heartbeat] Ably disconnected, reconnecting...');
+                    try { ably.connection.connect(); } catch (e) {}
+                } else {
+                    console.log('[heartbeat] Ably connected OK');
+                }
+            }, 20000);
         }
 
         function setupPresenceChannel() {
