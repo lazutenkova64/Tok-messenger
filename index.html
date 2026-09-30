@@ -4434,15 +4434,47 @@
         function subscribeToChatChannel(chatId) {
             if (!ably || !currentUser) return;
             
-            const chatChannel = ably.channels.get(`tok_chat_${chatId}`, { params: { rewind: '1' } });
+            const channelName = `tok_chat_${chatId}`;
+            const chatChannel = ably.channels.get(channelName, { params: { rewind: '1' } });
+            
+            // Если канал уже attached — не пересоздаём подписки (защита от дублирования)
+            if (chatChannel.state === 'attached') {
+                return;
+            }
+            
+            // Очищаем старые обработчики канала (suspended/failed)
+            chatChannel.off('suspended');
+            chatChannel.off('failed');
+            chatChannel.off('attached');
+            chatChannel.off('detached');
+            
+            // Авто-переподключение при suspended
+            chatChannel.on('suspended', () => {
+                console.warn(`[channel] ${channelName} suspended, retrying in 3s...`);
+                setTimeout(() => {
+                    try { chatChannel.attach(); } catch (e) {}
+                }, 3000);
+            });
+            
+            // Авто-переподключение при failed
+            chatChannel.on('failed', () => {
+                console.warn(`[channel] ${channelName} failed, retrying in 5s...`);
+                setTimeout(() => {
+                    try { chatChannel.attach(); } catch (e) {}
+                }, 5000);
+            });
+            
+            // Отписка перед повторной подпиской
             chatChannel.unsubscribe();
             
             // Attach the channel first, then set up all subscriptions
             chatChannel.attach((err) => {
                 if (err) {
-                    console.error('Failed to attach to channel tok_chat_' + chatId + ':', err);
+                    console.error('Failed to attach to channel ' + channelName + ':', err);
                     return;
                 }
+                
+                console.log('[channel] Attached to', channelName);
                 
                 // Now that channel is attached, subscribe to all events
                 chatChannel.subscribe('message', (message) => {
@@ -5713,8 +5745,8 @@
                     clientId: String(currentUser.id),
                     disconnectedRetryTimeout: 5000,
                     suspendedRetryTimeout: 15000,
-                    channelRetryTimeout: 15000,
-                    realtimeRequestTimeout: 20000,
+                    channelRetryTimeout: 30000,
+                    realtimeRequestTimeout: 30000,
                     httpMaxRetryCount: 5,
                     httpMaxRetryDuration: 30000,
                     idleTimeout: 0,
