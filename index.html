@@ -3180,7 +3180,7 @@
         }
 
         function formatLastSeen(timestamp) {
-            if (!timestamp || isNaN(timestamp)) return 'давно';
+            if (!timestamp || isNaN(timestamp)) return 'был давно';
             
             const now = Date.now();
             const diff = now - timestamp;
@@ -3190,7 +3190,6 @@
             const hours = Math.floor(minutes / 60);
             const days = Math.floor(hours / 24);
             
-            if (days > 7) return 'давно';
             if (seconds < 60) return 'только что';
             if (minutes < 60) {
                 if (minutes === 1) return '1 минуту назад';
@@ -3202,12 +3201,8 @@
                 if (hours >= 2 && hours <= 4) return `${hours} часа назад`;
                 return `${hours} часов назад`;
             }
-            if (days === 1) return 'вчера';
-            if (days < 7) {
-                if (days >= 2 && days <= 4) return `${days} дня назад`;
-                return `${days} дней назад`;
-            }
-            return 'давно';
+            if (days < 7) return 'был недавно';
+            return 'был давно';
         }
 
         function getShortStatusText(isOnline, dnd, lastSeen) {
@@ -3225,10 +3220,7 @@
             const days = Math.floor(hours / 24);
             
             if (days > 7) return 'был(а) давно';
-            if (days >= 1) {
-                if (days === 1) return 'был(а) вчера';
-                return `был(а) ${days} дн. назад`;
-            }
+            if (days >= 1) return 'был(а) недавно';
             if (hours >= 1) {
                 return `был(а) ${hours} ч. назад`;
             }
