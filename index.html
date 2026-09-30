@@ -5900,10 +5900,9 @@
             if (!ably || !currentUser) return;
             const presenceChannel = ably.channels.get('tok_global_online');
             
-            presenceChannel.attach((err) => {
-                if (err) { console.warn('[presence] attach error:', err); return; }
-                
-                presenceChannel.presence.enter({
+            // В Ably v2 методы используют Promise, callback v1 не работает
+            presenceChannel.attach().then(() => {
+                return presenceChannel.presence.enter({
                     name: currentUser.name,
                     avatar: currentUser.avatar || '👤',
                     bio: currentUser.bio || '',
@@ -5911,84 +5910,84 @@
                     is_admin: currentUser.is_admin || false,
                     dnd: currentUser.dnd || false,
                     lastSeen: Date.now()
-                }, (enterErr) => {
-                    if (enterErr) { console.warn('[presence] enter error:', enterErr); return; }
-                    
-                    presenceChannel.presence.get((getErr, members) => {
-                        if (getErr) { console.warn('[presence] get error:', getErr); return; }
-                        (members || []).forEach(member => {
-                            const cid = String(member.clientId);
-                            onlineUsers[cid] = {
-                                id: cid,
-                                name: member.data?.name || 'Пользователь',
-                                avatar: member.data?.avatar || '👤',
-                                bio: member.data?.bio || '',
-                                online: true,
-                                is_vip: member.data?.is_vip || false,
-                                is_admin: member.data?.is_admin || false,
-                                dnd: member.data?.dnd || false,
-                                lastSeen: Date.now()
-                            };
-                        });
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('enter', (member) => {
-                        const cid = String(member.clientId);
-                        onlineUsers[cid] = {
-                            id: cid,
-                            name: member.data?.name || 'Пользователь',
-                            avatar: member.data?.avatar || '👤',
-                            bio: member.data?.bio || '',
-                            online: true,
-                            is_vip: member.data?.is_vip || false,
-                            is_admin: member.data?.is_admin || false,
-                            dnd: member.data?.dnd || false,
-                            lastSeen: Date.now()
-                        };
-                        sendQueuedMessagesToUser(cid);
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('update', (member) => {
-                        const cid = String(member.clientId);
-                        onlineUsers[cid] = {
-                            ...(onlineUsers[cid] || {}),
-                            id: cid,
-                            name: member.data?.name || 'Пользователь',
-                            avatar: member.data?.avatar || '👤',
-                            bio: member.data?.bio || '',
-                            online: true,
-                            is_vip: member.data?.is_vip || false,
-                            is_admin: member.data?.is_admin || false,
-                            dnd: member.data?.dnd || false,
-                            lastSeen: Date.now()
-                        };
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('leave', (member) => {
-                        const cid = String(member.clientId);
-                        if (onlineUsers[cid]) {
-                            onlineUsers[cid].online = false;
-                            if (member.data?.lastSeen) {
-                                onlineUsers[cid].lastSeen = member.data.lastSeen;
-                            } else {
-                                onlineUsers[cid].lastSeen = Date.now();
-                            }
-                            try {
-                                db.from('profiles')
-                                  .update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() })
-                                  .eq('id', cid);
-                            } catch (e) {}
-                        }
-                        updateChatsList();
-                        updateChatStatus();
-                    });
                 });
+            }).then(() => {
+                return presenceChannel.presence.get();
+            }).then((members) => {
+                (members || []).forEach(member => {
+                    const cid = String(member.clientId);
+                    onlineUsers[cid] = {
+                        id: cid,
+                        name: member.data?.name || 'Пользователь',
+                        avatar: member.data?.avatar || '👤',
+                        bio: member.data?.bio || '',
+                        online: true,
+                        is_vip: member.data?.is_vip || false,
+                        is_admin: member.data?.is_admin || false,
+                        dnd: member.data?.dnd || false,
+                        lastSeen: Date.now()
+                    };
+                });
+                console.log('[presence] loaded members:', Object.keys(onlineUsers));
+                updateChatsList();
+                updateChatStatus();
+            }).catch(err => {
+                console.error('[presence] setup error:', err);
+            });
+            
+            presenceChannel.presence.subscribe('enter', (member) => {
+                const cid = String(member.clientId);
+                onlineUsers[cid] = {
+                    id: cid,
+                    name: member.data?.name || 'Пользователь',
+                    avatar: member.data?.avatar || '👤',
+                    bio: member.data?.bio || '',
+                    online: true,
+                    is_vip: member.data?.is_vip || false,
+                    is_admin: member.data?.is_admin || false,
+                    dnd: member.data?.dnd || false,
+                    lastSeen: Date.now()
+                };
+                sendQueuedMessagesToUser(cid);
+                updateChatsList();
+                updateChatStatus();
+            });
+            
+            presenceChannel.presence.subscribe('update', (member) => {
+                const cid = String(member.clientId);
+                onlineUsers[cid] = {
+                    ...(onlineUsers[cid] || {}),
+                    id: cid,
+                    name: member.data?.name || 'Пользователь',
+                    avatar: member.data?.avatar || '👤',
+                    bio: member.data?.bio || '',
+                    online: true,
+                    is_vip: member.data?.is_vip || false,
+                    is_admin: member.data?.is_admin || false,
+                    dnd: member.data?.dnd || false,
+                    lastSeen: Date.now()
+                };
+                updateChatsList();
+                updateChatStatus();
+            });
+            
+            presenceChannel.presence.subscribe('leave', (member) => {
+                const cid = String(member.clientId);
+                if (onlineUsers[cid]) {
+                    onlineUsers[cid].online = false;
+                    if (member.data?.lastSeen) {
+                        onlineUsers[cid].lastSeen = member.data.lastSeen;
+                    } else {
+                        onlineUsers[cid].lastSeen = Date.now();
+                    }
+                    try {
+                        db.from('profiles')
+                          .update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() })
+                          .eq('id', cid);
+                    } catch (e) {}
+                }
+                updateChatsList();
+                updateChatStatus();
             });
         }
 
