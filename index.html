@@ -4714,30 +4714,6 @@
                     console.error('[new_message] Failed to fetch from Supabase:', e);
                 }
             });
-                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
-                    if (getNotificationState(chatId)) playIncomingMessageSound();
-                    
-                    if (currentChat?.id !== chatId) {
-                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                    }
-                    
-                    if (currentChat && currentChat.id === chatId) {
-                        renderMessages();
-                        markMessagesAsRead(chatId);
-                        setTimeout(() => {
-                            const container = document.getElementById('messagesContainer');
-                            if (container) { container.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
-                        }, 50);
-                    }
-                    
-                    updateChatsList();
-                    updateUnreadCounts();
-                    updateAppBadge();
-                } catch (e) {
-                    console.error('[new_message] Failed to fetch from Supabase:', e);
-                }
-            });
             
             // Attach после подписок
             chatChannel.attach((err) => {
