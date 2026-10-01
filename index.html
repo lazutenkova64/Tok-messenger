@@ -4652,11 +4652,11 @@
                 }
             });
             
-            // --- NEW MESSAGE (голосовые — догрузка из Supabase) ---
+            // --- NEW MESSAGE (все сообщения — догрузка из Supabase) ---
             chatChannel.subscribe('new_message', async (message) => {
-                const { id: messageId, chat_id: chatId, sender_id } = message.data;
+                const { id: messageId, chat_id: msgChatId, sender_id } = message.data;
                 if (sender_id === currentUser.id) return;
-                if (!chatId) return;
+                if (!msgChatId) return;
                 
                 // Догружаем полное сообщение из Supabase
                 try {
@@ -4667,13 +4667,13 @@
                         .single();
                     if (error || !data) return;
                     
-                    if (!messages[chatId]) messages[chatId] = [];
-                    const exists = messages[chatId].some(m => m.id === messageId);
+                    if (!messages[msgChatId]) messages[msgChatId] = [];
+                    const exists = messages[msgChatId].some(m => m.id === messageId);
                     if (exists) return;
                     
                     const sender = allUsers.find(u => u.id === data.sender_id) || { username: message.data.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
                     
-                    messages[chatId].push({
+                    messages[msgChatId].push({
                         id: data.id,
                         chatId: data.chat_id,
                         sender: data.sender_id,
@@ -4690,6 +4690,30 @@
                         edited: data.edited || false,
                         type: 'in'
                     });
+                    messages[msgChatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    
+                    if (getNotificationState(msgChatId)) playIncomingMessageSound();
+                    
+                    if (currentChat?.id !== msgChatId) {
+                        unreadCounts[msgChatId] = (unreadCounts[msgChatId] || 0) + 1;
+                    }
+                    
+                    if (currentChat && currentChat.id === msgChatId) {
+                        renderMessages();
+                        markMessagesAsRead(msgChatId);
+                        setTimeout(() => {
+                            const container = document.getElementById('messagesContainer');
+                            if (container) { container.style.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
+                        }, 50);
+                    }
+                    
+                    updateChatsList();
+                    updateUnreadCounts();
+                    updateAppBadge();
+                } catch (e) {
+                    console.error('[new_message] Failed to fetch from Supabase:', e);
+                }
+            });
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
                     
                     if (getNotificationState(chatId)) playIncomingMessageSound();
@@ -5322,10 +5346,15 @@
                     
                     if (ably) {
                         const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                        chatChannel.publish('message', { 
-                            ...dbMessage, 
-                            id: realId, 
-                            sender_name: currentUser.name 
+                        chatChannel.publish('new_message', {
+                            id: realId,
+                            chat_id: currentChat.id,
+                            sender_id: currentUser.id,
+                            sender_name: currentUser.name,
+                            created_at: now.toISOString(),
+                            text: text,
+                            has_image: false,
+                            has_audio: false
                         }).catch((err) => {
                             if (err && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
                                 const otherUserId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
@@ -5416,10 +5445,13 @@
                     
                     if (ably) {
                         const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                        chatChannel.publish('message', { 
-                            ...dbMessage, 
-                            id: realId, 
-                            sender_name: currentUser.name 
+                        chatChannel.publish('new_message', {
+                            id: realId,
+                            chat_id: currentChat.id,
+                            sender_id: currentUser.id,
+                            sender_name: currentUser.name,
+                            created_at: now.toISOString(),
+                            has_image: true
                         }).catch(() => {});
                     }
                 }
@@ -6301,9 +6333,10 @@
                     try {
                         const presenceChannel = ably.channels.get('tok_global_online');
                         if (presenceChannel.state === 'attached') {
+                            const safeAvatar = getSafeAvatar(currentUser.avatar);
                             presenceChannel.presence.update({ 
                                 name: currentUser.name,
-                                avatar: currentUser.avatar || '👤',
+                                avatar: safeAvatar,
                                 bio: currentUser.bio || '',
                                 is_vip: currentUser.is_vip || false,
                                 is_admin: currentUser.is_admin || false,
