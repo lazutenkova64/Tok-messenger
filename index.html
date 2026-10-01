@@ -6429,8 +6429,6 @@
             let avatar = chat.avatar || '👥';
             let usernameForAvatar = displayName;
             let statusDotClass = 'offline';
-            let statusText = '';
-            let statusColor = 'var(--text-secondary)';
             
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
@@ -6449,20 +6447,8 @@
                         if (userOnline && userOnline.online) {
                             if (userOnline.dnd) {
                                 statusDotClass = 'dnd';
-                                statusText = 'Не беспокоить';
-                                statusColor = 'var(--dnd-red)';
                             } else {
                                 statusDotClass = 'online';
-                                statusText = 'в сети';
-                                statusColor = 'var(--online-green)';
-                            }
-                        } else {
-                            const lastSeen = (userOnline && userOnline.lastSeen) 
-                                ? userOnline.lastSeen 
-                                : (otherUser.last_seen ? new Date(otherUser.last_seen).getTime() : null);
-                            if (lastSeen) {
-                                statusText = escapeHtml(getShortStatusText(false, false, lastSeen));
-                                statusColor = 'var(--text-secondary)';
                             }
                         }
                     } else {
@@ -6484,7 +6470,6 @@
                         <div class="chat-name">
                             <span class="status-dot ${statusDotClass}"></span>
                             ${escapeHtml(displayName)}
-                            <span class="status-text" style="color:${statusColor}">${statusText}</span>
                             ${isPinned ? '<span class="pin-icon">📌</span>' : ''}
                             ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
                             <button class="pin-chat-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinChat('${chat.id}', event)">📌</button>
