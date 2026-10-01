@@ -2727,11 +2727,12 @@
         </div>
     </div>
 
-    <div class="modal" id="callModal">
+    <div class="modal" id="callModal" onclick="if (event.target === this) closeCallModal();">
         <div class="modal-content" style="text-align: center;">
+            <button class="close-btn" id="callModalCloseBtn" onclick="closeCallModal()">×</button>
             <h2 id="callStatus">Входящий звонок...</h2>
             <div class="call-timer" id="callTimer"></div>
-            <div id="callerInfo" style="margin: 20px 0;">
+            <div id="callerInfo" style="margin: 20px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
                 <div class="user-profile-avatar" id="callAvatar">👤</div>
                 <div class="user-profile-name" id="callerName"></div>
             </div>
@@ -6090,17 +6091,26 @@
             });
 
             userChannel.subscribe('call_rejected', (message) => {
-                const { callId, reason } = message.data;
+                const { callId } = message.data;
                 if (!currentCall || currentCall.callId !== callId) return;
-                if (reason === 'busy') alert('Абонент занят');
-                else alert('Вызов отклонен');
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
                 resetCallState();
             });
 
             userChannel.subscribe('call_ended', (message) => {
                 const { callId } = message.data;
                 if (!currentCall || currentCall.callId !== callId) return;
-                alert('Звонок завершен');
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
                 resetCallState();
                 if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
             });
@@ -6809,11 +6819,18 @@
             remoteDescriptionSet = false;
             clearRemoteAudios();
             
-            if (callModal) callModal.classList.remove('active');
             if (callRingtone) {
                 try { callRingtone.pause(); callRingtone.currentTime = 0; } catch (e) {}
             }
         }
+
+        function closeCallModal() {
+            if (callModal) callModal.classList.remove('active');
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
+            resetCallState();
+        }
+        window.closeCallModal = closeCallModal;
 
         function createPeerConnection() {
             const pc = new RTCPeerConnection(getIceServers());
@@ -6881,25 +6898,13 @@
         async function startCall() {
             if (!callsTableExists) {
                 await checkCallsTable();
-                if (!callsTableExists) {
-                    alert('Функция звонков недоступна.');
-                    return;
-                }
+                if (!callsTableExists) return;
             }
             if (!currentChat || currentChat.is_public) return;
-            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) {
-                alert('Нельзя звонить самому себе');
-                return;
-            }
-            if (currentCall.status) {
-                alert('У вас уже есть активный звонок');
-                return;
-            }
+            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) return;
+            if (currentCall.status) return;
 
-            if (!ably) {
-                alert('Соединение не инициализировано. Попробуйте перезагрузить страницу.');
-                return;
-            }
+            if (!ably) return;
 
             let waited = 0;
             while (ably.connection.state !== 'connected' && waited < 10000) {
@@ -6907,17 +6912,11 @@
                 waited += 500;
             }
 
-            if (ably.connection.state !== 'connected') {
-                alert('Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.');
-                return;
-            }
+            if (ably.connection.state !== 'connected') return;
 
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
             const otherUser = allUsers.find(u => u.id === otherId);
-            if (!otherUser) {
-                alert('Не удалось определить собеседника');
-                return;
-            }
+            if (!otherUser) return;
             const receiverId = otherUser.id;
 
             const callId = generateUUID();
@@ -6948,6 +6947,9 @@
                 timeout: null
             };
 
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
+
             try {
                 const userChannel = ably.channels.get(`user-${receiverId}`);
                 await userChannel.publish('call_request', {
@@ -6960,7 +6962,6 @@
                 });
             } catch (e) {
                 console.error('Failed to publish call request:', e);
-                alert('Не удалось отправить запрос на звонок');
                 resetCallState();
                 return;
             }
@@ -6969,7 +6970,6 @@
 
             currentCall.timeout = setTimeout(() => {
                 if (currentCall.status === 'calling') {
-                    alert('Абонент не ответил');
                     endCall();
                 }
             }, CALL_RING_TIMEOUT);
@@ -6977,6 +6977,10 @@
 
         function showCallModal(status, peerName, peerAvatar) {
             if (!callModal) return;
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl && (status === 'calling' || status === 'ringing')) {
+                timerEl.textContent = '';
+            }
             const statusEl = document.getElementById('callStatus');
             const callerNameEl = document.getElementById('callerName');
             const callerAvatarEl = document.getElementById('callAvatar');
@@ -7027,6 +7031,9 @@
                 startTime: null,
                 timeout: null
             };
+
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
 
             showCallModal('ringing', callerName, callerAvatar);
 
@@ -7085,6 +7092,13 @@
             
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
             
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = 'Вызов завершён';
+            const incoming = document.getElementById('incomingCallControls');
+            const outgoing = document.getElementById('outgoingCallControls');
+            if (incoming) incoming.style.display = 'none';
+            if (outgoing) outgoing.style.display = 'none';
+            
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
         }
@@ -7098,6 +7112,13 @@
             }
 
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
+
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = 'Вызов завершён';
+            const incoming = document.getElementById('incomingCallControls');
+            const outgoing = document.getElementById('outgoingCallControls');
+            if (incoming) incoming.style.display = 'none';
+            if (outgoing) outgoing.style.display = 'none';
 
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
@@ -7124,14 +7145,14 @@
         function startCallTimer() {
             if (callTimerInterval) clearInterval(callTimerInterval);
             const startTime = Date.now();
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '00:00';
             callTimerInterval = setInterval(() => {
                 const elapsed = Date.now() - startTime;
                 if (elapsed >= CALL_DURATION_LIMIT) {
-                    alert('Длительность звонка превысила 30 минут.');
                     endCall();
                     return;
                 }
-                const timerEl = document.getElementById('callTimer');
                 if (timerEl) timerEl.textContent = formatCallTime(elapsed);
             }, 1000);
         }
