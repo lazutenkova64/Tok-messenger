@@ -724,6 +724,23 @@
             box-shadow: 0 0 8px var(--dnd-red);
         }
 
+        .chat-status-text {
+            font-size: 12px;
+            font-weight: 400;
+            margin-left: auto;
+            padding-left: 6px;
+            flex-shrink: 0;
+            color: var(--text-secondary);
+        }
+
+        .chat-status-text.online {
+            color: var(--online-green);
+        }
+
+        .chat-status-text.dnd {
+            color: var(--dnd-red);
+        }
+
         .last-seen {
             font-size: 12px;
             color: var(--text-secondary);
@@ -6430,7 +6447,6 @@
             let usernameForAvatar = displayName;
             let statusDotClass = 'offline';
             let statusText = '';
-            let statusColor = 'var(--text-secondary)';
             
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
@@ -6450,19 +6466,16 @@
                             if (userOnline.dnd) {
                                 statusDotClass = 'dnd';
                                 statusText = 'Не беспокоить';
-                                statusColor = 'var(--dnd-red)';
                             } else {
                                 statusDotClass = 'online';
                                 statusText = 'в сети';
-                                statusColor = 'var(--online-green)';
                             }
                         } else {
-                            const lastSeen = (userOnline && userOnline.lastSeen) 
+                            const lastSeen = (userOnline && userOnline.lastSeen)  
                                 ? userOnline.lastSeen 
                                 : (otherUser.last_seen ? new Date(otherUser.last_seen).getTime() : null);
                             if (lastSeen) {
                                 statusText = escapeHtml(getShortStatusText(false, false, lastSeen));
-                                statusColor = 'var(--text-secondary)';
                             }
                         }
                     } else {
@@ -6482,12 +6495,11 @@
                     <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center;">${avatarText}</div>
                     <div class="chat-details">
                         <div class="chat-name">
-                            <span class="status-dot ${statusDotClass}"></span>
+                            <span class="status-dot ${statusDotClass}" style="width:8px; height:8px; flex-shrink:0;"></span>
                             ${escapeHtml(displayName)}
-                            <span class="status-text" style="color:${statusColor}">${statusText}</span>
-                            ${isPinned ? '<span class="pin-icon">📌</span>' : ''}
                             ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
                             <button class="pin-chat-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinChat('${chat.id}', event)">📌</button>
+                            <span class="chat-status-text ${statusDotClass}">${statusText}</span>
                         </div>
                         <div class="chat-last-row">
                             ${lastMessageDate ? `<span class="chat-last-date">${escapeHtml(lastMessageDate)}</span>` : ''}
