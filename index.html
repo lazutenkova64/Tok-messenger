@@ -2714,6 +2714,11 @@
             <h3 style="margin: 20px 0 10px; color: var(--text-primary);">Выберите тему</h3>
             <div class="theme-grid" id="themeGrid"></div>
             
+            <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                <input type="file" id="chatBgInput" accept="image/*" style="display: none;" onchange="handleChatBgUpload(event)">
+                <button class="modal-btn" style="width: 100%; margin-bottom: 8px; font-size: 13px;" onclick="document.getElementById('chatBgInput').click()">🖼 Загрузить обои чата</button>
+            </div>
+            
             <button class="modal-btn" onclick="saveProfile()">Сохранить</button>
         </div>
     </div>
@@ -2723,6 +2728,8 @@
             <button class="close-btn" onclick="closeAvatarModal()">×</button>
             <h2>Выберите аватар</h2>
             <div class="avatar-grid" id="avatarGrid"></div>
+            <input type="file" id="avatarUploadInput" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+            <button class="modal-btn" style="width: 100%; margin-bottom: 8px; font-size: 13px;" onclick="document.getElementById('avatarUploadInput').click()">📁 Загрузить фото</button>
             <button class="modal-btn" onclick="saveAvatar()">Сохранить</button>
         </div>
     </div>
@@ -3882,6 +3889,13 @@
                             dnd: userData.dnd || false
                         };
                         
+                        // Чистка слишком большого аватара (>50КБ)
+                        if (currentUser.avatar && base64SizeInBytes(currentUser.avatar) > 50000) {
+                            console.warn('[avatar] Too big (init), clearing. Size:', base64SizeInBytes(currentUser.avatar));
+                            currentUser.avatar = '👤';
+                            db.from('profiles').update({ avatar: '👤' }).eq('id', currentUser.id).then(() => {}).catch(() => {});
+                        }
+                        
                         document.getElementById('loginModal').classList.remove('active');
                         document.getElementById('appContainer').style.display = 'flex';
                         document.getElementById('splashScreen').classList.add('hidden');
@@ -4046,6 +4060,13 @@
                     is_admin: userData.is_admin || false,
                     dnd: userData.dnd || false
                 };
+                
+                // Чистка слишком большого аватара (>50КБ)
+                if (currentUser.avatar && base64SizeInBytes(currentUser.avatar) > 50000) {
+                    console.warn('[avatar] Too big, clearing. Size:', base64SizeInBytes(currentUser.avatar));
+                    currentUser.avatar = '👤';
+                    db.from('profiles').update({ avatar: '👤' }).eq('id', currentUser.id).then(() => {}).catch(() => {});
+                }
                 
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
@@ -5898,7 +5919,12 @@
                 try {
                     const presenceChannel = ably.channels.get('tok_global_online');
                     if (presenceChannel && presenceChannel.state === 'attached') {
-                        presenceChannel.presence.update({ lastSeen: Date.now() });
+                        const safeAvatar = getSafeAvatar(currentUser.avatar);
+                        presenceChannel.presence.update({ 
+                            name: currentUser.name,
+                            avatar: safeAvatar,
+                            lastSeen: Date.now()
+                        });
                     }
                 } catch (e) {}
             }, 20000);
@@ -5911,9 +5937,10 @@
             presenceChannel.attach((err) => {
                 if (err) { console.warn('[presence] attach error:', err); return; }
                 
+                const safeAvatar = getSafeAvatar(currentUser.avatar);
                 presenceChannel.presence.enter({
                     name: currentUser.name,
-                    avatar: currentUser.avatar || '👤',
+                    avatar: safeAvatar,
                     bio: currentUser.bio || '',
                     is_vip: currentUser.is_vip || false,
                     is_admin: currentUser.is_admin || false,
@@ -6263,9 +6290,10 @@
                     try {
                         const presenceChannel = ably.channels.get('tok_global_online');
                         if (presenceChannel.state === 'attached') {
+                            const safeAvatar = getSafeAvatar(currentUser.avatar);
                             presenceChannel.presence.update({ 
                                 name: currentUser.name,
-                                avatar: currentUser.avatar || '👤',
+                                avatar: safeAvatar,
                                 bio: currentUser.bio || '',
                                 is_vip: currentUser.is_vip || false,
                                 is_admin: currentUser.is_admin || false,
@@ -6965,7 +6993,7 @@
                     dbCallId,
                     callerId: currentUser.id,
                     callerName: currentUser.name,
-                    callerAvatar: currentUser.avatar,
+                    callerAvatar: getSafeAvatar(currentUser.avatar),
                     timestamp
                 });
             } catch (e) {
@@ -7788,6 +7816,88 @@
         window.confirmDeleteChatWithWarning = confirmDeleteChatWithWarning;
         window.closeDeleteChatWarningModal = closeDeleteChatWarningModal;
         window.finalDeleteChat = finalDeleteChat;
+
+        // === Утилита для измерения размера base64 ===
+        function base64SizeInBytes(base64) {
+            if (!base64 || typeof base64 !== 'string') return 0;
+            if (base64.indexOf('data:') !== 0) return base64.length;
+            const commaIdx = base64.indexOf(',');
+            if (commaIdx === -1) return base64.length;
+            const body = base64.substring(commaIdx + 1);
+            return Math.floor(body.length * 3 / 4);
+        }
+
+        // === Утилита для сжатия изображений ===
+        async function resizeImageToBase64(file, maxSize, quality) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let w = img.width, h = img.height;
+                        if (w > h && w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w; canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // === Безопасный аватар для Ably (не больше 30КБ) ===
+        function getSafeAvatar(avatar) {
+            if (!avatar || avatar === '👤') return '👤';
+            if (base64SizeInBytes(avatar) > 30000) return '👤';
+            return avatar;
+        }
+
+        // === Загрузка фото аватара ===
+        async function handleAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            try {
+                const base64 = await resizeImageToBase64(file, 200, 0.7);
+                if (base64SizeInBytes(base64) > 50000) {
+                    alert('Фото слишком большое. Попробуйте другое.');
+                    return;
+                }
+                currentUser.avatar = base64;
+                await db.from('profiles').update({ avatar: base64 }).eq('id', currentUser.id);
+                updateProfileUI();
+                updateChatsList();
+            } catch (e) {
+                console.error('Failed to resize avatar:', e);
+            }
+            event.target.value = '';
+        }
+
+        // === Загрузка обоев чата ===
+        async function handleChatBgUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            try {
+                const base64 = await resizeImageToBase64(file, 800, 0.6);
+                if (base64SizeInBytes(base64) > 60000) {
+                    alert('Обои слишком большие. Выберите другое фото.');
+                    return;
+                }
+                currentUser.chatBackground = base64;
+                document.documentElement.style.setProperty('--pattern-overlay', `url('${base64}')`);
+                document.documentElement.style.setProperty('--pattern-overlay-size', 'cover');
+                await db.from('profiles').update({ chat_background: base64 }).eq('id', currentUser.id);
+                updateChatsList();
+            } catch (e) {
+                console.error('Failed to resize chat background:', e);
+            }
+            event.target.value = '';
+        }
     </script>
 </body>
 </html>                                    
