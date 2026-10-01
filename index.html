@@ -2095,6 +2095,21 @@
             color: var(--accent-blue);
             font-family: 'SF Mono', Monaco, 'Roboto Mono', monospace;
             text-shadow: 0 0 10px rgba(0, 122, 255, 0.5);
+            text-align: center;
+            width: 100%;
+            display: block;
+        }
+
+        #callStatus {
+            text-align: center;
+            width: 100%;
+        }
+
+        #callerInfo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         .message-image {
@@ -2734,11 +2749,12 @@
         </div>
     </div>
 
-    <div class="modal" id="callModal">
-        <div class="modal-content" style="text-align: center;">
+    <div class="modal" id="callModal" onclick="if (event.target === this) closeCallModal();">
+        <div class="modal-content" style="text-align: center; position: relative;">
+            <button class="close-btn" id="callModalCloseBtn" onclick="closeCallModal()">×</button>
             <h2 id="callStatus">Входящий звонок...</h2>
             <div class="call-timer" id="callTimer"></div>
-            <div id="callerInfo" style="margin: 20px 0;">
+            <div id="callerInfo" style="margin: 20px 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;">
                 <div class="user-profile-avatar" id="callAvatar">👤</div>
                 <div class="user-profile-name" id="callerName"></div>
             </div>
@@ -5934,11 +5950,10 @@
             if (!ably || !currentUser) return;
             const presenceChannel = ably.channels.get('tok_global_online');
             
-            presenceChannel.attach((err) => {
-                if (err) { console.warn('[presence] attach error:', err); return; }
-                
-                const safeAvatar = getSafeAvatar(currentUser.avatar);
-                presenceChannel.presence.enter({
+            const safeAvatar = getSafeAvatar(currentUser.avatar);
+            
+            presenceChannel.attach().then(() => {
+                return presenceChannel.presence.enter({
                     name: currentUser.name,
                     avatar: safeAvatar,
                     bio: currentUser.bio || '',
@@ -5946,84 +5961,81 @@
                     is_admin: currentUser.is_admin || false,
                     dnd: currentUser.dnd || false,
                     lastSeen: Date.now()
-                }, (enterErr) => {
-                    if (enterErr) { console.warn('[presence] enter error:', enterErr); return; }
-                    
-                    presenceChannel.presence.get((getErr, members) => {
-                        if (getErr) { console.warn('[presence] get error:', getErr); return; }
-                        (members || []).forEach(member => {
-                            const cid = String(member.clientId);
-                            onlineUsers[cid] = {
-                                id: cid,
-                                name: member.data?.name || 'Пользователь',
-                                avatar: member.data?.avatar || '👤',
-                                bio: member.data?.bio || '',
-                                online: true,
-                                is_vip: member.data?.is_vip || false,
-                                is_admin: member.data?.is_admin || false,
-                                dnd: member.data?.dnd || false,
-                                lastSeen: Date.now()
-                            };
-                        });
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('enter', (member) => {
-                        const cid = String(member.clientId);
-                        onlineUsers[cid] = {
-                            id: cid,
-                            name: member.data?.name || 'Пользователь',
-                            avatar: member.data?.avatar || '👤',
-                            bio: member.data?.bio || '',
-                            online: true,
-                            is_vip: member.data?.is_vip || false,
-                            is_admin: member.data?.is_admin || false,
-                            dnd: member.data?.dnd || false,
-                            lastSeen: Date.now()
-                        };
-                        sendQueuedMessagesToUser(cid);
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('update', (member) => {
-                        const cid = String(member.clientId);
-                        onlineUsers[cid] = {
-                            ...(onlineUsers[cid] || {}),
-                            id: cid,
-                            name: member.data?.name || 'Пользователь',
-                            avatar: member.data?.avatar || '👤',
-                            bio: member.data?.bio || '',
-                            online: true,
-                            is_vip: member.data?.is_vip || false,
-                            is_admin: member.data?.is_admin || false,
-                            dnd: member.data?.dnd || false,
-                            lastSeen: Date.now()
-                        };
-                        updateChatsList();
-                        updateChatStatus();
-                    });
-                    
-                    presenceChannel.presence.subscribe('leave', (member) => {
-                        const cid = String(member.clientId);
-                        if (onlineUsers[cid]) {
-                            onlineUsers[cid].online = false;
-                            if (member.data?.lastSeen) {
-                                onlineUsers[cid].lastSeen = member.data.lastSeen;
-                            } else {
-                                onlineUsers[cid].lastSeen = Date.now();
-                            }
-                            try {
-                                db.from('profiles')
-                                  .update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() })
-                                  .eq('id', cid);
-                            } catch (e) {}
-                        }
-                        updateChatsList();
-                        updateChatStatus();
-                    });
                 });
+            }).then(() => {
+                return presenceChannel.presence.get();
+            }).then((members) => {
+                console.log('[presence] loaded members:', members.length);
+                (members || []).forEach(member => {
+                    const cid = String(member.clientId);
+                    onlineUsers[cid] = {
+                        id: cid,
+                        name: member.data?.name || 'Пользователь',
+                        avatar: member.data?.avatar || '👤',
+                        bio: member.data?.bio || '',
+                        online: true,
+                        is_vip: member.data?.is_vip || false,
+                        is_admin: member.data?.is_admin || false,
+                        dnd: member.data?.dnd || false,
+                        lastSeen: Date.now()
+                    };
+                });
+                console.log('[presence] onlineUsers now:', Object.keys(onlineUsers));
+                updateChatsList();
+                updateChatStatus();
+            }).catch(err => {
+                console.error('[presence] setup error:', err);
+            });
+            
+            presenceChannel.presence.subscribe('enter', (member) => {
+                const cid = String(member.clientId);
+                onlineUsers[cid] = {
+                    id: cid,
+                    name: member.data?.name || 'Пользователь',
+                    avatar: member.data?.avatar || '👤',
+                    bio: member.data?.bio || '',
+                    online: true,
+                    is_vip: member.data?.is_vip || false,
+                    is_admin: member.data?.is_admin || false,
+                    dnd: member.data?.dnd || false,
+                    lastSeen: Date.now()
+                };
+                sendQueuedMessagesToUser(cid);
+                updateChatsList();
+                updateChatStatus();
+            });
+            
+            presenceChannel.presence.subscribe('update', (member) => {
+                const cid = String(member.clientId);
+                const prevDnd = onlineUsers[cid]?.dnd || false;
+                const newDnd = member.data?.dnd || false;
+                onlineUsers[cid] = {
+                    ...(onlineUsers[cid] || {}),
+                    id: cid,
+                    name: member.data?.name || 'Пользователь',
+                    avatar: member.data?.avatar || '👤',
+                    bio: member.data?.bio || '',
+                    online: true,
+                    is_vip: member.data?.is_vip || false,
+                    is_admin: member.data?.is_admin || false,
+                    dnd: prevDnd || newDnd,
+                    lastSeen: Date.now()
+                };
+                updateChatsList();
+                updateChatStatus();
+            });
+            
+            presenceChannel.presence.subscribe('leave', (member) => {
+                const cid = String(member.clientId);
+                if (onlineUsers[cid]) {
+                    onlineUsers[cid].online = false;
+                    onlineUsers[cid].lastSeen = member.data?.lastSeen || Date.now();
+                    try {
+                        db.from('profiles').update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() }).eq('id', cid);
+                    } catch (e) {}
+                }
+                updateChatsList();
+                updateChatStatus();
             });
         }
 
@@ -6120,17 +6132,26 @@
             });
 
             userChannel.subscribe('call_rejected', (message) => {
-                const { callId, reason } = message.data;
+                const { callId } = message.data;
                 if (!currentCall || currentCall.callId !== callId) return;
-                if (reason === 'busy') alert('Абонент занят');
-                else alert('Вызов отклонен');
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
                 resetCallState();
             });
 
             userChannel.subscribe('call_ended', (message) => {
                 const { callId } = message.data;
                 if (!currentCall || currentCall.callId !== callId) return;
-                alert('Звонок завершен');
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
                 resetCallState();
                 if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
             });
@@ -6847,11 +6868,18 @@
             remoteDescriptionSet = false;
             clearRemoteAudios();
             
-            if (callModal) callModal.classList.remove('active');
             if (callRingtone) {
                 try { callRingtone.pause(); callRingtone.currentTime = 0; } catch (e) {}
             }
         }
+
+        function closeCallModal() {
+            if (callModal) callModal.classList.remove('active');
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
+            resetCallState();
+        }
+        window.closeCallModal = closeCallModal;
 
         function createPeerConnection() {
             const pc = new RTCPeerConnection(getIceServers());
@@ -6986,6 +7014,9 @@
                 timeout: null
             };
 
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
+
             try {
                 const userChannel = ably.channels.get(`user-${receiverId}`);
                 await userChannel.publish('call_request', {
@@ -7015,6 +7046,10 @@
 
         function showCallModal(status, peerName, peerAvatar) {
             if (!callModal) return;
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl && (status === 'calling' || status === 'ringing')) {
+                timerEl.textContent = '';
+            }
             const statusEl = document.getElementById('callStatus');
             const callerNameEl = document.getElementById('callerName');
             const callerAvatarEl = document.getElementById('callAvatar');
@@ -7033,10 +7068,23 @@
                 statusEl.textContent = 'В разговоре';
                 incomingControls.style.display = 'none';
                 outgoingControls.style.display = 'flex';
+            } else if (status === 'ended') {
+                statusEl.textContent = 'Вызов завершён';
+                incomingControls.style.display = 'none';
+                outgoingControls.style.display = 'none';
+                timerEl.textContent = '';
             }
 
             callerNameEl.textContent = peerName || 'Пользователь';
-            callerAvatarEl.textContent = peerAvatar || '👤';
+            if (peerAvatar && (peerAvatar.startsWith('http') || peerAvatar.startsWith('data:'))) {
+                callerAvatarEl.style.backgroundImage = `url('${peerAvatar}')`;
+                callerAvatarEl.style.backgroundSize = 'cover';
+                callerAvatarEl.style.backgroundPosition = 'center';
+                callerAvatarEl.textContent = '';
+            } else {
+                callerAvatarEl.style.backgroundImage = '';
+                callerAvatarEl.textContent = peerAvatar || '👤';
+            }
             callModal.classList.add('active');
         }
 
@@ -7065,6 +7113,9 @@
                 startTime: null,
                 timeout: null
             };
+
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '';
 
             showCallModal('ringing', callerName, callerAvatar);
 
@@ -7123,6 +7174,13 @@
             
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
             
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = 'Вызов завершён';
+            const incoming = document.getElementById('incomingCallControls');
+            const outgoing = document.getElementById('outgoingCallControls');
+            if (incoming) incoming.style.display = 'none';
+            if (outgoing) outgoing.style.display = 'none';
+            
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
         }
@@ -7136,6 +7194,13 @@
             }
 
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
+
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = 'Вызов завершён';
+            const incoming = document.getElementById('incomingCallControls');
+            const outgoing = document.getElementById('outgoingCallControls');
+            if (incoming) incoming.style.display = 'none';
+            if (outgoing) outgoing.style.display = 'none';
 
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
@@ -7162,14 +7227,14 @@
         function startCallTimer() {
             if (callTimerInterval) clearInterval(callTimerInterval);
             const startTime = Date.now();
+            const timerEl = document.getElementById('callTimer');
+            if (timerEl) timerEl.textContent = '00:00';
             callTimerInterval = setInterval(() => {
                 const elapsed = Date.now() - startTime;
                 if (elapsed >= CALL_DURATION_LIMIT) {
-                    alert('Длительность звонка превысила 30 минут.');
                     endCall();
                     return;
                 }
-                const timerEl = document.getElementById('callTimer');
                 if (timerEl) timerEl.textContent = formatCallTime(elapsed);
             }, 1000);
         }
