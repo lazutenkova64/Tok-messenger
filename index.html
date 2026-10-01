@@ -5916,6 +5916,8 @@
             }).then((members) => {
                 (members || []).forEach(member => {
                     const cid = String(member.clientId);
+                    const prevDnd = onlineUsers[cid]?.dnd || false;
+                    const newDnd = member.data?.dnd || false;
                     onlineUsers[cid] = {
                         id: cid,
                         name: member.data?.name || 'Пользователь',
@@ -5924,7 +5926,7 @@
                         online: true,
                         is_vip: member.data?.is_vip || false,
                         is_admin: member.data?.is_admin || false,
-                        dnd: member.data?.dnd || false,
+                        dnd: prevDnd || newDnd,
                         lastSeen: Date.now()
                     };
                 });
@@ -5937,6 +5939,8 @@
             
             presenceChannel.presence.subscribe('enter', (member) => {
                 const cid = String(member.clientId);
+                const prevDnd = onlineUsers[cid]?.dnd || false;
+                const newDnd = member.data?.dnd || false;
                 onlineUsers[cid] = {
                     id: cid,
                     name: member.data?.name || 'Пользователь',
@@ -5945,7 +5949,7 @@
                     online: true,
                     is_vip: member.data?.is_vip || false,
                     is_admin: member.data?.is_admin || false,
-                    dnd: member.data?.dnd || false,
+                    dnd: prevDnd || newDnd,
                     lastSeen: Date.now()
                 };
                 sendQueuedMessagesToUser(cid);
@@ -5955,6 +5959,8 @@
             
             presenceChannel.presence.subscribe('update', (member) => {
                 const cid = String(member.clientId);
+                const prevDnd = onlineUsers[cid]?.dnd || false;
+                const newDnd = member.data?.dnd || false;
                 onlineUsers[cid] = {
                     ...(onlineUsers[cid] || {}),
                     id: cid,
@@ -5964,7 +5970,7 @@
                     online: true,
                     is_vip: member.data?.is_vip || false,
                     is_admin: member.data?.is_admin || false,
-                    dnd: member.data?.dnd || false,
+                    dnd: prevDnd || newDnd,
                     lastSeen: Date.now()
                 };
                 updateChatsList();
@@ -6422,7 +6428,9 @@
             let displayName = chat.name;
             let avatar = chat.avatar || '👥';
             let usernameForAvatar = displayName;
-            let statusHtml = '';
+            let statusDotClass = 'offline';
+            let statusText = '';
+            let statusColor = 'var(--text-secondary)';
             
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
@@ -6440,16 +6448,21 @@
                         const userOnline = onlineUsers[String(otherUser.id)];
                         if (userOnline && userOnline.online) {
                             if (userOnline.dnd) {
-                                statusHtml = `<span class="status-dot dnd" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--dnd-red); font-size:12px;">Не беспокоить</span>`;
+                                statusDotClass = 'dnd';
+                                statusText = 'Не беспокоить';
+                                statusColor = 'var(--dnd-red)';
                             } else {
-                                statusHtml = `<span class="status-dot online" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--online-green); font-size:12px;">в сети</span>`;
+                                statusDotClass = 'online';
+                                statusText = 'в сети';
+                                statusColor = 'var(--online-green)';
                             }
                         } else {
                             const lastSeen = (userOnline && userOnline.lastSeen) 
                                 ? userOnline.lastSeen 
                                 : (otherUser.last_seen ? new Date(otherUser.last_seen).getTime() : null);
                             if (lastSeen) {
-                                statusHtml = `<span class="status-dot offline" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--text-secondary); font-size:12px;">${escapeHtml(getShortStatusText(false, false, lastSeen))}</span>`;
+                                statusText = escapeHtml(getShortStatusText(false, false, lastSeen));
+                                statusColor = 'var(--text-secondary)';
                             }
                         }
                     } else {
@@ -6469,7 +6482,9 @@
                     <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center;">${avatarText}</div>
                     <div class="chat-details">
                         <div class="chat-name">
+                            <span class="status-dot ${statusDotClass}"></span>
                             ${escapeHtml(displayName)}
+                            <span class="status-text" style="color:${statusColor}">${statusText}</span>
                             ${isPinned ? '<span class="pin-icon">📌</span>' : ''}
                             ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
                             <button class="pin-chat-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinChat('${chat.id}', event)">📌</button>
@@ -6478,7 +6493,6 @@
                             ${lastMessageDate ? `<span class="chat-last-date">${escapeHtml(lastMessageDate)}</span>` : ''}
                             <span class="chat-last-message">${escapeHtml(lastMessageText)}</span>
                         </div>
-                        ${statusHtml ? `<div style="margin-top:2px;">${statusHtml}</div>` : ''}
                     </div>
                     <div class="chat-meta">
                         ${unread > 0 ? `<div class="chat-unread">${unread}</div>` : ''}
