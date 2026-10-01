@@ -2510,6 +2510,10 @@
         .forgot-password-btn:active {
             opacity: 0.6;
         }
+
+        #profileModal .modal-content { padding-top: 30px; }
+        #profileModal .modal-content h2 { text-align: center; width: 100%; display: block; clear: both; padding-top: 10px; margin-top: 0; }
+        #profileAvatarLarge { width: 120px !important; height: 120px !important; font-size: 60px !important; line-height: 120px !important; }
     </style>
 </head>
 <body>
@@ -2711,12 +2715,12 @@
         </div>
     </div>
 
-    <div class="modal" id="profileModal">
+    <div class="modal" id="profileModal" onclick="if (event.target === this) closeProfileModal();">
         <div class="modal-content">
             <button class="close-btn" onclick="closeProfileModal()">×</button>
             <h2>Профиль</h2>
             <div style="text-align: center; margin-bottom: 20px;">
-                <div class="avatar" style="width: 80px; height: 80px; font-size: 42px; margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="openAvatarModal()">👤</div>
+                <div class="avatar" style="margin: 0 auto; cursor: pointer;" id="profileAvatarLarge" onclick="openAvatarModal()">👤</div>
                 <small style="color: var(--text-secondary); display: block; margin-top: 8px;">Нажмите для смены аватара</small>
             </div>
             <input type="text" class="modal-input" id="profileNameInput" placeholder="Имя" maxlength="20">
@@ -4973,6 +4977,19 @@
             }
             
             renderMessages();
+
+            // Восстановление черновика
+            const draft = localStorage.getItem(`draft_${chat.id}`);
+            const msgInput = document.getElementById('messageInput');
+            if (msgInput) {
+                if (draft) {
+                    msgInput.value = draft;
+                    msgInput.style.height = 'auto';
+                    msgInput.style.height = Math.min(msgInput.scrollHeight, 120) + 'px';
+                } else {
+                    msgInput.value = '';
+                }
+            }
             
             requestAnimationFrame(() => {
                 const c = document.getElementById('messagesContainer');
@@ -5259,6 +5276,8 @@
             
             input.value = '';
             input.style.height = 'auto';
+            
+            if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
             
             renderMessages();
             updateChatsList();
@@ -6001,8 +6020,7 @@
                     lastSeen: Date.now()
                 };
                 sendQueuedMessagesToUser(cid);
-                updateChatsList();
-                updateChatStatus();
+                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
             });
             
             presenceChannel.presence.subscribe('update', (member) => {
@@ -6014,15 +6032,13 @@
                     id: cid,
                     name: member.data?.name || 'Пользователь',
                     avatar: member.data?.avatar || '👤',
-                    bio: member.data?.bio || '',
                     online: true,
                     is_vip: member.data?.is_vip || false,
                     is_admin: member.data?.is_admin || false,
                     dnd: prevDnd || newDnd,
                     lastSeen: Date.now()
                 };
-                updateChatsList();
-                updateChatStatus();
+                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
             });
             
             presenceChannel.presence.subscribe('leave', (member) => {
@@ -6030,12 +6046,8 @@
                 if (onlineUsers[cid]) {
                     onlineUsers[cid].online = false;
                     onlineUsers[cid].lastSeen = member.data?.lastSeen || Date.now();
-                    try {
-                        db.from('profiles').update({ last_seen: new Date(onlineUsers[cid].lastSeen).toISOString() }).eq('id', cid);
-                    } catch (e) {}
                 }
-                updateChatsList();
-                updateChatStatus();
+                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
             });
         }
 
@@ -6480,7 +6492,7 @@
             let displayName = chat.name;
             let avatar = chat.avatar || '👥';
             let usernameForAvatar = displayName;
-            let statusHtml = '';
+            let statusClass = 'offline';
             
             if (chat.type === 'private' && currentUser) {
                 if (chat.pair_key === `${currentUser.id}_${currentUser.id}`) {
@@ -6497,18 +6509,7 @@
                         
                         const userOnline = onlineUsers[String(otherUser.id)];
                         if (userOnline && userOnline.online) {
-                            if (userOnline.dnd) {
-                                statusHtml = `<span class="status-dot dnd" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--dnd-red); font-size:12px;">Не беспокоить</span>`;
-                            } else {
-                                statusHtml = `<span class="status-dot online" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--online-green); font-size:12px;">в сети</span>`;
-                            }
-                        } else {
-                            const lastSeen = (userOnline && userOnline.lastSeen) 
-                                ? userOnline.lastSeen 
-                                : (otherUser.last_seen ? new Date(otherUser.last_seen).getTime() : null);
-                            if (lastSeen) {
-                                statusHtml = `<span class="status-dot offline" style="display:inline-block; margin-right:4px;"></span><span style="color:var(--text-secondary); font-size:12px;">${escapeHtml(getShortStatusText(false, false, lastSeen))}</span>`;
-                            }
+                            statusClass = userOnline.dnd ? 'dnd' : 'online';
                         }
                     } else {
                         displayName = 'Пользователь';
@@ -6527,6 +6528,7 @@
                     <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center;">${avatarText}</div>
                     <div class="chat-details">
                         <div class="chat-name">
+                            <span class="status-dot ${statusClass}" style="width:8px; height:8px; flex-shrink:0; margin-right:4px;"></span>
                             ${escapeHtml(displayName)}
                             ${isPinned ? '<span class="pin-icon">📌</span>' : ''}
                             ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
@@ -6536,7 +6538,6 @@
                             ${lastMessageDate ? `<span class="chat-last-date">${escapeHtml(lastMessageDate)}</span>` : ''}
                             <span class="chat-last-message">${escapeHtml(lastMessageText)}</span>
                         </div>
-                        ${statusHtml ? `<div style="margin-top:2px;">${statusHtml}</div>` : ''}
                     </div>
                     <div class="chat-meta">
                         ${unread > 0 ? `<div class="chat-unread">${unread}</div>` : ''}
@@ -7492,7 +7493,15 @@
             }
         }
 
-        function handleTextInput() {}
+        function handleTextInput() {
+            if (!currentChat) return;
+            const text = document.getElementById('messageInput').value;
+            if (text) {
+                localStorage.setItem(`draft_${currentChat.id}`, text);
+            } else {
+                localStorage.removeItem(`draft_${currentChat.id}`);
+            }
+        }
 
         function toggleSidebar() {
             document.getElementById('sidebar').classList.toggle('active');
