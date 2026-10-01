@@ -24,16 +24,34 @@ self.addEventListener('message', (event) => {
 // Клик по уведомлению — фокусируем вкладку или открываем новую
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const chatId = event.notification.data && event.notification.data.chatId;
+    const urlToOpen = chatId ? ('./#' + chatId) : './';
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
             for (const client of clientList) {
                 if (client.url && 'focus' in client) {
-                    return client.focus();
+                    client.focus();
+                    if (client.navigate) client.navigate(urlToOpen);
+                    return;
                 }
             }
-            if (clients.openWindow) {
-                return clients.openWindow('./');
-            }
+            if (clients.openWindow) return clients.openWindow(urlToOpen);
         })
     );
+});
+
+// Web Push поддержка (на будущее)
+self.addEventListener('push', (event) => {
+    if (!event.data) return;
+    let payload = {};
+    try { payload = event.data.json(); } catch (e) { payload = { title: 'Tok Web', body: event.data.text() }; }
+    const title = payload.title || 'Новое сообщение';
+    const options = {
+        body: payload.body || '',
+        icon: payload.icon || '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: payload.tag || 'tok-message',
+        data: { chatId: payload.chatId || null }
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
 });

@@ -4265,6 +4265,8 @@
             
             if (ably) {
                 try {
+                    subscribedChannels.clear();
+                    
                     myChats.forEach(chat => {
                         const channel = ably.channels.get(`tok_chat_${chat.id}`);
                         channel.unsubscribe();
@@ -4359,14 +4361,11 @@
             if (!currentUser) return;
             
             try {
-                const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-                
                 const { data, error } = await db
                     .from('messages')
                     .select('*')
-                    .gte('created_at', thirtyDaysAgo)
-                    .order('created_at', { ascending: true })
-                    .limit(2000);
+                    .order('created_at', { ascending: false })
+                    .limit(500);
                 
                 if (error) return;
                 
@@ -4406,6 +4405,7 @@
                     
                     Object.keys(messages).forEach(chatId => {
                         messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                        messages[chatId].reverse();
                     });
                 }
                 
@@ -4472,104 +4472,19 @@
             }
         }
 
+        const subscribedChannels = new Set();
+
         function subscribeToChatChannel(chatId) {
             if (!ably || !currentUser) return;
             
             const channelName = `tok_chat_${chatId}`;
             const chatChannel = ably.channels.get(channelName, { params: { rewind: '1' } });
-            
-            // Защита от дублирования подписок через флаг на канале
-            if (chatChannel._subscriptionsSet) {
-                console.log('[channel] already subscribed:', chatId);
-                // Если канал не attached — просто присоединяем
-                if (chatChannel.state !== 'attached') {
-                    chatChannel.attach();
-                }
+            if (subscribedChannels.has(channelName)) {
+                const ch = ably.channels.get(channelName);
+                if (ch.state !== 'attached') ch.attach();
                 return;
             }
-            
-            // Очищаем старые обработчики канала (suspended/failed)
-            chatChannel.off('suspended');
-            chatChannel.off('failed');
-            chatChannel.off('attached');
-            chatChannel.off('detached');
-            
-            // Обработчики suspended/failed — только логирование, Ably сам переподключится
-            chatChannel.on('suspended', () => {
-                console.warn(`[channel] ${channelName} suspended`);
-            });
-            
-            chatChannel.on('failed', () => {
-                console.warn(`[channel] ${channelName} failed`);
-            });
-            
-            // Подписки устанавливаем СРАЗУ, до attach()
-            chatChannel._subscriptionsSet = true;
-            chatChannel.unsubscribe();
-            
-            // --- MESSAGE ---
-            chatChannel.subscribe('message', (message) => {
-                const msg = message.data;
-                console.log('[channel] received message:', msg);
-                console.log('[channel] chatId arg:', chatId, 'currentChat:', currentChat?.id);
-                if (!msg) return;
-                if (msg.sender_id === currentUser.id) return;
-                
-                if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                if (!messages[chatId]) messages[chatId] = [];
-                
-                const exists = messages[chatId].some(m => m.id === msg.id);
-                if (!exists) {
-                    const sender = allUsers.find(u => u.id === msg.sender_id) || { username: msg.sender_name || 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                    
-                    const newMsg = {
-                        id: msg.id,
-                        chatId: msg.chat_id,
-                        sender: msg.sender_id,
-                        senderName: sender.username,
-                        senderIsVip: sender.is_vip,
-                        senderIsAdmin: sender.is_admin,
-                        text: msg.text,
-                        audio: msg.audio,
-                        image: msg.image,
-                        duration: msg.duration,
-                        time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                        timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                        isAdmin: msg.is_admin || false,
-                        edited: msg.edited || false,
-                        type: 'in'
-                    };
-                    
-                    messages[chatId].push(newMsg);
-                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
-                    if (getNotificationState(chatId)) playIncomingMessageSound();
-                    
-                    if (getNotificationState(chatId)) {
-                        showMessageNotification(sender.username, sender.avatar, msg.text || (msg.image ? '📷 Изображение' : '🎤 Голосовое'), chatId);
-                    }
-                    
-                    chatChannel.publish('delivery_receipt', { messageId: msg.id, receiver: currentUser.id }).catch(() => {});
-                    
-                    if (currentChat?.id !== chatId) {
-                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
-                    }
-                    
-                    if (currentChat && currentChat.id === chatId) {
-                        renderMessages();
-                        unreadCounts[chatId] = 0;
-                        markMessagesAsRead(chatId);
-                        setTimeout(() => {
-                            const container = document.getElementById('messagesContainer');
-                            if (container) { container.style.scrollBehavior = 'auto'; container.scrollTop = container.scrollHeight; }
-                        }, 50);
-                    }
-                    
-                    updateChatsList();
-                    updateUnreadCounts();
-                    updateAppBadge();
-                }
-            });
+            subscribedChannels.add(channelName);
             
             // --- DELIVERY RECEIPT ---
             chatChannel.subscribe('delivery_receipt', (data) => {
@@ -4791,107 +4706,47 @@
 
         async function createPrivateChat(user) {
             if (!currentUser || !user) return;
-            
             const ids = [currentUser.id, user.id].sort();
             const pairKey = ids.join('_');
-            
-            let { data: existingChat, error } = await db
-                .from('chats')
-                .select('*')
-                .eq('pair_key', pairKey)
-                .eq('type', 'private')
-                .maybeSingle();
-            
-            if (existingChat) {
-                const { data: member } = await db
-                    .from('chat_members')
-                    .select('*')
-                    .eq('chat_id', existingChat.id)
-                    .eq('user_id', currentUser.id)
-                    .maybeSingle();
-                
-                if (!member) {
-                    await db.from('chat_members').insert([{ chat_id: existingChat.id, user_id: currentUser.id, joined_at: new Date().toISOString() }]);
-                }
-                
-                const privateChat = {
-                    id: existingChat.id,
-                    name: existingChat.name,
-                    pair_key: pairKey,
-                    avatar: user.avatar,
-                    is_public: false,
-                    type: 'private',
-                    created_at: existingChat.created_at
-                };
-                
-                if (!myChats.some(c => c.id === privateChat.id)) {
-                    myChats.push(privateChat);
-                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                }
-                
-                if (locallyDeletedChats.has(privateChat.id)) {
-                    locallyDeletedChats.delete(privateChat.id);
-                    saveLocallyDeletedChats();
-                }
-                
-                joinChat(privateChat);
-            } else {
-                try {
-                    const newChat = {
-                        name: '',
-                        is_public: false,
-                        type: 'private',
-                        pair_key: pairKey,
-                        created_by: currentUser.id,
-                        created_at: new Date().toISOString()
-                    };
-                    
-                    const { data, error } = await db
-                        .from('chats')
-                        .insert([newChat])
-                        .select();
-                    
-                    if (error) throw error;
-                    
-                    await db.from('chat_members').insert([
-                        { chat_id: data[0].id, user_id: currentUser.id, joined_at: new Date().toISOString() },
-                        { chat_id: data[0].id, user_id: user.id, joined_at: new Date().toISOString() }
-                    ]);
-                    
-                    const privateChat = {
-                        id: data[0].id,
-                        name: '',
-                        pair_key: pairKey,
-                        avatar: user.avatar,
-                        is_public: false,
-                        type: 'private',
-                        created_at: data[0].created_at
-                    };
-                    
-                    myChats.push(privateChat);
-                    localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
-                    if (ably) {
-                        subscribeToChatChannel(privateChat.id);
-                        const chatChannel = ably.channels.get(`tok_chat_${privateChat.id}`);
-                        chatChannel.publish('user_joined', { userId: currentUser.id, userName: currentUser.name }).catch(() => {});
-                        
-                        const userChannel = ably.channels.get(`user-${user.id}`);
-                        userChannel.publish('new-private-chat', {
-                            chatId: privateChat.id,
-                            pairKey: pairKey,
-                            participants: [currentUser.id, user.id],
-                            avatar: privateChat.avatar,
-                            timestamp: Date.now()
-                        }).catch(() => {});
-                    }
-                    
-                    joinChat(privateChat);
-                } catch (err) {
-                    console.error('Error creating private chat:', err);
-                    alert('Не удалось создать чат');
-                }
+            let { data: existing } = await db.from('chats').select('*').eq('pair_key', pairKey).eq('type', 'private').maybeSingle();
+            if (!existing) {
+                const { data, error } = await db.from('chats').insert([{
+                    name: '', is_public: false, type: 'private', pair_key: pairKey,
+                    created_by: currentUser.id, created_at: new Date().toISOString()
+                }]).select();
+                if (error) {
+                    if (error.code === '23505') {
+                        const { data: again } = await db.from('chats').select('*').eq('pair_key', pairKey).maybeSingle();
+                        existing = again;
+                    } else { alert('Ошибка: ' + error.message); return; }
+                } else { existing = data[0]; }
             }
+            const { data: members } = await db.from('chat_members').select('user_id').eq('chat_id', existing.id);
+            const have = new Set((members || []).map(m => m.user_id));
+            const toInsert = [currentUser.id, user.id].filter(id => !have.has(id)).map(id => ({
+                chat_id: existing.id, user_id: id, joined_at: new Date().toISOString()
+            }));
+            if (toInsert.length) await db.from('chat_members').insert(toInsert);
+            const privateChat = {
+                id: existing.id, name: '', pair_key: pairKey, avatar: user.avatar,
+                is_public: false, type: 'private', created_at: existing.created_at
+            };
+            if (!myChats.some(c => c.id === privateChat.id)) {
+                myChats.push(privateChat);
+                localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
+            }
+            locallyDeletedChats.delete(privateChat.id);
+            saveLocallyDeletedChats();
+            if (ably) {
+                try {
+                    ably.channels.get(`user-${user.id}`).publish('new-private-chat', {
+                        chatId: privateChat.id, pairKey, participants: [currentUser.id, user.id],
+                        avatar: privateChat.avatar, timestamp: Date.now()
+                    });
+                } catch (e) {}
+            }
+            subscribeToChatChannel(privateChat.id);
+            joinChat(privateChat);
         }
 
         function joinChat(chat) {
@@ -5312,17 +5167,18 @@
                 } else {
                     const realId = data[0].id;
                     const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
-                    if (msgIndex !== -1) messages[currentChat.id][msgIndex].id = realId;
-                    
-                    if (messageStatuses[clientId]) {
-                        messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
-                        delete messageStatuses[clientId];
+                    if (msgIndex !== -1) {
+                        messages[currentChat.id][msgIndex].id = realId;
+                        messages[currentChat.id][msgIndex]._status = 'sent';
                     }
+                    messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                    delete messageStatuses[clientId];
                     saveMessageStatuses();
-                    
+                    if (currentChat && currentChat.id === messages[currentChat.id][msgIndex]?.chatId) renderMessages();
+                    requestAnimationFrame(() => { renderMessages(); });
+
                     if (ably) {
-                        const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                        chatChannel.publish('new_message', {
+                        const payload = {
                             id: realId,
                             chat_id: currentChat.id,
                             sender_id: currentUser.id,
@@ -5331,15 +5187,14 @@
                             text: text,
                             has_image: false,
                             has_audio: false
-                        }).catch((err) => {
-                            if (err && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                                const otherUserId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                                const otherUser = allUsers.find(u => u.id === otherUserId);
-                                if (otherUser) {
-                                    addToMessageQueue(otherUser.id, { ...dbMessage, id: realId, sender_name: currentUser.name });
-                                }
+                        };
+                        try { ably.channels.get(`tok_chat_${currentChat.id}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                        if (currentChat.type === 'private' && currentChat.pair_key) {
+                            const peerId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                            if (peerId) {
+                                try { ably.channels.get(`user-${peerId}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
                             }
-                        });
+                        }
                     }
                 }
             } catch (err) {
@@ -5411,24 +5266,32 @@
                 } else {
                     const realId = data[0].id;
                     const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
-                    if (msgIndex !== -1) messages[currentChat.id][msgIndex].id = realId;
-                    
-                    if (messageStatuses[clientId]) {
-                        messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
-                        delete messageStatuses[clientId];
+                    if (msgIndex !== -1) {
+                        messages[currentChat.id][msgIndex].id = realId;
+                        messages[currentChat.id][msgIndex]._status = 'sent';
                     }
+                    messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                    delete messageStatuses[clientId];
                     saveMessageStatuses();
-                    
+                    if (currentChat && currentChat.id === messages[currentChat.id][msgIndex]?.chatId) renderMessages();
+                    requestAnimationFrame(() => { renderMessages(); });
+
                     if (ably) {
-                        const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                        chatChannel.publish('new_message', {
+                        const payload = {
                             id: realId,
                             chat_id: currentChat.id,
                             sender_id: currentUser.id,
                             sender_name: currentUser.name,
                             created_at: now.toISOString(),
                             has_image: true
-                        }).catch(() => {});
+                        };
+                        try { ably.channels.get(`tok_chat_${currentChat.id}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                        if (currentChat.type === 'private' && currentChat.pair_key) {
+                            const peerId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                            if (peerId) {
+                                try { ably.channels.get(`user-${peerId}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                            }
+                        }
                     }
                 }
             } catch (err) {
@@ -5506,24 +5369,32 @@
                     } else {
                         const realId = data[0].id;
                         const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
-                        if (msgIndex !== -1) messages[currentChat.id][msgIndex].id = realId;
-                        
-                        if (messageStatuses[clientId]) {
-                            messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
-                            delete messageStatuses[clientId];
+                        if (msgIndex !== -1) {
+                            messages[currentChat.id][msgIndex].id = realId;
+                            messages[currentChat.id][msgIndex]._status = 'sent';
                         }
+                        messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                        delete messageStatuses[clientId];
                         saveMessageStatuses();
-                        
+                        if (currentChat && currentChat.id === messages[currentChat.id][msgIndex]?.chatId) renderMessages();
+                        requestAnimationFrame(() => { renderMessages(); });
+
                         if (ably) {
-                            const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                            chatChannel.publish('new_message', {
+                            const payload = {
                                 id: realId,
                                 chat_id: currentChat.id,
                                 sender_id: currentUser.id,
                                 sender_name: currentUser.name,
                                 created_at: now.toISOString(),
                                 has_audio: true
-                            }).catch(() => {});
+                            };
+                            try { ably.channels.get(`tok_chat_${currentChat.id}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                            if (currentChat.type === 'private' && currentChat.pair_key) {
+                                const peerId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                                if (peerId) {
+                                    try { ably.channels.get(`user-${peerId}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                                }
+                            }
                         }
                     }
                 } catch (err) {
@@ -5554,6 +5425,7 @@
                             const msgIndex = messages[chatId].findIndex(m => m.id === tempId);
                             if (msgIndex !== -1) {
                                 messages[chatId][msgIndex].id = realId;
+                                messages[chatId][msgIndex]._status = 'sent';
                                 if (messageStatuses[tempId]) {
                                     messageStatuses[realId] = { status: 'sent', sentAt: messageStatuses[tempId].sentAt };
                                     delete messageStatuses[tempId];
@@ -5830,6 +5702,12 @@
                     
                     const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
                     chatChannel.publish('read_receipt', { messageId: msg.id, reader: currentUser.id }).catch(() => {});
+                    
+                    try {
+                        ably.channels.get(`user-${msg.sender}`).publish('read_receipt', {
+                            messageId: msg.id, reader: currentUser.id, chatId
+                        }).catch(() => {});
+                    } catch (e) {}
                 }
             });
             
@@ -5874,6 +5752,8 @@
             ablyUserChannel = null;
             userChannelSubscribed = false;
             
+            subscribedChannels.clear();
+            
             try {
                 ably = new Ably.Realtime({
                     key: ABLY_API_KEY,
@@ -5887,7 +5767,6 @@
                     idleTimeout: 0,
                     connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
                     fallbackHostsUseDefault: true,
-                    transports: ['xhr_polling'],
                     echoMessages: false
                 });
             } catch (e) {
@@ -5906,6 +5785,8 @@
                     clearTimeout(ablyReconnectTimer);
                     ablyReconnectTimer = null;
                 }
+                
+                subscribedChannels.clear();
                 
                 setupUserChannel();
                 setupPresenceChannel();
@@ -6243,6 +6124,61 @@
                 } catch (err) {}
             });
 
+            // --- NEW MESSAGE (from user channel) ---
+            userChannel.subscribe('new_message', async (message) => {
+                const { id: messageId, chat_id: msgChatId, sender_id } = message.data;
+                if (sender_id === currentUser.id) return;
+                try {
+                    const { data, error } = await db.from('messages').select('*').eq('id', messageId).single();
+                    if (error || !data) return;
+                    if (!messages[msgChatId]) messages[msgChatId] = [];
+                    if (messages[msgChatId].some(m => m.id === messageId)) return;
+                    const sender = allUsers.find(u => u.id === data.sender_id) || { username: message.data.sender_name || 'Неизвестно', avatar: '👤' };
+                    messages[msgChatId].push({
+                        id: data.id, chatId: data.chat_id, sender: data.sender_id,
+                        senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                        text: data.text, audio: data.audio, image: data.image, duration: data.duration,
+                        time: new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        timestamp: new Date(data.created_at).getTime(),
+                        isAdmin: data.is_admin || false, edited: data.edited || false, type: 'in'
+                    });
+                    messages[msgChatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    try { ably.channels.get(`tok_chat_${msgChatId}`).publish('delivery_receipt', { messageId: data.id, receiver: currentUser.id }); } catch (e) {}
+                    if (getNotificationState(msgChatId)) {
+                        playIncomingMessageSound();
+                        showMessageNotification(sender.username, sender.avatar, data.text || (data.image ? '📷 Изображение' : '🎤 Голосовое'), msgChatId);
+                    }
+                    if (currentChat?.id !== msgChatId) {
+                        unreadCounts[msgChatId] = (unreadCounts[msgChatId] || 0) + 1;
+                    } else {
+                        unreadCounts[msgChatId] = 0;
+                        markMessagesAsRead(msgChatId);
+                        renderMessages();
+                        const c = document.getElementById('messagesContainer');
+                        if (c) { c.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
+                    }
+                    updateChatsList(); updateUnreadCounts(); updateAppBadge();
+                } catch (e) { console.error('[user new_message]', e); }
+            });
+
+            userChannel.subscribe('read_receipt', (message) => {
+                const { messageId, chatId } = message.data;
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'read';
+                    saveMessageStatuses();
+                }
+                if (currentChat?.id === chatId) renderMessages();
+            });
+
+            userChannel.subscribe('delivery_receipt', (message) => {
+                const { messageId, chatId } = message.data;
+                if (messageStatuses[messageId]) {
+                    messageStatuses[messageId].status = 'delivered';
+                    saveMessageStatuses();
+                }
+                if (currentChat?.id === chatId) renderMessages();
+            });
+
             userChannel.subscribe('chat_deleted', (message) => {
                 const { chatId, deletedBy } = message.data || {};
                 if (!chatId || deletedBy === currentUser.id) return;
@@ -6360,8 +6296,8 @@
             if (currentUser && ably) {
                 try {
                     await updateUserLastSeen();
-                    const presenceChannel = ably.channels.get('tok_global_online');
-                    if (presenceChannel.state === 'attached') presenceChannel.presence.leave();
+                    const ch = ably.channels.get('tok_global_online');
+                    if (ch.state === 'attached') ch.presence.leave();
                 } catch (e) {}
             }
         }
