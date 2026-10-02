@@ -2894,6 +2894,7 @@
         let supabaseChannels = {};   // { chatId: channel }
         let supabasePresenceChannel = null;
         let supabaseCallChannel = null;
+        const callSignalChannels = {};   // { peerId: channel }
         let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
@@ -4355,6 +4356,11 @@
                 try { await db.removeChannel(supabaseCallChannel); } catch (e) {}
                 supabaseCallChannel = null;
             }
+            
+            Object.keys(callSignalChannels).forEach(peerId => {
+                try { db.removeChannel(callSignalChannels[peerId]); } catch (e) {}
+                delete callSignalChannels[peerId];
+            });
             
             if (ably) {
                 try {
@@ -6649,20 +6655,47 @@
         async function sendCallSignal(peerId, event, payload) {
             if (!peerId) return;
             const channelName = `user-calls-${peerId}`;
-            const ch = db.channel(channelName);
+
+            // Если канал уже в кэше и SUBSCRIBED — используем его
+            let ch = callSignalChannels[peerId];
+            if (ch && ch.state === 'joined') {
+                try {
+                    await ch.send({ type: 'broadcast', event: event, payload: payload });
+                    return;
+                } catch (e) {
+                    console.warn('[call] send on cached channel failed, recreating', e);
+                }
+            }
+
+            // Иначе создаём заново
+            try { if (ch) await db.removeChannel(ch); } catch (e) {}
+            delete callSignalChannels[peerId];
+
+            ch = db.channel(channelName);
+
             await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('subscribe timeout')), 10000);
+                let done = false;
+                const timeout = setTimeout(() => {
+                    if (!done) {
+                        done = true;
+                        reject(new Error('subscribe timeout'));
+                    }
+                }, 15000);
+
                 ch.subscribe(async (status) => {
+                    if (done) return;
                     if (status === 'SUBSCRIBED') {
+                        done = true;
                         clearTimeout(timeout);
+                        callSignalChannels[peerId] = ch;
                         try {
                             await ch.send({ type: 'broadcast', event: event, payload: payload });
                             resolve();
                         } catch (e) { reject(e); }
-                        setTimeout(() => { try { db.removeChannel(ch); } catch (e) {} }, 500);
                     } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        done = true;
                         clearTimeout(timeout);
-                        reject(new Error('channel error'));
+                        reject(new Error('channel error: ' + status));
                     }
                 });
             });
