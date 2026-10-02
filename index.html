@@ -2637,7 +2637,8 @@
 
             <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
 
-            <div class="message-input-container" id="messageInputContainer">
+            <div class="message-input-container" id="messageInputContainer" style="flex-direction: column;">
+                <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
                 <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
                 <button class="attach-btn" onclick="document.getElementById('imageInput').click()">📎</button>
                 <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
@@ -2732,11 +2733,6 @@
             
             <h3 style="margin: 20px 0 10px; color: var(--text-primary);">Выберите тему</h3>
             <div class="theme-grid" id="themeGrid"></div>
-            
-            <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-color);">
-                <input type="file" id="chatBgInput" accept="image/*" style="display: none;" onchange="handleChatBgUpload(event)">
-                <button class="modal-btn" style="width: 100%; margin-bottom: 8px; font-size: 13px;" onclick="document.getElementById('chatBgInput').click()">🖼 Загрузить обои чата</button>
-            </div>
             
             <button class="modal-btn" onclick="saveProfile()">Сохранить</button>
         </div>
@@ -2916,6 +2912,8 @@
         let sendBtnDisabled = false;
 
         let mediaRecorder;
+        let pendingImage = null;   // { dataUrl }
+        let pendingAudio = null;   // { blob, duration, url }
         let audioChunks = [];
         let isRecording = false;
         let recordingTimeout;
@@ -4263,6 +4261,9 @@
             
             resetCallState();
             
+            clearPendingImage();
+            clearPendingAudio();
+            
             if (ably) {
                 try {
                     subscribedChannels.clear();
@@ -4394,11 +4395,16 @@
                                 timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
                                 isAdmin: msg.is_admin || false,
                                 edited: msg.edited || false,
+                                readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in'
                             });
                             
                             if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
                                 messageStatuses[msg.id] = { status: 'sent', deliveredAt: null, readAt: null };
+                            }
+                            if (msg.read_at && msg.sender_id === currentUser.id) {
+                                messageStatuses[msg.id] = { status: 'read', readAt: new Date(msg.read_at).getTime() };
+                                saveMessageStatuses();
                             }
                         }
                     });
@@ -4438,27 +4444,32 @@
                         if (!existingMsg) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
                             
-                            messages[chatId].push({
-                                id: msg.id,
-                                chatId: msg.chat_id,
-                                sender: msg.sender_id,
-                                senderName: sender.username,
-                                senderIsVip: sender.is_vip,
-                                senderIsAdmin: sender.is_admin,
-                                text: msg.text,
-                                audio: msg.audio,
-                                image: msg.image,
-                                duration: msg.duration,
-                                time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                                timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
-                                isAdmin: msg.is_admin || false,
-                                edited: msg.edited || false,
-                                type: msg.sender_id === currentUser.id ? 'out' : 'in'
-                            });
-                            
-                            if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
-                                messageStatuses[msg.id] = { status: 'sent', deliveredAt: null, readAt: null };
-                            }
+                        messages[chatId].push({
+                            id: msg.id,
+                            chatId: msg.chat_id,
+                            sender: msg.sender_id,
+                            senderName: sender.username,
+                            senderIsVip: sender.is_vip,
+                            senderIsAdmin: sender.is_admin,
+                            text: msg.text,
+                            audio: msg.audio,
+                            image: msg.image,
+                            duration: msg.duration,
+                            time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                            timestamp: msg.created_at ? new Date(msg.created_at).getTime() : Date.now(),
+                            isAdmin: msg.is_admin || false,
+                            edited: msg.edited || false,
+                            readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
+                            type: msg.sender_id === currentUser.id ? 'out' : 'in'
+                        });
+                        
+                        if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
+                            messageStatuses[msg.id] = { status: 'sent', deliveredAt: null, readAt: null };
+                        }
+                        if (msg.read_at && msg.sender_id === currentUser.id) {
+                            messageStatuses[msg.id] = { status: 'read', readAt: new Date(msg.read_at).getTime() };
+                            saveMessageStatuses();
+                        }
                         }
                     });
                     
@@ -4498,8 +4509,15 @@
             
             // --- READ RECEIPT ---
             chatChannel.subscribe('read_receipt', (data) => {
-                const { messageId } = data.data;
-                if (messageStatuses[messageId]) {
+                const { messageId, messageIds } = data.data;
+                if (Array.isArray(messageIds)) {
+                    messageIds.forEach(id => {
+                        if (messageStatuses[id]) {
+                            messageStatuses[id].status = 'read';
+                        }
+                    });
+                    saveMessageStatuses();
+                } else if (messageId && messageStatuses[messageId]) {
                     messageStatuses[messageId].status = 'read';
                     saveMessageStatuses();
                 }
@@ -4737,6 +4755,7 @@
             }
             locallyDeletedChats.delete(privateChat.id);
             saveLocallyDeletedChats();
+            updateChatsList();
             if (ably) {
                 try {
                     ably.channels.get(`user-${user.id}`).publish('new-private-chat', {
@@ -4773,6 +4792,21 @@
                             }
                         }
                     } catch (e) {}
+                })();
+            }
+            
+            // Проверка chat_members для приватных чатов
+            if (chat.type === 'private' && chat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                (async () => {
+                    try {
+                        const { data: member } = await db.from('chat_members')
+                            .select('*').eq('chat_id', chat.id).eq('user_id', currentUser.id).maybeSingle();
+                        if (!member) {
+                            await db.from('chat_members').insert([{
+                                chat_id: chat.id, user_id: currentUser.id, joined_at: new Date().toISOString()
+                            }]);
+                        }
+                    } catch (e) { console.warn('[joinChat member check]', e); }
                 })();
             }
             
@@ -4819,6 +4853,8 @@
             
             updateNotificationBell(chat.id);
             loadChatHistory(chat.id);
+            
+            markMessagesAsRead(chat.id);
             
             if (!messages[chat.id]) messages[chat.id] = [];
             messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
@@ -4907,21 +4943,8 @@
         }
 
         function markAllMessagesAsRead(chatId) {
-            if (!messages[chatId] || !currentUser) return;
-            
-            let changed = false;
-            messages[chatId].forEach(msg => {
-                if (msg.sender !== currentUser.id) {
-                    if (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read') {
-                        messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
-                        changed = true;
-                    }
-                }
-            });
-            
-            if (changed) saveMessageStatuses();
-            
             unreadCounts[chatId] = 0;
+            markMessagesAsRead(chatId);
             updateChatsList();
             updateAppBadge();
         }
@@ -5086,122 +5109,130 @@
         }
 
         async function sendMessage() {
-            if (sendBtnDisabled) {
-                alert('Слишком часто! Подождите секунду.');
-                return;
-            }
-
+            if (sendBtnDisabled) { alert('Слишком часто!'); return; }
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            
-            if (!currentChat) {
-                alert('Сначала выберите чат');
-                return;
-            }
-            if (!text) return;
-            
+            if (!currentChat) { alert('Сначала выберите чат'); return; }
+            if (!text && !pendingImage && !pendingAudio) return;
             disableSendButton();
 
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const timestamp = now.getTime();
-            const clientId = generateUUID();
-            
-            const localMessage = {
-                id: clientId,
-                chatId: currentChat.id,
-                sender: currentUser.id,
-                senderName: currentUser.name,
-                senderIsVip: currentUser.is_vip,
-                senderIsAdmin: currentUser.is_admin,
-                text: text,
-                time: timeString,
-                timestamp: timestamp,
-                isAdmin: currentUser.is_admin,
-                edited: false,
-                type: 'out'
-            };
-            
-            if (!messages[currentChat.id]) messages[currentChat.id] = [];
-            messages[currentChat.id].push(localMessage);
-            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            
-            messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
-            saveMessageStatuses();
-            
-            input.value = '';
-            input.style.height = 'auto';
-            
-            if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
-            
-            renderMessages();
-            updateChatsList();
-            forceShowInput();
-            
-            const c = document.getElementById('messagesContainer');
-            if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
-            
-            const dbMessage = {
-                chat_id: currentChat.id,
-                sender_id: currentUser.id,
-                text: text,
-                is_admin: currentUser.is_admin,
-                created_at: now.toISOString()
-            };
-            
-            try {
-                const { data, error } = await db
-                    .from('messages')
-                    .insert([dbMessage])
-                    .select();
-                
-                if (error) {
-                    console.error('Ошибка сохранения сообщения:', error);
-                    if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
-                    pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
-                    localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
-                    
-                    if (error.code === '42501') {
-                        alert('Ошибка прав доступа к таблице messages.');
-                    }
-                } else {
-                    const realId = data[0].id;
-                    const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
-                    if (msgIndex !== -1) {
-                        messages[currentChat.id][msgIndex].id = realId;
-                        messages[currentChat.id][msgIndex]._status = 'sent';
-                    }
-                    messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
-                    delete messageStatuses[clientId];
-                    saveMessageStatuses();
-                    if (currentChat && currentChat.id === messages[currentChat.id][msgIndex]?.chatId) renderMessages();
-                    requestAnimationFrame(() => { renderMessages(); });
+            // Отправляем вложения
+            if (pendingImage) {
+                const img = pendingImage.dataUrl;
+                pendingImage = null;
+                renderAttachmentPreview();
+                await sendImageMessage(img);
+            }
+            if (pendingAudio) {
+                const audio = pendingAudio;
+                pendingAudio = null;
+                renderAttachmentPreview();
+                await sendAudioMessage(audio.blob, audio.duration);
+            }
 
-                    if (ably) {
-                        const payload = {
-                            id: realId,
-                            chat_id: currentChat.id,
-                            sender_id: currentUser.id,
-                            sender_name: currentUser.name,
-                            created_at: now.toISOString(),
-                            text: text,
-                            has_image: false,
-                            has_audio: false
-                        };
-                        try { ably.channels.get(`tok_chat_${currentChat.id}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
-                        if (currentChat.type === 'private' && currentChat.pair_key) {
-                            const peerId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                            if (peerId) {
-                                try { ably.channels.get(`user-${peerId}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+            if (text) {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const timestamp = now.getTime();
+                const clientId = generateUUID();
+                
+                const localMessage = {
+                    id: clientId,
+                    chatId: currentChat.id,
+                    sender: currentUser.id,
+                    senderName: currentUser.name,
+                    senderIsVip: currentUser.is_vip,
+                    senderIsAdmin: currentUser.is_admin,
+                    text: text,
+                    time: timeString,
+                    timestamp: timestamp,
+                    isAdmin: currentUser.is_admin,
+                    edited: false,
+                    type: 'out'
+                };
+                
+                if (!messages[currentChat.id]) messages[currentChat.id] = [];
+                messages[currentChat.id].push(localMessage);
+                messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                
+                messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
+                saveMessageStatuses();
+                
+                input.value = '';
+                input.style.height = 'auto';
+                
+                if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
+                
+                renderMessages();
+                updateChatsList();
+                forceShowInput();
+                
+                const c = document.getElementById('messagesContainer');
+                if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
+                
+                const dbMessage = {
+                    chat_id: currentChat.id,
+                    sender_id: currentUser.id,
+                    text: text,
+                    is_admin: currentUser.is_admin,
+                    read_at: null,
+                    created_at: now.toISOString()
+                };
+                
+                try {
+                    const { data, error } = await db
+                        .from('messages')
+                        .insert([dbMessage])
+                        .select();
+                
+                    if (error) {
+                        console.error('Ошибка сохранения сообщения:', error);
+                        if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
+                        pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
+                        localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
+                        
+                        if (error.code === '42501') {
+                            alert('Ошибка прав доступа к таблице messages.');
+                        }
+                    } else {
+                        const realId = data[0].id;
+                        const msgIndex = messages[currentChat.id].findIndex(m => m.id === clientId);
+                        if (msgIndex !== -1) {
+                            messages[currentChat.id][msgIndex].id = realId;
+                            messages[currentChat.id][msgIndex]._status = 'sent';
+                        }
+                        messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                        delete messageStatuses[clientId];
+                        saveMessageStatuses();
+                        if (currentChat && currentChat.id === messages[currentChat.id][msgIndex]?.chatId) renderMessages();
+                        requestAnimationFrame(() => { renderMessages(); });
+
+                        if (ably) {
+                            const payload = {
+                                id: realId,
+                                chat_id: currentChat.id,
+                                sender_id: currentUser.id,
+                                sender_name: currentUser.name,
+                                created_at: now.toISOString(),
+                                text: text,
+                                has_image: false,
+                                has_audio: false
+                            };
+                            try { ably.channels.get(`tok_chat_${currentChat.id}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                            if (currentChat.type === 'private' && currentChat.pair_key) {
+                                const peerId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                                if (peerId) {
+                                    try { ably.channels.get(`user-${peerId}`).publish('new_message', payload).catch(() => {}); } catch (e) {}
+                                }
                             }
                         }
                     }
+                                } catch (err) {
+                    console.error('Ошибка при сохранении:', err);
+                    if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
+                    pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
+                    localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
                 }
-            } catch (err) {
-                console.error('Ошибка при сохранении:', err);
-                if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
-                pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
-                localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
             }
         }
 
@@ -5250,6 +5281,7 @@
                 sender_id: currentUser.id,
                 image: imageDataUrl,
                 is_admin: currentUser.is_admin,
+                read_at: null,
                 created_at: now.toISOString()
             };
 
@@ -5353,6 +5385,7 @@
                     audio: base64Audio,
                     duration: duration,
                     is_admin: currentUser.is_admin,
+                    read_at: null,
                     created_at: now.toISOString()
                 };
 
@@ -5684,34 +5717,42 @@
             }
         }
 
-        function markMessagesAsRead(chatId) {
-            if (!ably || !messages[chatId] || !currentChat || currentChat.is_public) return;
-            
-            let changed = false;
+        async function markMessagesAsRead(chatId) {
+            if (!messages[chatId] || !currentUser) return;
+            const unreadIds = [];
             messages[chatId].forEach(msg => {
-                if (msg.sender != currentUser.id && 
-                    (!messageStatuses[msg.id] || messageStatuses[msg.id].status !== 'read')) {
-                    
-                    if (!messageStatuses[msg.id]) {
-                        messageStatuses[msg.id] = { status: 'read', readAt: Date.now() };
-                    } else {
-                        messageStatuses[msg.id].status = 'read';
-                        messageStatuses[msg.id].readAt = Date.now();
-                    }
-                    changed = true;
-                    
-                    const chatChannel = ably.channels.get(`tok_chat_${chatId}`);
-                    chatChannel.publish('read_receipt', { messageId: msg.id, reader: currentUser.id }).catch(() => {});
-                    
-                    try {
-                        ably.channels.get(`user-${msg.sender}`).publish('read_receipt', {
-                            messageId: msg.id, reader: currentUser.id, chatId
-                        }).catch(() => {});
-                    } catch (e) {}
+                if (msg.sender !== currentUser.id && !msg.readAt) {
+                    msg.readAt = Date.now();
+                    unreadIds.push(msg.id);
                 }
             });
-            
-            if (changed) saveMessageStatuses();
+            if (unreadIds.length === 0) return;
+
+            // 1) Пишем в Supabase (для оффлайн-получателя)
+            try {
+                await db.from('messages').update({ read_at: new Date().toISOString() })
+                    .in('id', unreadIds).is('read_at', null);
+            } catch (e) { console.warn('[read_at update]', e); }
+
+            // 2) Публикуем read_receipt через Ably (для мгновенного обновления у отправителя)
+            if (ably && currentChat && !currentChat.is_public) {
+                const bySender = {};
+                unreadIds.forEach(id => {
+                    const msg = messages[chatId].find(m => m.id === id);
+                    if (!msg) return;
+                    if (!bySender[msg.sender]) bySender[msg.sender] = [];
+                    bySender[msg.sender].push(id);
+                });
+                Object.keys(bySender).forEach(senderId => {
+                    try {
+                        const ch = ably.channels.get(`user-${senderId}`);
+                        ch.publish('read_receipt', { messageIds: bySender[senderId], chatId, reader: currentUser.id }).catch(() => {});
+                    } catch (e) {}
+                });
+            }
+            // локальный статус
+            unreadIds.forEach(id => { messageStatuses[id] = { status: 'read', readAt: Date.now() }; });
+            saveMessageStatuses();
         }
 
         function updateUnreadCounts() {
@@ -5760,13 +5801,14 @@
                     clientId: String(currentUser.id),
                     disconnectedRetryTimeout: 5000,
                     suspendedRetryTimeout: 15000,
-                    channelRetryTimeout: 30000,
+                    channelRetryTimeout: 15000,
                     realtimeRequestTimeout: 30000,
                     httpMaxRetryCount: 5,
                     httpMaxRetryDuration: 30000,
                     idleTimeout: 0,
                     connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
                     fallbackHostsUseDefault: true,
+                    transports: ['web_socket', 'xhr_polling'],
                     echoMessages: false
                 });
             } catch (e) {
@@ -6162,10 +6204,17 @@
             });
 
             userChannel.subscribe('read_receipt', (message) => {
-                const { messageId, chatId } = message.data;
-                if (messageStatuses[messageId]) {
-                    messageStatuses[messageId].status = 'read';
+                const { messageIds, chatId } = message.data || {};
+                if (Array.isArray(messageIds)) {
+                    messageIds.forEach(id => {
+                        messageStatuses[id] = { status: 'read', readAt: Date.now() };
+                    });
                     saveMessageStatuses();
+                } else if (message.messageId) {
+                    if (messageStatuses[message.messageId]) {
+                        messageStatuses[message.messageId].status = 'read';
+                        saveMessageStatuses();
+                    }
                 }
                 if (currentChat?.id === chatId) renderMessages();
             });
@@ -6606,7 +6655,9 @@
                         }
                         
                         if (audioBlob.size > 0 && duration > 0.1) {
-                            await sendAudioMessage(audioBlob, duration);
+                            const url = URL.createObjectURL(audioBlob);
+                            pendingAudio = { blob: audioBlob, duration, url };
+                            renderAttachmentPreview();
                         }
                         
                         const micBtn = document.getElementById('micBtn');
@@ -7446,6 +7497,23 @@
             } else {
                 localStorage.removeItem(`draft_${currentChat.id}`);
             }
+            // Обновляем вид кнопки отправки при наличии вложений
+            updateSendButtonState();
+        }
+
+        function updateSendButtonState() {
+            const sendBtn = document.getElementById('sendBtn');
+            if (!sendBtn) return;
+            const text = document.getElementById('messageInput')?.value.trim();
+            if (text || pendingImage || pendingAudio) {
+                sendBtn.classList.remove('disabled');
+                sendBtn.style.opacity = '1';
+                sendBtn.style.pointerEvents = 'auto';
+            } else {
+                sendBtn.classList.add('disabled');
+                sendBtn.style.opacity = '0.5';
+                sendBtn.style.pointerEvents = 'none';
+            }
         }
 
         function toggleSidebar() {
@@ -7642,25 +7710,72 @@
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
-            if (!file.type.startsWith('image/')) {
-                alert('Можно прикреплять только изображения');
-                return;
-            }
-            
-            if (file.size > 5 * 1024 * 1024) {
-                alert('Изображение слишком большое. Максимум 5MB.');
-                event.target.value = '';
-                return;
-            }
-            
+            if (!file.type.startsWith('image/')) { alert('Только изображения'); return; }
+            if (file.size > 5 * 1024 * 1024) { alert('Максимум 5MB'); event.target.value = ''; return; }
             const reader = new FileReader();
             reader.readAsDataURL(file);
-            reader.onloadend = async () => {
-                const base64Image = reader.result;
-                await sendImageMessage(base64Image);
+            reader.onloadend = () => {
+                pendingImage = { dataUrl: reader.result };
+                renderAttachmentPreview();
                 event.target.value = '';
             };
+        }
+
+        function renderAttachmentPreview() {
+            const box = document.getElementById('attachmentPreview');
+            if (!box) return;
+            let html = '';
+            if (pendingImage) {
+                html += `
+                    <div style="position:relative; display:inline-block; margin-right:8px;">
+                        <img src="${pendingImage.dataUrl}" style="max-height:80px; max-width:120px; border-radius:12px; object-fit:cover; display:block;">
+                        <button onclick="clearPendingImage()" style="position:absolute; top:-8px; right:-8px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.7); color:#fff; border:none; cursor:pointer; font-size:16px; line-height:1;">×</button>
+                    </div>`;
+            }
+            if (pendingAudio) {
+                html += `
+                    <div style="position:relative; display:inline-flex; align-items:center; gap:8px; padding:6px 12px; background:var(--bg-input); border-radius:16px; margin-right:8px;">
+                        <audio controls src="${pendingAudio.url}" style="height:36px;"></audio>
+                        <span style="font-size:12px; color:var(--text-secondary);">${formatTime(pendingAudio.duration)}</span>
+                        <button onclick="clearPendingAudio()" style="width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.7); color:#fff; border:none; cursor:pointer; font-size:16px; line-height:1;">×</button>
+                    </div>`;
+            }
+            if (html) {
+                box.innerHTML = html;
+                box.style.display = 'block';
+            } else {
+                box.innerHTML = '';
+                box.style.display = 'none';
+            }
+            updateSendButtonState();
+        }
+
+        function clearPendingImage() { pendingImage = null; renderAttachmentPreview(); updateSendButtonState(); }
+        function clearPendingAudio() {
+            if (pendingAudio && pendingAudio.url) URL.revokeObjectURL(pendingAudio.url);
+            pendingAudio = null;
+            renderAttachmentPreview();
+            updateSendButtonState();
+        }
+
+        const msgInput = document.getElementById('messageInput');
+        if (msgInput) {
+            msgInput.addEventListener('paste', (e) => {
+                const items = e.clipboardData && e.clipboardData.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (!file) continue;
+                        if (file.size > 5 * 1024 * 1024) { alert('Максимум 5MB'); return; }
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onloadend = () => { pendingImage = { dataUrl: reader.result }; renderAttachmentPreview(); };
+                        break;
+                    }
+                }
+            });
         }
 
         // ========== ОБРАБОТЧИКИ СОБЫТИЙ ==========
@@ -7898,25 +8013,7 @@
         }
 
         // === Загрузка обоев чата ===
-        async function handleChatBgUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            try {
-                const base64 = await resizeImageToBase64(file, 800, 0.6);
-                if (base64SizeInBytes(base64) > 60000) {
-                    alert('Обои слишком большие. Выберите другое фото.');
-                    return;
-                }
-                currentUser.chatBackground = base64;
-                document.documentElement.style.setProperty('--pattern-overlay', `url('${base64}')`);
-                document.documentElement.style.setProperty('--pattern-overlay-size', 'cover');
-                await db.from('profiles').update({ chat_background: base64 }).eq('id', currentUser.id);
-                updateChatsList();
-            } catch (e) {
-                console.error('Failed to resize chat background:', e);
-            }
-            event.target.value = '';
-        }
+        window.handleChatBgUpload = undefined;
     </script>
 </body>
-</html>                                    
+</html>
