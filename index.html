@@ -2891,6 +2891,7 @@
 
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
+        let supabaseChannels = {};   // { chatId: channel }
         let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
@@ -3990,6 +3991,11 @@
                         loadPinnedChats();
                         loadLocallyDeletedChats();
                         
+                        // Подписываемся на Supabase Realtime для всех чатов
+                        myChats.forEach(chat => {
+                            subscribeToSupabaseChat(chat.id);
+                        });
+                        
                         initAbly();
                         startHeartbeat();
                         startPresenceUpdates();
@@ -4159,6 +4165,11 @@
                 loadPinnedChats();
                 loadLocallyDeletedChats();
                 
+                // Подписываемся на Supabase Realtime для всех чатов
+                myChats.forEach(chat => {
+                    subscribeToSupabaseChat(chat.id);
+                });
+                
                 initAbly();
                 startHeartbeat();
                 startPresenceUpdates();
@@ -4322,6 +4333,8 @@
             
             clearPendingImage();
             clearPendingAudio();
+            
+            unsubscribeAllSupabaseChannels();
             
             if (ably) {
                 try {
@@ -4696,6 +4709,9 @@
                 const { id: messageId, chat_id: msgChatId, sender_id } = message.data;
                 if (sender_id === currentUser.id) return;
                 if (!msgChatId) return;
+
+                // ДЕДУПЛИКАЦИЯ: если Supabase Realtime уже добавил — пропускаем
+                if (messages[msgChatId] && messages[msgChatId].some(m => m.id === messageId)) return;
                 
                 // Догружаем полное сообщение из Supabase
                 try {
@@ -4769,6 +4785,102 @@
                 }
                 console.log('[channel] Attached to', channelName);
             });
+        }
+
+        // ========== SUPABASE REALTIME ==========
+        function subscribeToSupabaseChat(chatId) {
+            if (!currentUser || !chatId) return;
+            if (supabaseChannels[chatId]) {
+                return;
+            }
+
+            const channelName = `public:messages:chat_id=eq.${chatId}`;
+            const ch = db.channel(channelName);
+
+            ch.on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'messages',
+                    filter: `chat_id=eq.${chatId}`
+                },
+                async (payload) => {
+                    const newMsg = payload.new;
+                    if (!newMsg) return;
+                    if (newMsg.sender_id === currentUser.id) return;
+
+                    if (!messages[chatId]) messages[chatId] = [];
+                    if (messages[chatId].some(m => m.id === newMsg.id)) return;
+
+                    const sender = allUsers.find(u => u.id === newMsg.sender_id) || {
+                        username: 'Неизвестно', avatar: '👤'
+                    };
+
+                    messages[chatId].push({
+                        id: newMsg.id,
+                        chatId: newMsg.chat_id,
+                        sender: newMsg.sender_id,
+                        senderName: sender.username,
+                        senderIsVip: sender.is_vip,
+                        senderIsAdmin: sender.is_admin,
+                        text: newMsg.text,
+                        audio: newMsg.audio,
+                        image: newMsg.image,
+                        duration: newMsg.duration,
+                        time: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        timestamp: new Date(newMsg.created_at).getTime(),
+                        isAdmin: newMsg.is_admin || false,
+                        edited: newMsg.edited || false,
+                        type: 'in'
+                    });
+                    messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                    if (locallyDeletedChats.has(chatId)) {
+                        locallyDeletedChats.delete(chatId);
+                        saveLocallyDeletedChats();
+                    }
+
+                    if (currentChat?.id === chatId) {
+                        renderMessages();
+                        markMessagesAsRead(chatId);
+                        const c = document.getElementById('messagesContainer');
+                        if (c) { c.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
+                    } else {
+                        unreadCounts[chatId] = (unreadCounts[chatId] || 0) + 1;
+                    }
+
+                    if (getNotificationState(chatId)) {
+                        playIncomingMessageSound();
+                        showMessageNotification(sender.username, sender.avatar, newMsg.text || (newMsg.image ? '📷' : '🎤'), chatId);
+                    }
+
+                    updateChatsList();
+                    updateUnreadCounts();
+                    updateAppBadge();
+                }
+            );
+
+            ch.subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[supabase-realtime] subscribed to', chatId);
+                } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('[supabase-realtime] error on', chatId, status);
+                }
+            });
+
+            supabaseChannels[chatId] = ch;
+        }
+
+        function unsubscribeFromSupabaseChat(chatId) {
+            if (supabaseChannels[chatId]) {
+                try { db.removeChannel(supabaseChannels[chatId]); } catch (e) {}
+                delete supabaseChannels[chatId];
+            }
+        }
+
+        function unsubscribeAllSupabaseChannels() {
+            Object.keys(supabaseChannels).forEach(chatId => unsubscribeFromSupabaseChat(chatId));
         }
 
         // ========== ЧАТЫ ==========
@@ -4932,6 +5044,7 @@
             
             // Subscribe to the chat channel FIRST for real-time messages
             subscribeToChatChannel(chat.id);
+            subscribeToSupabaseChat(chat.id);
             
             if (chat.is_public) {
                 (async () => {
@@ -6380,6 +6493,9 @@
             userChannel.subscribe('new_message', async (message) => {
                 const { id: messageId, chat_id: msgChatId, sender_id } = message.data;
                 if (sender_id === currentUser.id) return;
+
+                // ДЕДУПЛИКАЦИЯ: если Supabase Realtime уже добавил — пропускаем
+                if (messages[msgChatId] && messages[msgChatId].some(m => m.id === messageId)) return;
                 try {
                     const { data, error } = await db.from('messages').select('*').eq('id', messageId).single();
                     if (error || !data) return;
