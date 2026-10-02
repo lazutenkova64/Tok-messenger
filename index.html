@@ -4726,32 +4726,66 @@
             if (!currentUser || !user) return;
             const ids = [currentUser.id, user.id].sort();
             const pairKey = ids.join('_');
-            let { data: existing } = await db.from('chats').select('*').eq('pair_key', pairKey).eq('type', 'private').maybeSingle();
+
+            // 1. Ищем существующий чат
+            let { data: existingArr } = await db.from('chats')
+                .select('*')
+                .eq('pair_key', pairKey)
+                .eq('type', 'private')
+                .limit(1);
+            let existing = existingArr && existingArr.length > 0 ? existingArr[0] : null;
+
+            // 2. Если не нашли — пытаемся создать
             if (!existing) {
                 const { data, error } = await db.from('chats').insert([{
                     name: '', is_public: false, type: 'private', pair_key: pairKey,
                     created_by: currentUser.id, created_at: new Date().toISOString()
                 }]).select();
                 if (error) {
-                    if (error.code === '23505') {
-                        const { data: again } = await db.from('chats').select('*').eq('pair_key', pairKey).maybeSingle();
-                        existing = again;
-                    } else { alert('Ошибка: ' + error.message); return; }
-                } else { existing = data[0]; }
+                    // INSERT упал — пробуем прочитать повторно, возможно чат уже существует
+                    const { data: retryArr } = await db.from('chats')
+                        .select('*')
+                        .eq('pair_key', pairKey)
+                        .eq('type', 'private')
+                        .limit(1);
+                    const retry = retryArr && retryArr.length > 0 ? retryArr[0] : null;
+                    if (retry) {
+                        existing = retry;
+                    } else {
+                        console.error('[createPrivateChat] insert error:', error);
+                        alert('Не удалось открыть чат: ' + (error.message || 'ошибка БД'));
+                        return;
+                    }
+                } else {
+                    existing = data[0];
+                }
             }
+
             if (!existing) {
                 console.warn('[createPrivateChat] chat not found and could not be created');
                 return;
             }
-            // Снимаем флаг удаления — чат должен вернуться в список
+
+            // 3. Снимаем флаг локального удаления
             locallyDeletedChats.delete(existing.id);
             saveLocallyDeletedChats();
-            const { data: members } = await db.from('chat_members').select('user_id').eq('chat_id', existing.id);
+
+            // 4. Добавляем участников, если их нет
+            const { data: members } = await db.from('chat_members')
+                .select('user_id')
+                .eq('chat_id', existing.id);
             const have = new Set((members || []).map(m => m.user_id));
             const toInsert = [currentUser.id, user.id].filter(id => !have.has(id)).map(id => ({
                 chat_id: existing.id, user_id: id, joined_at: new Date().toISOString()
             }));
-            if (toInsert.length) await db.from('chat_members').insert(toInsert);
+            if (toInsert.length) {
+                const { error: memberErr } = await db.from('chat_members').insert(toInsert);
+                if (memberErr && memberErr.code !== '23505') {
+                    console.warn('[createPrivateChat] member insert error:', memberErr);
+                }
+            }
+
+            // 5. Добавляем в myChats, если нет
             const privateChat = {
                 id: existing.id, name: '', pair_key: pairKey, avatar: user.avatar,
                 is_public: false, type: 'private', created_at: existing.created_at
@@ -4760,6 +4794,8 @@
                 myChats.push(privateChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
             }
+
+            // 6. Обновляем список и переходим в чат
             updateChatsList();
             if (ably) {
                 try {
