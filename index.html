@@ -2637,8 +2637,8 @@
 
             <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
 
-            <div class="message-input-container" id="messageInputContainer" style="flex-direction: column;">
-                <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
+            <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
+            <div class="message-input-container" id="messageInputContainer">
                 <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
                 <button class="attach-btn" onclick="document.getElementById('imageInput').click()">📎</button>
                 <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
@@ -4739,6 +4739,13 @@
                     } else { alert('Ошибка: ' + error.message); return; }
                 } else { existing = data[0]; }
             }
+            if (!existing) {
+                console.warn('[createPrivateChat] chat not found and could not be created');
+                return;
+            }
+            // Снимаем флаг удаления — чат должен вернуться в список
+            locallyDeletedChats.delete(existing.id);
+            saveLocallyDeletedChats();
             const { data: members } = await db.from('chat_members').select('user_id').eq('chat_id', existing.id);
             const have = new Set((members || []).map(m => m.user_id));
             const toInsert = [currentUser.id, user.id].filter(id => !have.has(id)).map(id => ({
@@ -4753,8 +4760,6 @@
                 myChats.push(privateChat);
                 localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
             }
-            locallyDeletedChats.delete(privateChat.id);
-            saveLocallyDeletedChats();
             updateChatsList();
             if (ably) {
                 try {
@@ -6447,7 +6452,7 @@
             const avatarText = avatarIsUrl ? '' : (safeAvatar || '👤');
             
             return `
-                <div class="chat-item" onclick="createPrivateChat({id: '${user.id}', name: '${escapeHtml(user.name)}', avatar: '${escapeHtml(user.avatar)}'})">
+                <div class="chat-item" onclick='createPrivateChat(${JSON.stringify({ id: user.id, name: user.name, avatar: user.avatar }).replace(/"/g, '&quot;').replace(/'/g, "&apos;")})'>
                     <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center;">${avatarText}</div>
                     <div class="chat-details">
                         <div class="chat-name">
