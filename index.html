@@ -4427,10 +4427,9 @@
                         if (row.deleted_at) {
                             cutoffMap[row.chat_id] = new Date(row.deleted_at).getTime();
                             setChatCutoff(row.chat_id, cutoffMap[row.chat_id]);
-                            locallyDeletedChats.add(row.chat_id);
+                            // НЕ добавляем сразу в locallyDeletedChats — решим ниже, после загрузки сообщений
                         }
                     });
-                    saveLocallyDeletedChats();
                 } catch (e) { console.warn('[loadAllMessages cutoffs]', e); }
 
                 const { data, error } = await db
@@ -4490,6 +4489,18 @@
                         messages[chatId].reverse();
                     });
                 }
+                
+                // Пересобираем locallyDeletedChats: чат считается удалённым только если НЕТ сообщений после cut-off
+                Object.keys(cutoffMap).forEach(chatId => {
+                    const cutoff = cutoffMap[chatId];
+                    const hasNewMessages = (messages[chatId] || []).some(m => (m.timestamp || 0) > cutoff);
+                    if (!hasNewMessages) {
+                        locallyDeletedChats.add(chatId);
+                    } else {
+                        locallyDeletedChats.delete(chatId);
+                    }
+                });
+                saveLocallyDeletedChats();
                 
                 updateUnreadCounts();
                 updateChatsList();
@@ -4998,25 +5009,32 @@
             
             // Подтягиваем cut-off из БД (если ещё нет в localStorage)
             (async () => {
+                // Загружаем cut-off из БД, если нет в кэше
                 let cutoff = getChatCutoff(chat.id);
                 if (!cutoff) {
                     cutoff = await fetchDeletedAtFromDB(chat.id);
-                    if (cutoff > 0) {
-                        setChatCutoff(chat.id, cutoff);
+                    if (cutoff > 0) setChatCutoff(chat.id, cutoff);
+                }
+
+                // ВСЕГДА грузим историю — фильтр по cut-off внутри loadChatHistory
+                await loadChatHistory(chat.id);
+                markMessagesAsRead(chat.id);
+                if (!messages[chat.id]) messages[chat.id] = [];
+                messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+                // Если после cut-off есть сообщения — чат активен, флаг удаления снимаем
+                if (cutoff > 0) {
+                    const hasNewMessages = messages[chat.id].some(m => (m.timestamp || 0) > cutoff);
+                    if (hasNewMessages) {
+                        locallyDeletedChats.delete(chat.id);
+                        saveLocallyDeletedChats();
+                    } else {
                         locallyDeletedChats.add(chat.id);
                         saveLocallyDeletedChats();
                     }
                 }
-                if (cutoff === 0) {
-                    loadChatHistory(chat.id);
-                    markMessagesAsRead(chat.id);
-                    if (!messages[chat.id]) messages[chat.id] = [];
-                    messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                } else {
-                    messages[chat.id] = [];
-                    const container = document.getElementById('messagesContainer');
-                    if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
-                }
+
+                renderMessages();
             })();
             
             markAllMessagesAsRead(chat.id);
@@ -5028,12 +5046,6 @@
             }
             
             renderMessages();
-
-            // Принудительная очистка контейнера для удалённых чатов
-            if (locallyDeletedChats.has(chat.id)) {
-                const container = document.getElementById('messagesContainer');
-                if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
-            }
 
             // Восстановление черновика
             const draft = localStorage.getItem(`draft_${chat.id}`);
