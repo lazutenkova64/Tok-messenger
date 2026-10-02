@@ -1,0 +1,7 @@
+check_*.js
+check_*.py
+check_*.ps1
+check.js
+find_imbalance.ps1
+.idea/
+.gigaide/
