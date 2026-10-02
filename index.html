@@ -4766,7 +4766,12 @@
                 return;
             }
 
-            // 3. Снимаем флаг локального удаления
+            // 3. Снимаем флаг локального удаления, но НЕ восстанавливаем историю
+            if (locallyDeletedChats.has(existing.id)) {
+                // Чат был удалён у меня — не восстанавливаем историю
+                delete messages[existing.id];
+                delete unreadCounts[existing.id];
+            }
             locallyDeletedChats.delete(existing.id);
             saveLocallyDeletedChats();
 
@@ -4893,12 +4898,20 @@
             document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists && displayName !== 'Избранное') ? 'flex' : 'none';
             
             updateNotificationBell(chat.id);
-            loadChatHistory(chat.id);
             
-            markMessagesAsRead(chat.id);
+            // Не загружаем историю, если чат был удалён «у себя»
+            if (!locallyDeletedChats.has(chat.id)) {
+                loadChatHistory(chat.id);
+                markMessagesAsRead(chat.id);
+            }
             
-            if (!messages[chat.id]) messages[chat.id] = [];
-            messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            if (locallyDeletedChats.has(chat.id)) {
+                messages[chat.id] = [];
+            } else if (!messages[chat.id]) {
+                messages[chat.id] = [];
+            } else {
+                messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            }
             
             markAllMessagesAsRead(chat.id);
             
@@ -4909,6 +4922,12 @@
             }
             
             renderMessages();
+
+            // Принудительная очистка контейнера для удалённых чатов
+            if (locallyDeletedChats.has(chat.id)) {
+                const container = document.getElementById('messagesContainer');
+                if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
+            }
 
             // Восстановление черновика
             const draft = localStorage.getItem(`draft_${chat.id}`);
