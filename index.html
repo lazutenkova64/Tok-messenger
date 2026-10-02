@@ -6646,6 +6646,28 @@
             });
         }
 
+        async function sendCallSignal(peerId, event, payload) {
+            if (!peerId) return;
+            const channelName = `user-calls-${peerId}`;
+            const ch = db.channel(channelName);
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('subscribe timeout')), 10000);
+                ch.subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        clearTimeout(timeout);
+                        try {
+                            await ch.send({ type: 'broadcast', event: event, payload: payload });
+                            resolve();
+                        } catch (e) { reject(e); }
+                        setTimeout(() => { try { db.removeChannel(ch); } catch (e) {} }, 500);
+                    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                        clearTimeout(timeout);
+                        reject(new Error('channel error'));
+                    }
+                });
+            });
+        }
+
         async function setupSupabaseCallChannel() {
             if (!currentUser) return;
             if (supabaseCallChannel) {
@@ -6679,15 +6701,10 @@
                     const offer = await peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
                     await peerConnection.setLocalDescription(offer);
 
-                    const peerChannel = db.channel(`user-calls-${currentCall.peerId}`);
-                    peerChannel.subscribe(async (s) => {
-                        if (s === 'SUBSCRIBED') {
-                            await peerChannel.send({
-                                type: 'broadcast',
-                                event: 'webrtc_offer',
-                                payload: { callId, offer: { type: offer.type, sdp: offer.sdp }, timestamp: Date.now() }
-                            });
-                        }
+                    await sendCallSignal(currentCall.peerId, 'webrtc_offer', {
+                        callId,
+                        offer: { type: offer.type, sdp: offer.sdp },
+                        timestamp: Date.now()
                     });
                 } catch (err) {
                     console.error('[call] accepted handler error:', err);
@@ -6737,15 +6754,10 @@
                     const answer = await peerConnection.createAnswer();
                     await peerConnection.setLocalDescription(answer);
 
-                    const peerChannel = db.channel(`user-calls-${currentCall.peerId}`);
-                    peerChannel.subscribe(async (s) => {
-                        if (s === 'SUBSCRIBED') {
-                            await peerChannel.send({
-                                type: 'broadcast',
-                                event: 'webrtc_answer',
-                                payload: { callId, answer: { type: answer.type, sdp: answer.sdp }, timestamp: Date.now() }
-                            });
-                        }
+                    await sendCallSignal(currentCall.peerId, 'webrtc_answer', {
+                        callId,
+                        answer: { type: answer.type, sdp: answer.sdp },
+                        timestamp: Date.now()
                     });
                 } catch (err) {
                     console.error('[call] webrtc_offer handling error:', err);
@@ -7404,14 +7416,10 @@
             pc.onicecandidate = async (event) => {
                 if (!event.candidate || !currentCall.peerId) return;
                 try {
-                    if (!supabaseCallChannel) {
-                        supabaseCallChannel = db.channel(`user-calls-${currentCall.peerId}`);
-                        supabaseCallChannel.subscribe();
-                    }
-                    await supabaseCallChannel.send({
-                        type: 'broadcast',
-                        event: 'ice_candidate',
-                        payload: { callId: currentCall.callId, candidate: event.candidate, timestamp: Date.now() }
+                    await sendCallSignal(currentCall.peerId, 'ice_candidate', {
+                        callId: currentCall.callId,
+                        candidate: event.candidate,
+                        timestamp: Date.now()
                     });
                 } catch (e) { console.warn('[call] ICE send error:', e); }
             };
@@ -7536,21 +7544,13 @@
             if (timerEl) timerEl.textContent = '';
 
             try {
-                if (!supabaseCallChannel) {
-                    supabaseCallChannel = db.channel(`user-calls-${receiverId}`);
-                    supabaseCallChannel.subscribe();
-                }
-                await supabaseCallChannel.send({
-                    type: 'broadcast',
-                    event: 'call_request',
-                    payload: {
-                        callId,
-                        dbCallId,
-                        callerId: currentUser.id,
-                        callerName: currentUser.name,
-                        callerAvatar: getSafeAvatar(currentUser.avatar),
-                        timestamp
-                    }
+                await sendCallSignal(receiverId, 'call_request', {
+                    callId,
+                    dbCallId,
+                    callerId: currentUser.id,
+                    callerName: currentUser.name,
+                    callerAvatar: getSafeAvatar(currentUser.avatar),
+                    timestamp
                 });
             } catch (e) {
                 console.error('[call] failed to send call_request:', e);
@@ -7672,14 +7672,9 @@
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
             try {
-                if (!supabaseCallChannel) {
-                    supabaseCallChannel = db.channel(`user-calls-${currentCall.peerId}`);
-                    supabaseCallChannel.subscribe();
-                }
-                await supabaseCallChannel.send({
-                    type: 'broadcast',
-                    event: 'call_accepted',
-                    payload: { callId: currentCall.callId, timestamp: Date.now() }
+                await sendCallSignal(currentCall.peerId, 'call_accepted', {
+                    callId: currentCall.callId,
+                    timestamp: Date.now()
                 });
             } catch (e) { console.warn('[call] answerCall send error:', e); }
             } catch (err) {
@@ -7693,39 +7688,23 @@
             if (!currentCall || currentCall.status === 'ended') return;
             
             if (currentCall.isInitiator) {
-                try {
-                    const peerId = currentCall.peerId;
-                    if (peerId) {
-                        const tempCh = db.channel(`user-calls-${peerId}`);
-                        tempCh.subscribe(async (s) => {
-                            if (s === 'SUBSCRIBED') {
-                                await tempCh.send({
-                                    type: 'broadcast',
-                                    event: 'call_ended',
-                                    payload: { callId: currentCall.callId, reason: 'cancelled', timestamp: Date.now() }
-                                });
-                                setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
-                            }
-                        });
-                    }
-                } catch (e) { console.warn('[call] reject/end send error:', e); }
+                const peerId = currentCall.peerId;
+                if (peerId) {
+                    await sendCallSignal(peerId, 'call_ended', {
+                        callId: currentCall.callId,
+                        reason: 'cancelled',
+                        timestamp: Date.now()
+                    });
+                }
             } else {
-                try {
-                    const peerId = currentCall.callerInfo && currentCall.callerInfo.id;
-                    if (peerId) {
-                        const tempCh = db.channel(`user-calls-${peerId}`);
-                        tempCh.subscribe(async (s) => {
-                            if (s === 'SUBSCRIBED') {
-                                await tempCh.send({
-                                    type: 'broadcast',
-                                    event: 'call_rejected',
-                                    payload: { callId: currentCall.callId, reason: 'rejected', timestamp: Date.now() }
-                                });
-                                setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
-                            }
-                        });
-                    }
-                } catch (e) { console.warn('[call] reject/end send error:', e); }
+                const peerId = currentCall.callerInfo && currentCall.callerInfo.id;
+                if (peerId) {
+                    await sendCallSignal(peerId, 'call_rejected', {
+                        callId: currentCall.callId,
+                        reason: 'rejected',
+                        timestamp: Date.now()
+                    });
+                }
             }
             
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
@@ -7744,21 +7723,13 @@
         function endCall() {
             if (!currentCall) return;
 
-            try {
-                if (currentCall.peerId) {
-                    const tempCh = db.channel(`user-calls-${currentCall.peerId}`);
-                    tempCh.subscribe(async (s) => {
-                        if (s === 'SUBSCRIBED') {
-                            await tempCh.send({
-                                type: 'broadcast',
-                                event: 'call_ended',
-                                payload: { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() }
-                            });
-                            setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
-                        }
-                    });
-                }
-            } catch (e) {}
+            if (currentCall.peerId) {
+                await sendCallSignal(currentCall.peerId, 'call_ended', {
+                    callId: currentCall.callId,
+                    reason: 'ended',
+                    timestamp: Date.now()
+                });
+            }
 
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
 
