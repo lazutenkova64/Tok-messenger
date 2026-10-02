@@ -6017,7 +6017,7 @@
                     idleTimeout: 0,
                     connectivityCheckUrl: 'https://internet-up.ably-realtime.com/is-the-internet-up.txt',
                     fallbackHostsUseDefault: true,
-                    transports: ['web_socket', 'xhr_polling'],
+                    transports: ['xhr_polling'],
                     echoMessages: false
                 });
             } catch (e) {
@@ -6025,12 +6025,13 @@
                 return;
             }
 
-            ably.connection.on((stateChange) => {
-                console.log('ABLY STATE:', stateChange.current, 'REASON:', stateChange.reason);
-            });
+            // Убран для уменьшения шума в консоли
+            // ably.connection.on((stateChange) => {
+            //     console.log('ABLY STATE:', stateChange.current, 'REASON:', stateChange.reason);
+            // });
 
             ably.connection.on('connected', () => {
-                console.log('Connected to Ably');
+                // console.log('Connected to Ably');
                 
                 if (ablyReconnectTimer) {
                     clearTimeout(ablyReconnectTimer);
@@ -6049,7 +6050,7 @@
             });
 
             ably.connection.on('disconnected', () => {
-                console.log('Ably disconnected, attempting to reconnect...');
+                // console.log('Ably disconnected, attempting to reconnect...');
                 if (ablyReconnectTimer) clearTimeout(ablyReconnectTimer);
                 ablyReconnectTimer = setTimeout(() => {
                     if (currentUser && ably && ably.connection.state !== 'connected') {
