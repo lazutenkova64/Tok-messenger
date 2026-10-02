@@ -2892,6 +2892,7 @@
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
         let supabaseChannels = {};   // { chatId: channel }
+        let supabasePresenceChannel = null;
         let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
@@ -3996,6 +3997,8 @@
                             subscribeToSupabaseChat(chat.id);
                         });
                         
+                        setupPresenceChannel();
+                        
                         initAbly();
                         startHeartbeat();
                         startPresenceUpdates();
@@ -4170,6 +4173,8 @@
                     subscribeToSupabaseChat(chat.id);
                 });
                 
+                setupPresenceChannel();
+                
                 initAbly();
                 startHeartbeat();
                 startPresenceUpdates();
@@ -4335,6 +4340,11 @@
             clearPendingAudio();
             
             unsubscribeAllSupabaseChannels();
+            
+            if (supabasePresenceChannel) {
+                try { await db.removeChannel(supabasePresenceChannel); } catch (e) {}
+                supabasePresenceChannel = null;
+            }
             
             if (ably) {
                 try {
@@ -6219,90 +6229,95 @@
             }, 20000);
         }
 
-        function setupPresenceChannel() {
-            if (!ably || !currentUser) return;
-            const presenceChannel = ably.channels.get('tok_global_online');
-            
-            const safeAvatar = getSafeAvatar(currentUser.avatar);
-            
-            presenceChannel.attach().then(() => {
-                return presenceChannel.presence.enter({
-                    name: currentUser.name,
-                    avatar: safeAvatar,
-                    bio: currentUser.bio || '',
-                    is_vip: currentUser.is_vip || false,
-                    is_admin: currentUser.is_admin || false,
-                    dnd: currentUser.dnd || false,
+        async function setupPresenceChannel() {
+            if (!currentUser) return;
+            if (supabasePresenceChannel) {
+                try { await db.removeChannel(supabasePresenceChannel); } catch (e) {}
+                supabasePresenceChannel = null;
+            }
+
+            const ch = db.channel('tok_global_online', {
+                config: {
+                    presence: {
+                        key: String(currentUser.id)
+                    }
+                }
+            });
+
+            // Sync — полный список участников
+            ch.on('presence', { event: 'sync' }, () => {
+                try {
+                    const state = ch.presenceState();
+                    const newOnline = {};
+                    Object.keys(state).forEach(userId => {
+                        const metas = state[userId] || [];
+                        const meta = metas[0] || {};
+                        newOnline[String(userId)] = {
+                            id: String(userId),
+                            name: meta.name || 'Пользователь',
+                            avatar: meta.avatar || '👤',
+                            bio: meta.bio || '',
+                            is_vip: meta.is_vip || false,
+                            is_admin: meta.is_admin || false,
+                            dnd: meta.dnd || false,           // ← DND
+                            online: true,
+                            lastSeen: Date.now()
+                        };
+                    });
+                    onlineUsers = newOnline;
+                    updateChatsList();
+                    updateChatStatus();
+                } catch (e) { console.warn('[supabase presence sync]', e); }
+            });
+
+            // Join — кто-то зашёл
+            ch.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+                const userId = String(key);
+                const meta = (newPresences && newPresences[0]) || {};
+                onlineUsers[userId] = {
+                    id: userId,
+                    name: meta.name || 'Пользователь',
+                    avatar: meta.avatar || '👤',
+                    bio: meta.bio || '',
+                    is_vip: meta.is_vip || false,
+                    is_admin: meta.is_admin || false,
+                    dnd: meta.dnd || false,           // ← DND
+                    online: true,
                     lastSeen: Date.now()
-                });
-            }).then(() => {
-                return presenceChannel.presence.get();
-            }).then((members) => {
-                console.log('[presence] loaded members:', members.length);
-                (members || []).forEach(member => {
-                    const cid = String(member.clientId);
-                    onlineUsers[cid] = {
-                        id: cid,
-                        name: member.data?.name || 'Пользователь',
-                        avatar: member.data?.avatar || '👤',
-                        bio: member.data?.bio || '',
-                        online: true,
-                        is_vip: member.data?.is_vip || false,
-                        is_admin: member.data?.is_admin || false,
-                        dnd: member.data?.dnd || false,
-                        lastSeen: Date.now()
-                    };
-                });
-                console.log('[presence] onlineUsers now:', Object.keys(onlineUsers));
+                };
                 updateChatsList();
                 updateChatStatus();
-            }).catch(err => {
-                console.error('[presence] setup error:', err);
             });
-            
-            presenceChannel.presence.subscribe('enter', (member) => {
-                const cid = String(member.clientId);
-                onlineUsers[cid] = {
-                    id: cid,
-                    name: member.data?.name || 'Пользователь',
-                    avatar: member.data?.avatar || '👤',
-                    bio: member.data?.bio || '',
-                    online: true,
-                    is_vip: member.data?.is_vip || false,
-                    is_admin: member.data?.is_admin || false,
-                    dnd: member.data?.dnd || false,
-                    lastSeen: Date.now()
-                };
-                sendQueuedMessagesToUser(cid);
-                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
-            });
-            
-            presenceChannel.presence.subscribe('update', (member) => {
-                const cid = String(member.clientId);
-                const prevDnd = onlineUsers[cid]?.dnd || false;
-                const newDnd = member.data?.dnd || false;
-                onlineUsers[cid] = {
-                    ...(onlineUsers[cid] || {}),
-                    id: cid,
-                    name: member.data?.name || 'Пользователь',
-                    avatar: member.data?.avatar || '👤',
-                    online: true,
-                    is_vip: member.data?.is_vip || false,
-                    is_admin: member.data?.is_admin || false,
-                    dnd: prevDnd || newDnd,
-                    lastSeen: Date.now()
-                };
-                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
-            });
-            
-            presenceChannel.presence.subscribe('leave', (member) => {
-                const cid = String(member.clientId);
-                if (onlineUsers[cid]) {
-                    onlineUsers[cid].online = false;
-                    onlineUsers[cid].lastSeen = member.data?.lastSeen || Date.now();
+
+            // Leave — кто-то ушёл
+            ch.on('presence', { event: 'leave' }, ({ key }) => {
+                const userId = String(key);
+                if (onlineUsers[userId]) {
+                    onlineUsers[userId].online = false;
+                    onlineUsers[userId].lastSeen = Date.now();
                 }
-                setTimeout(() => { updateChatsList(); updateChatStatus(); }, 500);
+                updateChatsList();
+                updateChatStatus();
             });
+
+            // Подписка — отправляем своё состояние с DND
+            ch.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    const safeAvatar = getSafeAvatar(currentUser.avatar);
+                    try {
+                        await ch.track({
+                            name: currentUser.name,
+                            avatar: safeAvatar,
+                            bio: currentUser.bio || '',
+                            is_vip: currentUser.is_vip || false,
+                            is_admin: currentUser.is_admin || false,
+                            dnd: currentUser.dnd || false       // ← DND отправляем
+                        });
+                    } catch (e) {}
+                }
+            });
+
+            supabasePresenceChannel = ch;
         }
 
         function setupGlobalChatsChannel() {
@@ -7667,6 +7682,20 @@
                                 is_admin: currentUser.is_admin, dnd: dnd, lastSeen: Date.now()
                             });
                         }
+                    } catch (e) {}
+                }
+                
+                if (supabasePresenceChannel) {
+                    try {
+                        const safeAvatar = getSafeAvatar(currentUser.avatar);
+                        await supabasePresenceChannel.track({
+                            name: currentUser.name,
+                            avatar: safeAvatar,
+                            bio: currentUser.bio || '',
+                            is_vip: currentUser.is_vip || false,
+                            is_admin: currentUser.is_admin || false,
+                            dnd: currentUser.dnd || false           // ← DND обновляем
+                        });
                     } catch (e) {}
                 }
                 
