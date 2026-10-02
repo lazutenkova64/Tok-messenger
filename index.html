@@ -2893,6 +2893,7 @@
         let ably;
         let supabaseChannels = {};   // { chatId: channel }
         let supabasePresenceChannel = null;
+        let supabaseCallChannel = null;
         let ablyUserChannel = null;
         let currentUser = null;
         let myChats = [];
@@ -3999,6 +4000,8 @@
                         
                         setupPresenceChannel();
                         
+                        setupSupabaseCallChannel();
+                        
                         initAbly();
                         startHeartbeat();
                         startPresenceUpdates();
@@ -4175,6 +4178,8 @@
                 
                 setupPresenceChannel();
                 
+                setupSupabaseCallChannel();
+                
                 initAbly();
                 startHeartbeat();
                 startPresenceUpdates();
@@ -4344,6 +4349,11 @@
             if (supabasePresenceChannel) {
                 try { await db.removeChannel(supabasePresenceChannel); } catch (e) {}
                 supabasePresenceChannel = null;
+            }
+            
+            if (supabaseCallChannel) {
+                try { await db.removeChannel(supabaseCallChannel); } catch (e) {}
+                supabaseCallChannel = null;
             }
             
             if (ably) {
@@ -6371,138 +6381,140 @@
             ablyUserChannel = userChannel;
             userChannelSubscribed = true;
             
-            userChannel.subscribe('call_request', (message) => {
-                handleIncomingCallRequest(message.data);
-            });
-
-            userChannel.subscribe('call_accepted', async (message) => {
-                const { callId, timestamp } = message.data;
-                if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
-                if (Date.now() - timestamp > 15000) return;
-                if (currentCall.status !== 'calling') return;
-                
-                clearTimeout(currentCall.timeout);
-                currentCall.status = 'connecting';
-
-                initAudioContext();
-
-                try {
-                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                    peerConnection = createPeerConnection();
-                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                    const offer = await peerConnection.createOffer({
-                        offerToReceiveAudio: true,
-                        offerToReceiveVideo: false
-                    });
-                    await peerConnection.setLocalDescription(offer);
-
-                    if (ably) {
-                        const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
-                        userChannel2.publish('webrtc_offer', {
-                            callId,
-                            offer: { type: offer.type, sdp: offer.sdp },
-                            timestamp: Date.now()
-                        }).catch(() => {});
-                    }
-                } catch (err) {
-                    console.error('Error in call_accepted handler:', err);
-                    alert('Не удалось установить соединение: ' + (err.message || ''));
-                    endCall();
-                }
-            });
-
-            userChannel.subscribe('call_rejected', (message) => {
-                const { callId } = message.data;
-                if (!currentCall || currentCall.callId !== callId) return;
-                const statusEl = document.getElementById('callStatus');
-                if (statusEl) statusEl.textContent = 'Вызов завершён';
-                const incoming = document.getElementById('incomingCallControls');
-                const outgoing = document.getElementById('outgoingCallControls');
-                if (incoming) incoming.style.display = 'none';
-                if (outgoing) outgoing.style.display = 'none';
-                resetCallState();
-            });
-
-            userChannel.subscribe('call_ended', (message) => {
-                const { callId } = message.data;
-                if (!currentCall || currentCall.callId !== callId) return;
-                const statusEl = document.getElementById('callStatus');
-                if (statusEl) statusEl.textContent = 'Вызов завершён';
-                const incoming = document.getElementById('incomingCallControls');
-                const outgoing = document.getElementById('outgoingCallControls');
-                if (incoming) incoming.style.display = 'none';
-                if (outgoing) outgoing.style.display = 'none';
-                resetCallState();
-                if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
-            });
-
-            userChannel.subscribe('webrtc_offer', async (message) => {
-                const { callId, offer, timestamp } = message.data;
-                if (!currentCall || currentCall.callId !== callId) return;
-                if (currentCall.isInitiator) return;
-                if (Date.now() - timestamp > 15000) return;
-                if (!peerConnection) return;
-
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-                    remoteDescriptionSet = true;
-                    
-                    for (const candidate of pendingIceCandidates) {
-                        try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
-                    }
-                    pendingIceCandidates = [];
-
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-
-                    if (ably) {
-                        const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
-                        userChannel2.publish('webrtc_answer', {
-                            callId,
-                            answer: { type: answer.type, sdp: answer.sdp },
-                            timestamp: Date.now()
-                        }).catch(() => {});
-                    }
-                } catch (err) {
-                    console.error('Error handling webrtc_offer:', err);
-                }
-            });
-
-            userChannel.subscribe('webrtc_answer', async (message) => {
-                const { callId, answer, timestamp } = message.data;
-                if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
-                if (Date.now() - timestamp > 15000) return;
-                if (!peerConnection) return;
-
-                try {
-                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                    remoteDescriptionSet = true;
-                    
-                    for (const candidate of pendingIceCandidates) {
-                        try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
-                    }
-                    pendingIceCandidates = [];
-                } catch (err) {
-                    console.error('Error handling webrtc_answer:', err);
-                }
-            });
-
-            userChannel.subscribe('ice_candidate', async (message) => {
-                const { callId, candidate, timestamp } = message.data;
-                if (!currentCall || currentCall.callId !== callId) return;
-                if (Date.now() - timestamp > 15000) return;
-                if (!peerConnection) return;
-
-                if (!remoteDescriptionSet) {
-                    pendingIceCandidates.push(candidate);
-                    return;
-                }
-
-                try {
-                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-                } catch (err) {}
-            });
+            // ========== ЗАКОММЕНТИРОВАНО — звонки перенесены на Supabase ==========
+            // userChannel.subscribe('call_request', (message) => {
+            //     handleIncomingCallRequest(message.data);
+            // });
+            //
+            // userChannel.subscribe('call_accepted', async (message) => {
+            //     const { callId, timestamp } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
+            //     if (Date.now() - timestamp > 15000) return;
+            //     if (currentCall.status !== 'calling') return;
+            //
+            //     clearTimeout(currentCall.timeout);
+            //     currentCall.status = 'connecting';
+            //
+            //     initAudioContext();
+            //
+            //     try {
+            //         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            //         peerConnection = createPeerConnection();
+            //         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            //
+            //         const offer = await peerConnection.createOffer({
+            //             offerToReceiveAudio: true,
+            //             offerToReceiveVideo: false
+            //         });
+            //         await peerConnection.setLocalDescription(offer);
+            //
+            //         if (ably) {
+            //             const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
+            //             userChannel2.publish('webrtc_offer', {
+            //                 callId,
+            //                 offer: { type: offer.type, sdp: offer.sdp },
+            //                 timestamp: Date.now()
+            //             }).catch(() => {});
+            //         }
+            //     } catch (err) {
+            //         console.error('Error in call_accepted handler:', err);
+            //         alert('Не удалось установить соединение: ' + (err.message || ''));
+            //         endCall();
+            //     }
+            // });
+            //
+            // userChannel.subscribe('call_rejected', (message) => {
+            //     const { callId } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId) return;
+            //     const statusEl = document.getElementById('callStatus');
+            //     if (statusEl) statusEl.textContent = 'Вызов завершён';
+            //     const incoming = document.getElementById('incomingCallControls');
+            //     const outgoing = document.getElementById('outgoingCallControls');
+            //     if (incoming) incoming.style.display = 'none';
+            //     if (outgoing) outgoing.style.display = 'none';
+            //     resetCallState();
+            // });
+            //
+            // userChannel.subscribe('call_ended', (message) => {
+            //     const { callId } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId) return;
+            //     const statusEl = document.getElementById('callStatus');
+            //     if (statusEl) statusEl.textContent = 'Вызов завершён';
+            //     const incoming = document.getElementById('incomingCallControls');
+            //     const outgoing = document.getElementById('outgoingCallControls');
+            //     if (incoming) incoming.style.display = 'none';
+            //     if (outgoing) outgoing.style.display = 'none';
+            //     resetCallState();
+            //     if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
+            // });
+            //
+            // userChannel.subscribe('webrtc_offer', async (message) => {
+            //     const { callId, offer, timestamp } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId) return;
+            //     if (currentCall.isInitiator) return;
+            //     if (Date.now() - timestamp > 15000) return;
+            //     if (!peerConnection) return;
+            //
+            //     try {
+            //         await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+            //         remoteDescriptionSet = true;
+            //
+            //         for (const candidate of pendingIceCandidates) {
+            //             try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
+            //         }
+            //         pendingIceCandidates = [];
+            //
+            //         const answer = await peerConnection.createAnswer();
+            //         await peerConnection.setLocalDescription(answer);
+            //
+            //         if (ably) {
+            //             const userChannel2 = ably.channels.get(`user-${currentCall.peerId}`);
+            //             userChannel2.publish('webrtc_answer', {
+            //                 callId,
+            //                 answer: { type: answer.type, sdp: answer.sdp },
+            //                 timestamp: Date.now()
+            //             }).catch(() => {});
+            //         }
+            //     } catch (err) {
+            //         console.error('Error handling webrtc_offer:', err);
+            //     }
+            // });
+            //
+            // userChannel.subscribe('webrtc_answer', async (message) => {
+            //     const { callId, answer, timestamp } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
+            //     if (Date.now() - timestamp > 15000) return;
+            //     if (!peerConnection) return;
+            //
+            //     try {
+            //         await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+            //         remoteDescriptionSet = true;
+            //
+            //         for (const candidate of pendingIceCandidates) {
+            //             try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
+            //         }
+            //         pendingIceCandidates = [];
+            //     } catch (err) {
+            //         console.error('Error handling webrtc_answer:', err);
+            //     }
+            // });
+            //
+            // userChannel.subscribe('ice_candidate', async (message) => {
+            //     const { callId, candidate, timestamp } = message.data;
+            //     if (!currentCall || currentCall.callId !== callId) return;
+            //     if (Date.now() - timestamp > 15000) return;
+            //     if (!peerConnection) return;
+            //
+            //     if (!remoteDescriptionSet) {
+            //         pendingIceCandidates.push(candidate);
+            //         return;
+            //     }
+            //
+            //     try {
+            //         await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            //     } catch (err) {}
+            // });
+            // ========== КОНЕЦ ЗАКОММЕНТИРОВАННОГО ==========
 
             // --- NEW MESSAGE (from user channel) ---
             userChannel.subscribe('new_message', async (message) => {
@@ -6631,6 +6643,151 @@
                 
                 if (ably) subscribeToChatChannel(newChat.id);
                 updateChatsList();
+            });
+        }
+
+        async function setupSupabaseCallChannel() {
+            if (!currentUser) return;
+            if (supabaseCallChannel) {
+                try { await db.removeChannel(supabaseCallChannel); } catch (e) {}
+            }
+
+            const myChannelName = `user-calls-${currentUser.id}`;
+            const ch = db.channel(myChannelName);
+            supabaseCallChannel = ch;
+
+            ch.on('broadcast', { event: 'call_request' }, ({ payload }) => {
+                handleIncomingCallRequest(payload);
+            });
+
+            ch.on('broadcast', { event: 'call_accepted' }, async ({ payload }) => {
+                const { callId, timestamp } = payload;
+                if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
+                if (Date.now() - timestamp > 15000) return;
+                if (currentCall.status !== 'calling') return;
+
+                clearTimeout(currentCall.timeout);
+                currentCall.status = 'connecting';
+
+                initAudioContext();
+
+                try {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                    peerConnection = createPeerConnection();
+                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                    const offer = await peerConnection.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: false });
+                    await peerConnection.setLocalDescription(offer);
+
+                    const peerChannel = db.channel(`user-calls-${currentCall.peerId}`);
+                    peerChannel.subscribe(async (s) => {
+                        if (s === 'SUBSCRIBED') {
+                            await peerChannel.send({
+                                type: 'broadcast',
+                                event: 'webrtc_offer',
+                                payload: { callId, offer: { type: offer.type, sdp: offer.sdp }, timestamp: Date.now() }
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.error('[call] accepted handler error:', err);
+                    endCall();
+                }
+            });
+
+            ch.on('broadcast', { event: 'call_rejected' }, ({ payload }) => {
+                const { callId } = payload;
+                if (!currentCall || currentCall.callId !== callId) return;
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
+                resetCallState();
+            });
+
+            ch.on('broadcast', { event: 'call_ended' }, ({ payload }) => {
+                const { callId } = payload;
+                if (!currentCall || currentCall.callId !== callId) return;
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                const incoming = document.getElementById('incomingCallControls');
+                const outgoing = document.getElementById('outgoingCallControls');
+                if (incoming) incoming.style.display = 'none';
+                if (outgoing) outgoing.style.display = 'none';
+                resetCallState();
+                if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
+            });
+
+            ch.on('broadcast', { event: 'webrtc_offer' }, async ({ payload }) => {
+                const { callId, offer, timestamp } = payload;
+                if (!currentCall || currentCall.callId !== callId) return;
+                if (currentCall.isInitiator) return;
+                if (Date.now() - timestamp > 15000) return;
+                if (!peerConnection) return;
+
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    remoteDescriptionSet = true;
+                    for (const candidate of pendingIceCandidates) {
+                        try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
+                    }
+                    pendingIceCandidates = [];
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+
+                    const peerChannel = db.channel(`user-calls-${currentCall.peerId}`);
+                    peerChannel.subscribe(async (s) => {
+                        if (s === 'SUBSCRIBED') {
+                            await peerChannel.send({
+                                type: 'broadcast',
+                                event: 'webrtc_answer',
+                                payload: { callId, answer: { type: answer.type, sdp: answer.sdp }, timestamp: Date.now() }
+                            });
+                        }
+                    });
+                } catch (err) {
+                    console.error('[call] webrtc_offer handling error:', err);
+                }
+            });
+
+            ch.on('broadcast', { event: 'webrtc_answer' }, async ({ payload }) => {
+                const { callId, answer, timestamp } = payload;
+                if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
+                if (Date.now() - timestamp > 15000) return;
+                if (!peerConnection) return;
+
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                    remoteDescriptionSet = true;
+                    for (const candidate of pendingIceCandidates) {
+                        try { await peerConnection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) {}
+                    }
+                    pendingIceCandidates = [];
+                } catch (err) {
+                    console.error('[call] webrtc_answer handling error:', err);
+                }
+            });
+
+            ch.on('broadcast', { event: 'ice_candidate' }, async ({ payload }) => {
+                const { callId, candidate, timestamp } = payload;
+                if (!currentCall || currentCall.callId !== callId) return;
+                if (Date.now() - timestamp > 15000) return;
+                if (!peerConnection) return;
+
+                if (!remoteDescriptionSet) {
+                    pendingIceCandidates.push(candidate);
+                    return;
+                }
+
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (err) {}
+            });
+
+            ch.subscribe((status) => {
+                if (status === 'SUBSCRIBED') console.log('[supabase-call] subscribed to', myChannelName);
             });
         }
 
@@ -7244,15 +7401,19 @@
             pendingIceCandidates = [];
             remoteDescriptionSet = false;
             
-            pc.onicecandidate = (event) => {
-                if (event.candidate && ably && currentCall.peerId) {
-                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                    userChannel.publish('ice_candidate', {
-                        callId: currentCall.callId,
-                        candidate: event.candidate,
-                        timestamp: Date.now()
-                    }).catch(() => {});
-                }
+            pc.onicecandidate = async (event) => {
+                if (!event.candidate || !currentCall.peerId) return;
+                try {
+                    if (!supabaseCallChannel) {
+                        supabaseCallChannel = db.channel(`user-calls-${currentCall.peerId}`);
+                        supabaseCallChannel.subscribe();
+                    }
+                    await supabaseCallChannel.send({
+                        type: 'broadcast',
+                        event: 'ice_candidate',
+                        payload: { callId: currentCall.callId, candidate: event.candidate, timestamp: Date.now() }
+                    });
+                } catch (e) { console.warn('[call] ICE send error:', e); }
             };
             
             pc.oniceconnectionstatechange = () => {
@@ -7375,17 +7536,24 @@
             if (timerEl) timerEl.textContent = '';
 
             try {
-                const userChannel = ably.channels.get(`user-${receiverId}`);
-                await userChannel.publish('call_request', {
-                    callId,
-                    dbCallId,
-                    callerId: currentUser.id,
-                    callerName: currentUser.name,
-                    callerAvatar: getSafeAvatar(currentUser.avatar),
-                    timestamp
+                if (!supabaseCallChannel) {
+                    supabaseCallChannel = db.channel(`user-calls-${receiverId}`);
+                    supabaseCallChannel.subscribe();
+                }
+                await supabaseCallChannel.send({
+                    type: 'broadcast',
+                    event: 'call_request',
+                    payload: {
+                        callId,
+                        dbCallId,
+                        callerId: currentUser.id,
+                        callerName: currentUser.name,
+                        callerAvatar: getSafeAvatar(currentUser.avatar),
+                        timestamp
+                    }
                 });
             } catch (e) {
-                console.error('Failed to publish call request:', e);
+                console.error('[call] failed to send call_request:', e);
                 alert('Не удалось отправить запрос на звонок');
                 resetCallState();
                 return;
@@ -7503,10 +7671,17 @@
                 peerConnection = createPeerConnection();
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-                if (ably) {
-                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                    userChannel.publish('call_accepted', { callId: currentCall.callId, timestamp: Date.now() }).catch(() => {});
+            try {
+                if (!supabaseCallChannel) {
+                    supabaseCallChannel = db.channel(`user-calls-${currentCall.peerId}`);
+                    supabaseCallChannel.subscribe();
                 }
+                await supabaseCallChannel.send({
+                    type: 'broadcast',
+                    event: 'call_accepted',
+                    payload: { callId: currentCall.callId, timestamp: Date.now() }
+                });
+            } catch (e) { console.warn('[call] answerCall send error:', e); }
             } catch (err) {
                 console.error('Error answering call:', err);
                 alert('Не удалось ответить на звонок: ' + (err.message || 'ошибка доступа к микрофону'));
@@ -7518,15 +7693,39 @@
             if (!currentCall || currentCall.status === 'ended') return;
             
             if (currentCall.isInitiator) {
-                if (ably && currentCall.peerId) {
-                    const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                    userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'cancelled', timestamp: Date.now() }).catch(() => {});
-                }
+                try {
+                    const peerId = currentCall.peerId;
+                    if (peerId) {
+                        const tempCh = db.channel(`user-calls-${peerId}`);
+                        tempCh.subscribe(async (s) => {
+                            if (s === 'SUBSCRIBED') {
+                                await tempCh.send({
+                                    type: 'broadcast',
+                                    event: 'call_ended',
+                                    payload: { callId: currentCall.callId, reason: 'cancelled', timestamp: Date.now() }
+                                });
+                                setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
+                            }
+                        });
+                    }
+                } catch (e) { console.warn('[call] reject/end send error:', e); }
             } else {
-                if (ably && currentCall.callerInfo) {
-                    const userChannel = ably.channels.get(`user-${currentCall.callerInfo.id}`);
-                    userChannel.publish('call_rejected', { callId: currentCall.callId, reason: 'rejected', timestamp: Date.now() }).catch(() => {});
-                }
+                try {
+                    const peerId = currentCall.callerInfo && currentCall.callerInfo.id;
+                    if (peerId) {
+                        const tempCh = db.channel(`user-calls-${peerId}`);
+                        tempCh.subscribe(async (s) => {
+                            if (s === 'SUBSCRIBED') {
+                                await tempCh.send({
+                                    type: 'broadcast',
+                                    event: 'call_rejected',
+                                    payload: { callId: currentCall.callId, reason: 'rejected', timestamp: Date.now() }
+                                });
+                                setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
+                            }
+                        });
+                    }
+                } catch (e) { console.warn('[call] reject/end send error:', e); }
             }
             
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
@@ -7545,10 +7744,21 @@
         function endCall() {
             if (!currentCall) return;
 
-            if (ably && currentCall.peerId && currentCall.status) {
-                const userChannel = ably.channels.get(`user-${currentCall.peerId}`);
-                userChannel.publish('call_ended', { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() }).catch(() => {});
-            }
+            try {
+                if (currentCall.peerId) {
+                    const tempCh = db.channel(`user-calls-${currentCall.peerId}`);
+                    tempCh.subscribe(async (s) => {
+                        if (s === 'SUBSCRIBED') {
+                            await tempCh.send({
+                                type: 'broadcast',
+                                event: 'call_ended',
+                                payload: { callId: currentCall.callId, reason: 'ended', timestamp: Date.now() }
+                            });
+                            setTimeout(() => { try { db.removeChannel(tempCh); } catch (e) {} }, 500);
+                        }
+                    });
+                }
+            } catch (e) {}
 
             if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
 
