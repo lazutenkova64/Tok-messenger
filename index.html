@@ -3978,44 +3978,39 @@
                         document.getElementById('splashScreen').classList.add('hidden');
                         
                         showChatsLoading();
-                        
-                        // Сразу показываем UI
                         showSidebarOnMobile();
                         updateProfileUI();
+                        
+                        await loadAllUsers();
+                        await loadUserChats();
+                        await loadAllMessages();
+                        
+                        await ensureSavedMessagesChat();
+                        
+                        loadPinnedChats();
+                        loadLocallyDeletedChats();
+                        
+                        initAbly();
+                        startHeartbeat();
+                        startPresenceUpdates();
+                        startStatusUpdates();
+                        
+                        cleanupOldCalls();
+                        
+                        checkUrlForChat();
                         forceShowInput();
                         
-                        // Фоновая загрузка
-                        (async () => {
-                            try {
-                                await Promise.all([loadAllUsers(), loadUserChats()]);
-                                await loadAllMessages();
-                                await ensureSavedMessagesChat();
+                        sendPendingMessages();
+                        processMessageQueue();
                         
-                                loadPinnedChats();
-                                loadLocallyDeletedChats();
+                        populateThemeGrid();
                         
-                                initAbly();
-                                startHeartbeat();
-                                startPresenceUpdates();
-                                startStatusUpdates();
+                        await requestNotificationPermission();
+                        updateAppBadge();
                         
-                                cleanupOldCalls();
-                                checkUrlForChat();
+                        hideChatsLoading();
                         
-                                sendPendingMessages();
-                                processMessageQueue();
-                        
-                                populateThemeGrid();
-                                await requestNotificationPermission();
-                                updateAppBadge();
-                        
-                                hideChatsLoading();
-                                if (myChats.length === 0) updateChatsList();
-                            } catch (e) {
-                                console.error('[background load error in init]', e);
-                                hideChatsLoading();
-                            }
-                        })();
+                        if (myChats.length === 0) updateChatsList();
 
                         document.addEventListener('visibilitychange', handleVisibilityChange);
                     } else {
@@ -4143,49 +4138,46 @@
                     dnd: userData.dnd || false
                 };
                 
+                // Чистка слишком большого аватара (>50КБ)
                 if (currentUser.avatar && base64SizeInBytes(currentUser.avatar) > 50000) {
+                    console.warn('[avatar] Too big, clearing. Size:', base64SizeInBytes(currentUser.avatar));
                     currentUser.avatar = '👤';
                     db.from('profiles').update({ avatar: '👤' }).eq('id', currentUser.id).then(() => {}).catch(() => {});
                 }
                 
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
                 
-                // === МГНОВЕННО показываем UI ===
                 showSidebarOnMobile();
                 updateProfileUI();
-                updateBackButtonVisibility();
-                updateCreateChatButtonVisibility();
+                
+                await loadAllUsers();
+                await loadUserChats();
+                await loadAllMessages();
+                
+                await ensureSavedMessagesChat();
+                
+                loadPinnedChats();
+                loadLocallyDeletedChats();
+                
+                initAbly();
+                startHeartbeat();
+                startPresenceUpdates();
+                startStatusUpdates();
+                
+                cleanupOldCalls();
+                checkUrlForChat();
                 forceShowInput();
                 
-                // === ВСЁ ОСТАЛЬНОЕ ГРУЗИМ В ФОНЕ ===
-                (async () => {
-                    try {
-                        await Promise.all([loadAllUsers(), loadUserChats()]);
-                        await loadAllMessages();
-                        await ensureSavedMessagesChat();
+                updateBackButtonVisibility();
+                updateCreateChatButtonVisibility();
                 
-                        loadPinnedChats();
-                        loadLocallyDeletedChats();
+                populateThemeGrid();
                 
-                        initAbly();
-                        startHeartbeat();
-                        startPresenceUpdates();
-                        startStatusUpdates();
+                await requestNotificationPermission();
+                updateAppBadge();
                 
-                        cleanupOldCalls();
-                        checkUrlForChat();
-                
-                        populateThemeGrid();
-                        await requestNotificationPermission();
-                        updateAppBadge();
-                
-                        hideChatsLoading();
-                        updateChatsList();
-                    } catch (e) {
-                        console.error('[background load error]', e);
-                        hideChatsLoading();
-                    }
-                })();
+                hideChatsLoading();
+                updateChatsList();
                 
             } catch (err) {
                 console.error('Login error:', err);
@@ -4290,25 +4282,12 @@
                     console.error('Profile upsert error:', upsertError);
                 }
                 
-                // Автоматически входим после регистрации
+                alert('Регистрация успешна! Теперь вы можете войти.');
+                switchAuthMode('login');
                 document.getElementById('loginEmail').value = email;
-                document.getElementById('loginPassword').value = password;
                 document.getElementById('registerEmail').value = '';
                 document.getElementById('registerPassword').value = '';
                 document.getElementById('registerConfirmPassword').value = '';
-                
-                // Показываем сплэш с "Регистрация успешна..."
-                const splash = document.getElementById('splashScreen');
-                if (splash) {
-                    splash.textContent = 'Регистрация успешна! Входим...';
-                    splash.classList.remove('hidden');
-                }
-                
-                // Небольшая задержка, чтобы UI успел обновиться
-                await new Promise(r => setTimeout(r, 500));
-                
-                // Запускаем обычный login (он закроет splash и откроет приложение)
-                await login();
                 
             } catch (err) {
                 console.error('Registration error:', err);
@@ -4462,7 +4441,7 @@
                     .from('messages')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(200);
+                    .limit(500);
                 
                 if (error) return;
                 
@@ -8175,9 +8154,22 @@
                 // Проверяем ссылку восстановления пароля из URL
                 checkPasswordResetLink();
                 
-                // СРАЗУ показываем окно входа — не ждём getSession
-                document.getElementById('splashScreen').classList.add('hidden');
-                document.getElementById('loginModal').classList.add('active');
+                let session = null;
+                try {
+                    const sessionPromise = db.auth.getSession();
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('session check timeout')), 6000)
+                    );
+                    const result = await Promise.race([sessionPromise, timeoutPromise]);
+                    session = result.data ? result.data.session : null;
+                } catch (e) {
+                    session = null;
+                }
+                
+                if (!session?.user) {
+                    document.getElementById('splashScreen').classList.add('hidden');
+                    document.getElementById('loginModal').classList.add('active');
+                }
             } catch (e) {
                 document.getElementById('splashScreen').classList.add('hidden');
                 document.getElementById('loginModal').classList.add('active');
@@ -8185,25 +8177,10 @@
 
             try { populateEmojiPicker(); } catch (e) {}
             
-            // Проверяем сессию в фоне — если есть, автоматически войдём
-            try {
-                const sessionPromise = db.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('session check timeout')), 8000)
-                );
-                const result = await Promise.race([sessionPromise, timeoutPromise]);
-                const session = result.data ? result.data.session : null;
-                
-                if (session?.user) {
-                    // Есть сессия — закрываем окно входа и заходим
-                    document.getElementById('loginModal').classList.remove('active');
-                    try { await init(); } catch (e) {
-                        console.error('Init failed:', e);
-                        document.getElementById('loginModal').classList.add('active');
-                    }
-                }
-            } catch (e) {
-                // Нет сессии — окно входа уже показано
+            try { await init(); } catch (e) {
+                console.error('Init failed:', e);
+                document.getElementById('splashScreen').classList.add('hidden');
+                document.getElementById('loginModal').classList.add('active');
             }
         })();
 
