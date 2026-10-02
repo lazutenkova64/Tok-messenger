@@ -3586,6 +3586,60 @@
             } catch (e) {}
         }
 
+        // ========== CUT-OFF ДЛЯ ИСТОРИИ ==========
+        function getChatCutoff(chatId) {
+            if (!currentUser) return 0;
+            try {
+                const v = localStorage.getItem(`chatCutoff_${currentUser.id}_${chatId}`);
+                return v ? parseInt(v, 10) : 0;
+            } catch (e) { return 0; }
+        }
+
+        function setChatCutoff(chatId, timestamp) {
+            if (!currentUser) return;
+            try {
+                localStorage.setItem(`chatCutoff_${currentUser.id}_${chatId}`, String(timestamp));
+            } catch (e) {}
+        }
+
+        function clearChatCutoff(chatId) {
+            if (!currentUser) return;
+            try {
+                localStorage.removeItem(`chatCutoff_${currentUser.id}_${chatId}`);
+            } catch (e) {}
+        }
+
+        // ========== CUT-OFF В БД (chat_members.deleted_at) ==========
+        async function fetchDeletedAtFromDB(chatId) {
+            if (!currentUser || !chatId) return 0;
+            try {
+                const { data, error } = await db
+                    .from('chat_members')
+                    .select('deleted_at')
+                    .eq('chat_id', chatId)
+                    .eq('user_id', currentUser.id)
+                    .maybeSingle();
+                if (error || !data || !data.deleted_at) return 0;
+                return new Date(data.deleted_at).getTime();
+            } catch (e) {
+                console.warn('[fetchDeletedAtFromDB]', e);
+                return 0;
+            }
+        }
+
+        async function setDeletedAtInDB(chatId, timestamp) {
+            if (!currentUser || !chatId) return;
+            try {
+                const iso = timestamp ? new Date(timestamp).toISOString() : null;
+                await db.from('chat_members')
+                    .update({ deleted_at: iso })
+                    .eq('chat_id', chatId)
+                    .eq('user_id', currentUser.id);
+            } catch (e) {
+                console.warn('[setDeletedAtInDB]', e);
+            }
+        }
+
         // ========== УВЕДОМЛЕНИЯ (звук) ==========
         function loadNotifications() {
             try {
@@ -4362,6 +4416,23 @@
             if (!currentUser) return;
             
             try {
+                // Загружаем cut-off для всех чатов пользователя одним запросом
+                const cutoffMap = {};
+                try {
+                    const { data: memberRows } = await db
+                        .from('chat_members')
+                        .select('chat_id, deleted_at')
+                        .eq('user_id', currentUser.id);
+                    (memberRows || []).forEach(row => {
+                        if (row.deleted_at) {
+                            cutoffMap[row.chat_id] = new Date(row.deleted_at).getTime();
+                            setChatCutoff(row.chat_id, cutoffMap[row.chat_id]);
+                            locallyDeletedChats.add(row.chat_id);
+                        }
+                    });
+                    saveLocallyDeletedChats();
+                } catch (e) { console.warn('[loadAllMessages cutoffs]', e); }
+
                 const { data, error } = await db
                     .from('messages')
                     .select('*')
@@ -4374,7 +4445,12 @@
                     data.forEach(msg => {
                         const chatId = msg.chat_id;
                         if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                        
+
+                        // Фильтр по cut-off
+                        const msgTs = msg.created_at ? new Date(msg.created_at).getTime() : 0;
+                        const cutoff = cutoffMap[chatId] || getChatCutoff(chatId) || 0;
+                        if (cutoff > 0 && msgTs <= cutoff) return;
+
                         if (!messages[chatId]) messages[chatId] = [];
                         const exists = messages[chatId].some(m => m.id === msg.id);
                         if (!exists) {
@@ -4425,6 +4501,16 @@
 
         async function loadChatHistory(chatId) {
             try {
+                let cutoff = getChatCutoff(chatId);
+                if (!cutoff) {
+                    // Если в localStorage нет — читаем из БД
+                    cutoff = await fetchDeletedAtFromDB(chatId);
+                    if (cutoff > 0) {
+                        setChatCutoff(chatId, cutoff);
+                        locallyDeletedChats.add(chatId);
+                        saveLocallyDeletedChats();
+                    }
+                }
                 const { data, error } = await db
                     .from('messages')
                     .select('*')
@@ -4439,11 +4525,15 @@
                     
                     data.forEach(msg => {
                         if (deletedMessages[chatId] && deletedMessages[chatId].includes(msg.id)) return;
-                        
+
+                        // Пропускаем сообщения до момента удаления
+                        const msgTs = msg.created_at ? new Date(msg.created_at).getTime() : 0;
+                        if (cutoff > 0 && msgTs <= cutoff) return;
+
                         const existingMsg = messages[chatId].find(m => m.id === msg.id);
                         if (!existingMsg) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                            
+                        
                         messages[chatId].push({
                             id: msg.id,
                             chatId: msg.chat_id,
@@ -4624,7 +4714,14 @@
                         type: 'in'
                     });
                     messages[msgChatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                    
+
+                    // Если чат был удалён «у себя», новое сообщение возвращает его
+                    if (locallyDeletedChats.has(msgChatId)) {
+                        locallyDeletedChats.delete(msgChatId);
+                        saveLocallyDeletedChats();
+                        // cut-off НЕ трогаем — старые сообщения остаются скрытыми
+                    }
+
                     if (getNotificationState(msgChatId)) playIncomingMessageSound();
                     
                     if (currentChat?.id !== msgChatId) {
@@ -4767,13 +4864,13 @@
             }
 
             // 3. Снимаем флаг локального удаления, но НЕ восстанавливаем историю
+            // НЕ удаляем флаг и не чистим messages — cut-off фильтр сам уберёт старые сообщения
             if (locallyDeletedChats.has(existing.id)) {
-                // Чат был удалён у меня — не восстанавливаем историю
-                delete messages[existing.id];
+                messages[existing.id] = [];
                 delete unreadCounts[existing.id];
             }
-            locallyDeletedChats.delete(existing.id);
-            saveLocallyDeletedChats();
+            // ВАЖНО: НЕ вызываем locallyDeletedChats.delete() и saveLocallyDeletedChats()
+            // Чат вернётся в список только после того, как пользователь напишет сообщение
 
             // 4. Добавляем участников, если их нет
             const { data: members } = await db.from('chat_members')
@@ -4899,19 +4996,28 @@
             
             updateNotificationBell(chat.id);
             
-            // Не загружаем историю, если чат был удалён «у себя»
-            if (!locallyDeletedChats.has(chat.id)) {
-                loadChatHistory(chat.id);
-                markMessagesAsRead(chat.id);
-            }
-            
-            if (locallyDeletedChats.has(chat.id)) {
-                messages[chat.id] = [];
-            } else if (!messages[chat.id]) {
-                messages[chat.id] = [];
-            } else {
-                messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-            }
+            // Подтягиваем cut-off из БД (если ещё нет в localStorage)
+            (async () => {
+                let cutoff = getChatCutoff(chat.id);
+                if (!cutoff) {
+                    cutoff = await fetchDeletedAtFromDB(chat.id);
+                    if (cutoff > 0) {
+                        setChatCutoff(chat.id, cutoff);
+                        locallyDeletedChats.add(chat.id);
+                        saveLocallyDeletedChats();
+                    }
+                }
+                if (cutoff === 0) {
+                    loadChatHistory(chat.id);
+                    markMessagesAsRead(chat.id);
+                    if (!messages[chat.id]) messages[chat.id] = [];
+                    messages[chat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                } else {
+                    messages[chat.id] = [];
+                    const container = document.getElementById('messagesContainer');
+                    if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
+                }
+            })();
             
             markAllMessagesAsRead(chat.id);
             
@@ -5067,29 +5173,31 @@
             
             try {
                 if (mode === 'self') {
-                    await db
-                        .from('chat_members')
-                        .delete()
-                        .eq('chat_id', chatId)
-                        .eq('user_id', currentUser.id);
-                    
+                    const cutoffTs = Date.now();
+
+                    // 1. Пишем в БД — главный источник истины
+                    await setDeletedAtInDB(chatId, cutoffTs);
+
+                    // 2. Кэш в localStorage
+                    setChatCutoff(chatId, cutoffTs);
                     locallyDeletedChats.add(chatId);
                     saveLocallyDeletedChats();
-                    
+
+                    // 3. Убираем чат из списка
                     myChats = myChats.filter(c => c.id !== chatId);
                     localStorage.setItem(`myChats_${currentUser.id}`, JSON.stringify(myChats));
-                    
+
+                    // 4. Чистим локальную историю
                     delete messages[chatId];
                     delete unreadCounts[chatId];
-                    
+
+                    // 5. НЕ сбрасываем currentChat — пользователь остаётся в чате
                     if (currentChat && currentChat.id === chatId) {
-                        currentChat = null;
-                        renderMessages();
-                        updateUrlWithChat(null);
-                        closeUserProfileModal();
-                        showSidebarOnMobile();
+                        messages[chatId] = [];
+                        const container = document.getElementById('messagesContainer');
+                        if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
                     }
-                    
+
                     updateChatsList();
                     updateUnreadCounts();
                     updateAppBadge();
@@ -5169,6 +5277,12 @@
         }
 
         async function sendMessage() {
+            // Если чат был удалён «у себя», при отправке — возвращаем его в список
+            if (currentChat && locallyDeletedChats.has(currentChat.id)) {
+                locallyDeletedChats.delete(currentChat.id);
+                saveLocallyDeletedChats();
+                // Не удаляем cut-off — старые сообщения остаются скрытыми
+            }
             if (sendBtnDisabled) { alert('Слишком часто!'); return; }
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
@@ -5301,6 +5415,11 @@
                 alert('Сначала выберите чат');
                 return;
             }
+            // Если чат был удалён «у себя», при отправке — возвращаем его в список
+            if (locallyDeletedChats.has(currentChat.id)) {
+                locallyDeletedChats.delete(currentChat.id);
+                saveLocallyDeletedChats();
+            }
 
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -5397,6 +5516,11 @@
             if (!currentChat) {
                 alert('Сначала выберите чат');
                 return;
+            }
+            // Если чат был удалён «у себя», при отправке — возвращаем его в список
+            if (locallyDeletedChats.has(currentChat.id)) {
+                locallyDeletedChats.delete(currentChat.id);
+                saveLocallyDeletedChats();
             }
 
             const now = new Date();
@@ -6245,6 +6369,12 @@
                         isAdmin: data.is_admin || false, edited: data.edited || false, type: 'in'
                     });
                     messages[msgChatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                    // Если чат был удалён «у себя», новое сообщение возвращает его
+                    if (locallyDeletedChats.has(msgChatId)) {
+                        locallyDeletedChats.delete(msgChatId);
+                        saveLocallyDeletedChats();
+                        // cut-off НЕ трогаем — старые сообщения остаются скрытыми
+                    }
                     try { ably.channels.get(`tok_chat_${msgChatId}`).publish('delivery_receipt', { messageId: data.id, receiver: currentUser.id }); } catch (e) {}
                     if (getNotificationState(msgChatId)) {
                         playIncomingMessageSound();
@@ -6422,9 +6552,22 @@
             
             if (currentTab === 'chats') {
                 const filteredChats = myChats.filter(chat => {
+                    // Избранное — всегда
                     if (chat.type === 'private' && chat.pair_key === `${currentUser.id}_${currentUser.id}`) return true;
-                    if (locallyDeletedChats.has(chat.id)) return false;
+
+                    // Публичные — всегда
                     if (chat.is_public) return true;
+
+                    // Если чат в locallyDeletedChats — показываем только если есть сообщения ПОСЛЕ cut-off
+                    if (locallyDeletedChats.has(chat.id)) {
+                        const cutoff = getChatCutoff(chat.id);
+                        const hasNewMessages = (messages[chat.id] || []).some(m => {
+                            const ts = m.timestamp || 0;
+                            return ts > cutoff;
+                        });
+                        return hasNewMessages;
+                    }
+
                     return true;
                 });
                 
