@@ -2652,6 +2652,7 @@
             </div>
 
             <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
+            <div id="typingIndicator" style="display:none; padding: 4px 16px 8px; font-size: 13px; color: var(--text-secondary); font-style: italic; min-height: 20px;"></div>
             <div class="message-input-container" id="messageInputContainer">
                 <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
                 <button class="attach-btn" onclick="document.getElementById('imageInput').click()">📎</button>
@@ -2903,6 +2904,8 @@
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
         let supabaseChannels = {};   // { chatId: channel }
+        let typingChannels = {};     // { chatId: channel }
+        let typingTimeouts = {};     // { chatId: timeoutId }
         let supabasePresenceChannel = null;
         let supabaseCallChannel = null;
         const callSignalChannels = {};   // { peerId: channel }
@@ -4371,6 +4374,15 @@
                 supabaseCallChannel = null;
             }
             
+            Object.keys(typingChannels).forEach(chatId => {
+                try { db.removeChannel(typingChannels[chatId]); } catch (e) {}
+                delete typingChannels[chatId];
+            });
+            Object.keys(typingTimeouts).forEach(chatId => {
+                clearTimeout(typingTimeouts[chatId]);
+            });
+            typingTimeouts = {};
+            
             Object.keys(callSignalChannels).forEach(peerId => {
                 try { db.removeChannel(callSignalChannels[peerId]); } catch (e) {}
                 delete callSignalChannels[peerId];
@@ -4643,6 +4655,72 @@
         }
 
         const subscribedChannels = new Set();
+
+        function subscribeToTypingChannel(chatId) {
+            if (!currentUser || !chatId) return;
+            if (typingChannels[chatId]) return;
+            
+            const ch = db.channel(`typing-${chatId}`, {
+                config: { broadcast: { self: false } }
+            });
+            
+            ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
+                if (!payload || payload.userId === currentUser.id) return;
+                if (!currentChat || currentChat.id !== chatId) return;
+                
+                const indicator = document.getElementById('typingIndicator');
+                if (!indicator) return;
+                
+                indicator.textContent = `${payload.userName} печатает...`;
+                indicator.style.display = 'block';
+                
+                if (typingTimeouts[chatId]) clearTimeout(typingTimeouts[chatId]);
+                typingTimeouts[chatId] = setTimeout(() => {
+                    indicator.style.display = 'none';
+                    indicator.textContent = '';
+                }, 3000);
+            });
+            
+            ch.subscribe((status) => {
+                if (status === 'SUBSCRIBED') {
+                    console.log('[typing] subscribed to', chatId);
+                    typingChannels[chatId] = ch;
+                }
+            });
+        }
+
+        let lastTypingSent = 0;
+        function sendTypingEvent() {
+            if (!currentChat || !currentUser) return;
+            const now = Date.now();
+            if (now - lastTypingSent < 2000) return;
+            lastTypingSent = now;
+            
+            const channelName = `typing-${currentChat.id}`;
+            let ch = typingChannels[currentChat.id];
+            
+            if (ch && ch.state === 'joined') {
+                ch.send({
+                    type: 'broadcast',
+                    event: 'typing',
+                    payload: { userId: currentUser.id, userName: currentUser.name }
+                }).catch(() => {});
+            } else {
+                const newCh = db.channel(channelName);
+                newCh.subscribe(async (status) => {
+                    if (status === 'SUBSCRIBED') {
+                        typingChannels[currentChat.id] = newCh;
+                        try {
+                            await newCh.send({
+                                type: 'broadcast',
+                                event: 'typing',
+                                payload: { userId: currentUser.id, userName: currentUser.name }
+                            });
+                        } catch (e) {}
+                    }
+                });
+            }
+        }
 
         function subscribeToChatChannel(chatId) {
             if (!ably || !currentUser) return;
@@ -5099,9 +5177,13 @@
             chatSearchMatches = [];
             chatSearchCurrentIndex = 0;
 
+            const typingInd = document.getElementById('typingIndicator');
+            if (typingInd) { typingInd.style.display = 'none'; typingInd.textContent = ''; }
+
             // Subscribe to the chat channel FIRST for real-time messages
             subscribeToChatChannel(chat.id);
             subscribeToSupabaseChat(chat.id);
+            subscribeToTypingChannel(chat.id);
             
             if (chat.is_public) {
                 (async () => {
@@ -8211,6 +8293,7 @@
             const text = document.getElementById('messageInput').value;
             if (text) {
                 localStorage.setItem(`draft_${currentChat.id}`, text);
+                sendTypingEvent();
             } else {
                 localStorage.removeItem(`draft_${currentChat.id}`);
             }
@@ -8252,6 +8335,9 @@
             chatSearchTerm = '';
             chatSearchMatches = [];
             chatSearchCurrentIndex = 0;
+
+            const typingInd = document.getElementById('typingIndicator');
+            if (typingInd) { typingInd.style.display = 'none'; typingInd.textContent = ''; }
 
             currentChat = null;
             renderMessages();
