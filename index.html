@@ -4891,7 +4891,12 @@
                 if (status === 'SUBSCRIBED') {
                     console.log('[supabase-realtime] subscribed to', chatId);
                 } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                    console.warn('[supabase-realtime] error on', chatId, status);
+                    console.warn('[supabase-realtime] error on', chatId, status, '— retry in 3s');
+                    try { db.removeChannel(ch); } catch (e) {}
+                    delete supabaseChannels[chatId];
+                    setTimeout(() => {
+                        if (currentUser) subscribeToSupabaseChat(chatId);
+                    }, 3000);
                 }
             });
 
@@ -7521,19 +7526,8 @@
                 return;
             }
 
-            if (!ably) {
-                alert('Соединение не инициализировано. Попробуйте перезагрузить страницу.');
-                return;
-            }
-
-            let waited = 0;
-            while (ably.connection.state !== 'connected' && waited < 10000) {
-                await new Promise(r => setTimeout(r, 500));
-                waited += 500;
-            }
-
-            if (ably.connection.state !== 'connected') {
-                alert('Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.');
+            if (!supabaseCallChannel || supabaseCallChannel.state !== 'joined') {
+                alert('Соединение для звонков не инициализировано. Попробуйте перезагрузить страницу.');
                 return;
             }
 
@@ -7646,17 +7640,16 @@
             callModal.classList.add('active');
         }
 
-        function handleIncomingCallRequest(data) {
+        async function handleIncomingCallRequest(data) {
             const { callId, dbCallId, callerId, callerName, callerAvatar, timestamp } = data;
             
             if (Date.now() - timestamp > 30000) return;
             
             if (currentCall.status) {
-                if (ably) {
-                    try {
-                        const userChannel = ably.channels.get(`user-${callerId}`);
-                        userChannel.publish('call_rejected', { callId, reason: 'busy', timestamp: Date.now() });
-                    } catch (e) {}
+                try {
+                    await sendCallSignal(callerId, 'call_rejected', { callId, reason: 'busy', timestamp: Date.now() });
+                } catch (e) {
+                    console.warn('[call] failed to send busy signal:', e);
                 }
                 return;
             }
