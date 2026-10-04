@@ -2652,6 +2652,11 @@
             </div>
 
             <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
+            <div id="replyPreview" style="display:none; padding: 8px 12px; background: var(--bg-header); border-left: 3px solid var(--accent-blue); margin: 0 12px 4px; border-radius: 8px; position: relative;">
+                <div style="font-size: 12px; color: var(--accent-blue); font-weight: 600; margin-bottom: 2px;" id="replyPreviewName"></div>
+                <div style="font-size: 14px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="replyPreviewText"></div>
+                <button onclick="cancelReply()" style="position: absolute; top: 6px; right: 8px; background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 0 4px;">×</button>
+            </div>
             <div id="typingIndicator" style="display:none; padding: 4px 16px 8px; font-size: 13px; color: var(--text-secondary); font-style: italic; min-height: 20px;"></div>
             <div class="message-input-container" id="messageInputContainer">
                 <button class="emoji-toggle-btn" onclick="toggleEmojiPicker()">😊</button>
@@ -2917,6 +2922,7 @@
         let onlineUsers = {};
         let currentChat = null;
         let messages = {};
+        let replyToMessage = null;
         let unreadCounts = {};
         let currentTab = 'chats';
         let messageToEdit = null;
@@ -5180,6 +5186,8 @@
             const typingInd = document.getElementById('typingIndicator');
             if (typingInd) { typingInd.style.display = 'none'; typingInd.textContent = ''; }
 
+            cancelReply();
+
             // Subscribe to the chat channel FIRST for real-time messages
             subscribeToChatChannel(chat.id);
             subscribeToSupabaseChat(chat.id);
@@ -5599,7 +5607,8 @@
                     timestamp: timestamp,
                     isAdmin: currentUser.is_admin,
                     edited: false,
-                    type: 'out'
+                    type: 'out',
+                    reply_to: replyToMessage ? replyToMessage.id : null
                 };
                 
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
@@ -5614,6 +5623,8 @@
                 
                 if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
                 
+                cancelReply();
+                
                 renderMessages();
                 updateChatsList();
                 forceShowInput();
@@ -5627,6 +5638,7 @@
                     text: text,
                     is_admin: currentUser.is_admin,
                     read_at: null,
+                    reply_to: replyToMessage ? replyToMessage.id : null,
                     created_at: now.toISOString()
                 };
                 
@@ -5715,7 +5727,8 @@
                 timestamp: timestamp,
                 isAdmin: currentUser.is_admin,
                 edited: false,
-                type: 'out'
+                type: 'out',
+                reply_to: replyToMessage ? replyToMessage.id : null
             };
 
             if (!messages[currentChat.id]) messages[currentChat.id] = [];
@@ -5738,6 +5751,7 @@
                 image: imageDataUrl,
                 is_admin: currentUser.is_admin,
                 read_at: null,
+                reply_to: replyToMessage ? replyToMessage.id : null,
                 created_at: now.toISOString()
             };
 
@@ -5823,7 +5837,8 @@
                     timestamp: timestamp,
                     isAdmin: currentUser.is_admin,
                     edited: false,
-                    type: 'out'
+                    type: 'out',
+                    reply_to: replyToMessage ? replyToMessage.id : null
                 };
 
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
@@ -5847,6 +5862,7 @@
                     duration: duration,
                     is_admin: currentUser.is_admin,
                     read_at: null,
+                    reply_to: replyToMessage ? replyToMessage.id : null,
                     created_at: now.toISOString()
                 };
 
@@ -6140,6 +6156,50 @@
         window.performChatSearch = performChatSearch;
         window.navigateChatSearch = navigateChatSearch;
 
+        function setReplyTo(messageId) {
+            if (!currentChat || !messages[currentChat.id]) return;
+            const msg = messages[currentChat.id].find(m => m.id === messageId);
+            if (!msg) return;
+            replyToMessage = msg;
+            
+            const preview = document.getElementById('replyPreview');
+            const nameEl = document.getElementById('replyPreviewName');
+            const textEl = document.getElementById('replyPreviewText');
+            if (!preview || !nameEl || !textEl) return;
+            
+            nameEl.textContent = msg.type === 'out' ? 'Вы' : (msg.senderName || 'Пользователь');
+            textEl.textContent = msg.text ? msg.text.substring(0, 100) : (msg.image ? '📷 Изображение' : (msg.audio ? '🎤 Голосовое' : 'Сообщение'));
+            preview.style.display = 'block';
+            
+            const input = document.getElementById('messageInput');
+            if (input) input.focus();
+            hideMessageActions();
+        }
+
+        function cancelReply() {
+            replyToMessage = null;
+            const preview = document.getElementById('replyPreview');
+            if (preview) preview.style.display = 'none';
+        }
+
+        function scrollToMessage(messageId, event) {
+            if (event) event.stopPropagation();
+            const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            const el = container.querySelector('.message[data-id="' + messageId + '"]');
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.style.transition = 'background 0.5s';
+                const oldBg = el.style.background;
+                el.style.background = 'rgba(0, 122, 255, 0.2)';
+                setTimeout(() => { el.style.background = oldBg; }, 1000);
+            }
+        }
+
+        window.setReplyTo = setReplyTo;
+        window.cancelReply = cancelReply;
+        window.scrollToMessage = scrollToMessage;
+
         function renderMessages(searchQuery, searchRegex) {
             const container = document.getElementById('messagesContainer');
             if (!container) return;
@@ -6172,6 +6232,20 @@
                     
                     const status = messageStatuses[msg.id] || { status: msg.sender == currentUser.id ? 'sent' : 'delivered' };
                     
+                    let replyHtml = '';
+                    if (msg.reply_to && messages[currentChat.id]) {
+                        const parentMsg = messages[currentChat.id].find(m => m.id === msg.reply_to);
+                        if (parentMsg) {
+                            const parentName = parentMsg.type === 'out' ? 'Вы' : escapeHtml(parentMsg.senderName || 'Пользователь');
+                            const parentText = parentMsg.text ? escapeHtml(parentMsg.text.substring(0, 80)) : (parentMsg.image ? '📷 Изображение' : (parentMsg.audio ? '🎤 Голосовое' : 'Сообщение'));
+                            replyHtml = `
+                                <div class="reply-quote" onclick="scrollToMessage('${parentMsg.id}', event)" style="border-left: 3px solid var(--accent-blue); padding: 4px 8px; margin-bottom: 6px; background: rgba(0,0,0,0.2); border-radius: 6px; cursor: pointer;">
+                                    <div style="font-size: 11px; color: var(--accent-blue); font-weight: 600;">${parentName}</div>
+                                    <div style="font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${parentText}</div>
+                                </div>`;
+                        }
+                    }
+                    
                     let content = '';
                     let statusHtml = '';
                     
@@ -6197,11 +6271,12 @@
                                 displayText = displayText.replace(regex, '<mark style="' + markStyle + '">$1</mark>');
                             }
                         }
-                        content = `<div class="message-bubble">${displayText}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
+                        content = `<div class="message-bubble">${replyHtml}${displayText}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
                     } else if (msg.image) {
                         const messageId = msg.id;
                         content = `
                             <div class="message-bubble" style="padding: 4px;">
+                                ${replyHtml}
                                 <div class="image-container">
                                     <img src="${msg.image}" class="message-image" onclick="openMedia('${msg.image}')" alt="Изображение">
                                     <button class="image-download-btn" onclick="downloadImage('${msg.image}', event)" title="Скачать">⬇️</button>
@@ -6214,6 +6289,7 @@
                         
                         content = `
                             <div class="message-bubble audio-message">
+                                ${replyHtml}
                                 <div class="audio-player">
                                     <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
                                     <div class="audio-progress-container">
@@ -6237,6 +6313,7 @@
                     if (canDelete || canEdit) {
                         actions = `
                             <div class="message-actions" data-message-id="${msg.id}">
+                                <button class="message-action-btn" onclick="setReplyTo('${msg.id}'); event.stopPropagation();">↩️</button>
                                 ${canEdit ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
                                 ${canDelete ? `<button class="message-action-btn delete" onclick="deleteMessage('${msg.id}', event)">🗑️</button>` : ''}
                             </div>
@@ -8338,6 +8415,8 @@
 
             const typingInd = document.getElementById('typingIndicator');
             if (typingInd) { typingInd.style.display = 'none'; typingInd.textContent = ''; }
+
+            cancelReply();
 
             currentChat = null;
             renderMessages();
