@@ -2632,12 +2632,18 @@
                 </div>
                 <div class="chat-actions">
                     <button class="action-btn" id="notificationBell" onclick="toggleNotificationBell()">🔔</button>
+                    <button class="action-btn" id="searchInChatBtn" onclick="toggleChatSearch()">🔍</button>
                     <button class="action-btn" onclick="openProfileModal()">👤</button>
                     <button class="action-btn" id="callBtn" style="display: none;" onclick="startCall()">📞</button>
                 </div>
             </div>
 
-            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)"></div>
+            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)">
+                <div id="chatSearchPanel" style="display:none; padding:8px 12px; background:var(--bg-header); border-bottom:1px solid var(--border-light);">
+                    <input type="text" id="chatSearchInput" placeholder="Поиск в чате..." style="width:100%; padding:10px 16px; border:none; border-radius:20px; background:var(--bg-input); color:var(--text-primary); font-size:15px; box-sizing: border-box;" oninput="performChatSearch()">
+                    <div id="chatSearchResults" style="margin-top:6px; font-size:13px; color:var(--text-secondary);"></div>
+                </div>
+            </div>
 
             <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
             <div class="message-input-container" id="messageInputContainer">
@@ -5071,7 +5077,14 @@
 
         function joinChat(chat) {
             if (!chat || !currentUser) return;
-            
+
+            const searchPanel = document.getElementById('chatSearchPanel');
+            if (searchPanel) searchPanel.style.display = 'none';
+            const searchInput = document.getElementById('chatSearchInput');
+            if (searchInput) searchInput.value = '';
+            const searchResults = document.getElementById('chatSearchResults');
+            if (searchResults) searchResults.textContent = '';
+
             // Subscribe to the chat channel FIRST for real-time messages
             subscribeToChatChannel(chat.id);
             subscribeToSupabaseChat(chat.id);
@@ -5933,7 +5946,54 @@
             }
         }
 
-        function renderMessages() {
+        function toggleChatSearch() {
+            const panel = document.getElementById('chatSearchPanel');
+            const input = document.getElementById('chatSearchInput');
+            if (!panel) return;
+            if (panel.style.display === 'none' || panel.style.display === '') {
+                panel.style.display = 'block';
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+                document.getElementById('chatSearchResults').textContent = '';
+                performChatSearch();
+            } else {
+                panel.style.display = 'none';
+                if (input) input.value = '';
+                document.getElementById('chatSearchResults').textContent = '';
+                performChatSearch();
+            }
+        }
+
+        function performChatSearch() {
+            const input = document.getElementById('chatSearchInput');
+            const results = document.getElementById('chatSearchResults');
+            if (!input || !results || !currentChat) return;
+
+            const query = input.value.trim().toLowerCase();
+            if (!query) {
+                results.textContent = '';
+                renderMessages();
+                return;
+            }
+
+            const msgs = messages[currentChat.id] || [];
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp('(' + escaped + ')', 'gi');
+            let count = 0;
+
+            msgs.forEach(msg => {
+                if (msg.text && msg.text.toLowerCase().includes(query)) {
+                    count++;
+                }
+            });
+
+            results.textContent = 'Найдено: ' + count;
+            renderMessages(query, regex);
+        }
+
+        function renderMessages(searchQuery, searchRegex) {
             const container = document.getElementById('messagesContainer');
             if (!container) return;
             
@@ -5978,7 +6038,11 @@
                     }
                     
                     if (msg.text) {
-                        content = `<div class="message-bubble">${escapeHtml(msg.text)}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
+                        let displayText = escapeHtml(msg.text);
+                        if (searchRegex) {
+                            displayText = displayText.replace(searchRegex, '<mark style="background: var(--accent-blue); color: white;">$1</mark>');
+                        }
+                        content = `<div class="message-bubble">${displayText}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
                     } else if (msg.image) {
                         const messageId = msg.id;
                         content = `
@@ -8104,6 +8168,13 @@
             const sidebar = document.getElementById('sidebar');
             const chatArea = document.getElementById('chatArea');
             
+            const searchPanel = document.getElementById('chatSearchPanel');
+            if (searchPanel) searchPanel.style.display = 'none';
+            const searchInput = document.getElementById('chatSearchInput');
+            if (searchInput) searchInput.value = '';
+            const searchResults = document.getElementById('chatSearchResults');
+            if (searchResults) searchResults.textContent = '';
+
             currentChat = null;
             renderMessages();
             updateUrlWithChat(null);
