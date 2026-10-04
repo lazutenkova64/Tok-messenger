@@ -2518,7 +2518,7 @@
         #profileAvatarLarge { width: 120px !important; height: 120px !important; font-size: 60px !important; line-height: 120px !important; }
 
         .reply-quote:hover {
-            background: rgba(0, 122, 255, 0.25) !important;
+            background: rgba(0, 0, 0, 0.5) !important;
         }
     </style>
 </head>
@@ -6253,9 +6253,9 @@
                             const parentName = parentMsg.type === 'out' ? 'Вы' : escapeHtml(parentMsg.senderName || 'Пользователь');
                             const parentText = parentMsg.text ? escapeHtml(parentMsg.text.substring(0, 80)) : (parentMsg.image ? '📷 Изображение' : (parentMsg.audio ? '🎤 Голосовое' : 'Сообщение'));
                             replyHtml = `
-                                <div class="reply-quote" onclick="scrollToMessage('${parentMsg.id}', event)" style="border-left: 4px solid var(--accent-blue); padding: 6px 10px; margin-bottom: 8px; background: rgba(0, 122, 255, 0.15); border-radius: 6px; cursor: pointer; transition: background 0.2s;">
-                                    <div style="font-size: 12px; color: var(--accent-blue); font-weight: 700; margin-bottom: 2px;">${parentName}</div>
-                                    <div style="font-size: 13px; color: var(--text-primary); opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3;">${parentText}</div>
+                                <div class="reply-quote" onclick="scrollToMessage('${parentMsg.id}', event)" style="border-left: 4px solid #ffffff; padding: 6px 10px; margin-bottom: 8px; background: rgba(0, 0, 0, 0.35); border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+                                    <div style="font-size: 12px; color: #ffffff; font-weight: 700; margin-bottom: 2px;">${parentName}</div>
+                                    <div style="font-size: 13px; color: #ffffff; opacity: 0.9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.3;">${parentText}</div>
                                 </div>`;
                         }
                     }
