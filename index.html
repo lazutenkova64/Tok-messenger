@@ -5603,6 +5603,9 @@
                 const timestamp = now.getTime();
                 const clientId = generateUUID();
                 
+                // Захватываем reply_to ДО cancelReply()
+                const currentReplyTo = (typeof replyToMessage !== 'undefined' && replyToMessage) ? replyToMessage : null;
+                
                 const localMessage = {
                     id: clientId,
                     chatId: currentChat.id,
@@ -5611,12 +5614,12 @@
                     senderIsVip: currentUser.is_vip,
                     senderIsAdmin: currentUser.is_admin,
                     text: text,
+                    reply_to: currentReplyTo ? currentReplyTo.id : null,
                     time: timeString,
                     timestamp: timestamp,
                     isAdmin: currentUser.is_admin,
                     edited: false,
-                    type: 'out',
-                    reply_to: replyToMessage ? replyToMessage.id : null
+                    type: 'out'
                 };
                 
                 if (!messages[currentChat.id]) messages[currentChat.id] = [];
@@ -5646,7 +5649,7 @@
                     text: text,
                     is_admin: currentUser.is_admin,
                     read_at: null,
-                    reply_to: replyToMessage ? replyToMessage.id : null,
+                    reply_to: currentReplyTo ? currentReplyTo.id : null,
                     created_at: now.toISOString()
                 };
                 
