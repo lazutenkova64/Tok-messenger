@@ -2638,16 +2638,17 @@
                 </div>
             </div>
 
-            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)">
-                <div id="chatSearchPanel" style="display:none; padding:8px 12px; background:var(--bg-header); border-bottom:1px solid var(--border-light); position:relative; z-index:6; flex-shrink:0;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="text" id="chatSearchInput" placeholder="Поиск в чате..." style="flex:1; padding:10px 16px; border:none; border-radius:20px; background:var(--bg-input); color:var(--text-primary); font-size:15px; outline:none;" oninput="performChatSearch()">
-                        <span id="chatSearchCounter" style="font-size:13px; color:var(--text-secondary); white-space:nowrap; min-width:50px; text-align:center;">0 / 0</span>
-                        <button onclick="navigateChatSearch(-1)" id="chatSearchPrev" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer; padding:6px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">↑</button>
-                        <button onclick="navigateChatSearch(1)" id="chatSearchNext" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer; padding:6px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">↓</button>
-                    </div>
-                    <div id="chatSearchResults" style="margin-top:6px; font-size:13px; color:var(--text-secondary); min-height:16px;"></div>
+            <div id="chatSearchPanel" style="display:none; padding:8px 12px; background:var(--bg-header); border-bottom:1px solid var(--border-light); position:relative; z-index:6; flex-shrink:0;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="text" id="chatSearchInput" placeholder="Поиск в чате..." style="flex:1; padding:10px 16px; border:none; border-radius:20px; background:var(--bg-input); color:var(--text-primary); font-size:15px; outline:none;" oninput="performChatSearch()">
+                    <span id="chatSearchCounter" style="font-size:13px; color:var(--text-secondary); white-space:nowrap; min-width:50px; text-align:center;">0 / 0</span>
+                    <button onclick="navigateChatSearch(-1)" id="chatSearchPrev" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer; padding:6px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">↑</button>
+                    <button onclick="navigateChatSearch(1)" id="chatSearchNext" style="background:none; border:none; color:var(--accent-blue); font-size:18px; cursor:pointer; padding:6px 8px; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;">↓</button>
                 </div>
+                <div id="chatSearchResults" style="margin-top:6px; font-size:13px; color:var(--text-secondary); min-height:16px;"></div>
+            </div>
+
+            <div class="messages-container" id="messagesContainer" onclick="handleMessagesContainerClick(event)">
             </div>
 
             <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
