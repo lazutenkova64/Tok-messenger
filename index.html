@@ -5092,6 +5092,8 @@
             if (searchInput) searchInput.value = '';
             const searchResults = document.getElementById('chatSearchResults');
             if (searchResults) searchResults.textContent = '';
+            const searchCounter = document.getElementById('chatSearchCounter');
+            if (searchCounter) searchCounter.textContent = '0 / 0';
             chatSearchTerm = '';
             chatSearchMatches = [];
             chatSearchCurrentIndex = 0;
@@ -5960,15 +5962,16 @@
         function toggleChatSearch() {
             const panel = document.getElementById('chatSearchPanel');
             const input = document.getElementById('chatSearchInput');
-            if (!panel) return;
+            if (!panel || !input) return;
             if (panel.style.display === 'none' || panel.style.display === '') {
                 panel.style.display = 'block';
-                if (input) {
-                    input.value = '';
-                    input.focus();
-                }
-                document.getElementById('chatSearchResults').textContent = '';
-                performChatSearch();
+                input.value = '';
+                chatSearchTerm = '';
+                chatSearchMatches = [];
+                chatSearchCurrentIndex = 0;
+                const counter = document.getElementById('chatSearchCounter');
+                if (counter) counter.textContent = '0 / 0';
+                setTimeout(() => input.focus(), 50);
             } else {
                 panel.style.display = 'none';
                 input.value = '';
@@ -5979,6 +5982,7 @@
                 if (results) results.textContent = '';
                 const counter = document.getElementById('chatSearchCounter');
                 if (counter) counter.textContent = '0 / 0';
+                renderMessages();
             }
         }
 
@@ -6049,6 +6053,8 @@
             setTimeout(() => scrollToCurrentMatch(), 50);
         }
 
+        window.toggleChatSearch = toggleChatSearch;
+        window.performChatSearch = performChatSearch;
         window.navigateChatSearch = navigateChatSearch;
 
         function renderMessages(searchQuery, searchRegex) {
@@ -8240,6 +8246,8 @@
             if (searchInput) searchInput.value = '';
             const searchResults = document.getElementById('chatSearchResults');
             if (searchResults) searchResults.textContent = '';
+            const searchCounter = document.getElementById('chatSearchCounter');
+            if (searchCounter) searchCounter.textContent = '0 / 0';
             chatSearchTerm = '';
             chatSearchMatches = [];
             chatSearchCurrentIndex = 0;
