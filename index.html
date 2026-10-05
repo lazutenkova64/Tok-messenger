@@ -96,7 +96,7 @@
         }
 
         body {
-            background-color: var(--bg-color);
+            background: transparent;
             color: var(--text-primary);
             height: 100%;
             height: 100dvh;
@@ -109,7 +109,6 @@
             position: relative;
             overscroll-behavior: none;
             touch-action: manipulation;
-            transition: background-color 0.3s ease;
         }
 
         body::before {
@@ -117,8 +116,12 @@
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             pointer-events: none;
-            background: radial-gradient(circle at 20% 10%, rgba(74, 140, 255, 0.08) 0%, transparent 40%),
-                        radial-gradient(circle at 80% 90%, rgba(120, 80, 255, 0.06) 0%, transparent 40%);
+            background: 
+                radial-gradient(circle at 15% 20%, rgba(74, 140, 255, 0.35) 0%, transparent 45%),
+                radial-gradient(circle at 85% 15%, rgba(140, 90, 255, 0.30) 0%, transparent 40%),
+                radial-gradient(circle at 75% 85%, rgba(0, 200, 255, 0.25) 0%, transparent 45%),
+                radial-gradient(circle at 25% 90%, rgba(255, 90, 180, 0.20) 0%, transparent 40%),
+                linear-gradient(180deg, #0a0a12 0%, #06060c 100%);
             z-index: 0;
         }
 
@@ -126,7 +129,7 @@
             display: flex;
             height: 100dvh;
             width: 100%;
-            background-color: var(--bg-color);
+            background-color: transparent;
             position: relative;
             overflow: hidden;
             transition: background-color 0.3s ease;
@@ -135,7 +138,7 @@
         }
 
         .chat-area {
-            background-color: var(--bg-chat);
+            background-color: transparent;
             transition: background-color 0.3s ease;
             position: relative;
             z-index: 1;
