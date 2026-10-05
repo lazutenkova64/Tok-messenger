@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="public, max-age=31536000">
     <meta name="theme-color" content="#0f0f0f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Tok Web">
     <meta name="format-detection" content="telephone=no">
+    <link rel="preload" as="image" href="./bg.webp">
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -1533,6 +1535,13 @@
             color: var(--text-primary);
         }
 
+        #userProfileModal .close-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            z-index: 12;
+        }
+
         .password-input-container {
             position: relative;
             margin-bottom: 16px;
@@ -1657,6 +1666,14 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        .call-controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+            width: 100%;
+        }
+
         .call-btn {
             width: 60px;
             height: 60px;
@@ -1669,39 +1686,23 @@
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, 0.08);
-            color: var(--text-primary);
-            backdrop-filter: blur(calc(10px * var(--glass-intensity)));
-            -webkit-backdrop-filter: blur(calc(10px * var(--glass-intensity)));
+            color: white;
             -webkit-tap-highlight-color: transparent;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-        }
-        .call-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: scale(1.05);
-        }
-        .call-btn:active {
-            transform: scale(0.95);
+            flex-shrink: 0;
         }
         .call-btn.accept {
             background: linear-gradient(135deg, #34c759 0%, #2ab04a 100%);
-            color: white;
             border-color: rgba(52, 199, 89, 0.4);
             box-shadow: 0 4px 16px rgba(52, 199, 89, 0.4);
         }
         .call-btn.reject {
             background: linear-gradient(135deg, #ff453a 0%, #d63026 100%);
-            color: white;
             border-color: rgba(255, 69, 58, 0.4);
             box-shadow: 0 4px 16px rgba(255, 69, 58, 0.4);
         }
         .call-btn.mute {
             background: rgba(255, 255, 255, 0.08);
-            color: white;
-        }
-        .call-btn.mute.muted {
-            background: linear-gradient(135deg, #ff453a 0%, #d63026 100%);
-            color: white;
-            animation: pulse-mute 2s infinite;
         }
 
         @keyframes pulse-mute {
@@ -1905,10 +1906,11 @@
         }
 
         .user-profile-menu-btn {
-            background: transparent;
-            border: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-secondary);
-            font-size: 24px;
+            font-size: 22px;
+            font-weight: 700;
             cursor: pointer;
             padding: 8px;
             border-radius: 50%;
@@ -1919,10 +1921,42 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            z-index: 11;
+            pointer-events: auto;
         }
         .user-profile-menu-btn:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(74, 140, 255, 0.2);
             color: var(--text-primary);
+        }
+
+        .user-profile-header {
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            margin-bottom: -30px;
+            position: relative;
+            padding: 0 4px;
+            z-index: 10;
+        }
+
+        .user-profile-menu {
+            position: absolute;
+            top: 46px;
+            right: 4px;
+            background: rgba(20, 20, 30, 0.9);
+            backdrop-filter: blur(calc(20px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(20px * var(--glass-intensity)));
+            border-radius: 16px;
+            padding: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.08) inset;
+            border: 1px solid var(--border-color);
+            z-index: 100;
+            display: none;
+            min-width: 180px;
+        }
+        .user-profile-menu.visible {
+            display: block;
         }
 
         .message-bubble {
@@ -3672,8 +3706,13 @@
                         loadPinnedChats();
                         loadLocallyDeletedChats();
                         
-                        // Подписываемся на Supabase Realtime для всех чатов
-                        myChats.forEach(chat => {
+                        // Подписываемся только на 5 самых активных чатов сразу
+                        const sortedForSub = [...myChats].sort((a, b) => {
+                            const aT = (messages[a.id] && messages[a.id].length > 0) ? messages[a.id][messages[a.id].length - 1].timestamp : new Date(a.created_at).getTime();
+                            const bT = (messages[b.id] && messages[b.id].length > 0) ? messages[b.id][messages[b.id].length - 1].timestamp : new Date(b.created_at).getTime();
+                            return bT - aT;
+                        });
+                        sortedForSub.slice(0, 5).forEach(chat => {
                             subscribeToSupabaseChat(chat.id);
                         });
                         
@@ -3849,8 +3888,13 @@
                 loadPinnedChats();
                 loadLocallyDeletedChats();
                 
-                // Подписываемся на Supabase Realtime для всех чатов
-                myChats.forEach(chat => {
+                // Подписываемся только на 5 самых активных чатов сразу
+                const sortedForSub = [...myChats].sort((a, b) => {
+                    const aT = (messages[a.id] && messages[a.id].length > 0) ? messages[a.id][messages[a.id].length - 1].timestamp : new Date(a.created_at).getTime();
+                    const bT = (messages[b.id] && messages[b.id].length > 0) ? messages[b.id][messages[b.id].length - 1].timestamp : new Date(b.created_at).getTime();
+                    return bT - aT;
+                });
+                sortedForSub.slice(0, 5).forEach(chat => {
                     subscribeToSupabaseChat(chat.id);
                 });
                 
@@ -5098,10 +5142,11 @@
         }
 
         function toggleUserProfileMenu(event) {
-            event.stopPropagation();
+            if (event) { event.stopPropagation(); event.preventDefault(); }
             const menu = document.getElementById('userProfileMenu');
             if (menu) menu.classList.toggle('visible');
         }
+        window.toggleUserProfileMenu = toggleUserProfileMenu;
 
         function openDeleteChatConfirm() {
             const menu = document.getElementById('userProfileMenu');
@@ -5177,7 +5222,18 @@
                     if (currentChat && currentChat.id === chatId) {
                         messages[chatId] = [];
                         const container = document.getElementById('messagesContainer');
-                        if (container) container.innerHTML = '<div class="empty-state">Нет сообщений</div>';
+                        if (container) container.innerHTML = '';
+                        updateUrlWithChat(null);
+                        closeUserProfileModal();
+                        showSidebarOnMobile();
+                        document.getElementById('currentChatName').innerHTML = 'Выберите чат';
+                        const avatarHeader = document.getElementById('chatHeaderAvatar');
+                        if (avatarHeader) {
+                            avatarHeader.style.backgroundImage = '';
+                            avatarHeader.textContent = '👤';
+                        }
+                        document.getElementById('chatStatus').innerHTML = '';
+                        document.getElementById('callBtn').style.display = 'none';
                     }
 
                     updateChatsList();
@@ -5239,10 +5295,19 @@
                     
                     if (currentChat && currentChat.id === chatId) {
                         currentChat = null;
-                        renderMessages();
+                        const container = document.getElementById('messagesContainer');
+                        if (container) container.innerHTML = '';
                         updateUrlWithChat(null);
                         closeUserProfileModal();
                         showSidebarOnMobile();
+                        document.getElementById('currentChatName').innerHTML = 'Выберите чат';
+                        const avatarHeader = document.getElementById('chatHeaderAvatar');
+                        if (avatarHeader) {
+                            avatarHeader.style.backgroundImage = '';
+                            avatarHeader.textContent = '👤';
+                        }
+                        document.getElementById('chatStatus').innerHTML = '';
+                        document.getElementById('callBtn').style.display = 'none';
                     }
                     
                     updateChatsList();
@@ -6207,24 +6272,47 @@
             const existing = messageReactions[messageId].find(r => r.user_id === currentUser.id && r.emoji === emoji);
             
             if (existing) {
+                // Оптимистично удалить из UI
+                messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== existing.id);
+                if (currentChat) updateMessageReactions(messageId);
+                
+                // Затем удалить в БД
                 try {
                     await db.from('reactions').delete().eq('id', existing.id);
-                    messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== existing.id);
+                } catch (e) {
+                    console.warn('[reactions] delete error:', e);
+                    // Откат при ошибке
+                    messageReactions[messageId].push(existing);
                     if (currentChat) updateMessageReactions(messageId);
-                } catch (e) { console.warn('[reactions] delete error:', e); }
+                }
             } else {
+                // Оптимистично добавить в UI (tempId)
+                const tempId = 'temp_' + Date.now();
+                const tempReaction = { id: tempId, message_id: messageId, user_id: currentUser.id, emoji: emoji, created_at: new Date().toISOString() };
+                messageReactions[messageId].push(tempReaction);
+                if (currentChat) updateMessageReactions(messageId);
+                
+                // Затем сохранить в БД
                 try {
                     const { data, error } = await db.from('reactions').insert([{
-                        message_id: messageId,
-                        user_id: currentUser.id,
-                        emoji: emoji
+                        message_id: messageId, user_id: currentUser.id, emoji: emoji
                     }]).select();
-                    if (error) { console.warn('[reactions] insert error:', error); return; }
-                    if (data && data[0]) {
-                        messageReactions[messageId].push(data[0]);
+                    if (error) {
+                        console.warn('[reactions] insert error:', error);
+                        messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== tempId);
                         if (currentChat) updateMessageReactions(messageId);
+                        return;
                     }
-                } catch (e) { console.warn('[reactions] insert exception:', e); }
+                    if (data && data[0]) {
+                        // Заменить tempId на реальный id
+                        const idx = messageReactions[messageId].findIndex(r => r.id === tempId);
+                        if (idx !== -1) messageReactions[messageId][idx] = data[0];
+                    }
+                } catch (e) {
+                    console.warn('[reactions] insert exception:', e);
+                    messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== tempId);
+                    if (currentChat) updateMessageReactions(messageId);
+                }
             }
         }
         window.toggleReaction = toggleReaction;
@@ -6507,7 +6595,7 @@
                                 ${forwardHtml}
                                 ${replyHtml}
                                 <div class="image-container">
-                                    <img src="${msg.image}" class="message-image" 
+                                    <img src="${msg.image}" class="message-image" loading="lazy"
                                          onclick="event.stopPropagation(); openMedia('${msg.image.replace(/'/g, "\\'")}')" 
                                          oncontextmenu="event.preventDefault(); return false;" 
                                          ondragstart="return false;" 
@@ -8718,6 +8806,9 @@
         }
 
         function handleBackButton() {
+            const container = document.getElementById('messagesContainer');
+            if (container) container.innerHTML = '';
+
             const sidebar = document.getElementById('sidebar');
             const chatArea = document.getElementById('chatArea');
             
