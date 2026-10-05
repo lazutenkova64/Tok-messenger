@@ -859,12 +859,12 @@
         }
 
         .message.out .message-bubble {
-            background: rgba(74, 140, 255, calc(0.35 + 0.65 * var(--glass-intensity)));
+            background: rgba(74, 140, 255, calc(0.35 - 0.2 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: #ffffff;
             border-bottom-right-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            border: 1px solid rgba(255, 255, 255, calc(0.08 + 0.12 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
             text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.4 * var(--glass-intensity)));
         }
@@ -972,12 +972,12 @@
 
         /* Сообщения */
         .message.out .message-bubble {
-            background: rgba(74, 140, 255, calc(0.35 + 0.65 * var(--glass-intensity)));
+            background: rgba(74, 140, 255, calc(0.35 - 0.2 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: #ffffff;
             border-bottom-right-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            border: 1px solid rgba(255, 255, 255, calc(0.08 + 0.12 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
             text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.4 * var(--glass-intensity)));
         }
@@ -1979,6 +1979,54 @@
             0% { transform: scale(1); }
             100% { transform: scale(1.2); }
         }
+
+        /* Context menu reactions */
+        #contextMenuReactions {
+            display: flex;
+            gap: 4px;
+            padding: 6px 8px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 4px;
+        }
+        #contextMenuReactions .ctx-reaction {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 22px;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 50%;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 40px;
+            height: 40px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #contextMenuReactions .ctx-reaction:hover {
+            transform: scale(1.15);
+            background: rgba(74, 140, 255, 0.25);
+            border-color: rgba(74, 140, 255, 0.5);
+        }
+        #contextMenuReactions .ctx-reaction:active {
+            transform: scale(0.95);
+        }
+
+        /* Reaction pills */
+        .reaction-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 14px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .reaction-pill:hover {
+            transform: scale(1.08);
+        }
 </style>
 </head>
 <body>
@@ -2082,6 +2130,13 @@
         <div class="chat-area" id="chatArea" style="display: none;">
             <div class="chat-header">
                 <button class="back-button" id="backButton" onclick="handleBackButton()">←</button>
+                <div id="chatHeaderSkeleton" style="display:none; align-items:center; gap:12px; flex:1;">
+                    <div class="skeleton-avatar" style="width:44px; height:44px;"></div>
+                    <div class="skeleton-lines" style="flex:1;">
+                        <div class="skeleton-line" style="width:120px;"></div>
+                        <div class="skeleton-line short" style="width:60px; height:10px;"></div>
+                    </div>
+                </div>
                 <div class="chat-avatar-small" id="chatHeaderAvatar" onclick="openChatUserProfile()">👤</div>
                 <div class="chat-info" onclick="openChatUserProfile()">
                     <div class="chat-title" id="currentChatName">
@@ -4663,6 +4718,13 @@
         function joinChat(chat) {
             if (!chat || !currentUser) return;
 
+            const skeleton = document.getElementById('chatHeaderSkeleton');
+            const avatarEl = document.getElementById('chatHeaderAvatar');
+            const chatInfo = document.querySelector('.chat-info');
+            if (skeleton) skeleton.style.display = 'flex';
+            if (avatarEl) avatarEl.style.display = 'none';
+            if (chatInfo) chatInfo.style.display = 'none';
+
             const searchPanel = document.getElementById('chatSearchPanel');
             if (searchPanel) searchPanel.style.display = 'none';
             const searchInput = document.getElementById('chatSearchInput');
@@ -4760,6 +4822,13 @@
                 avatarHeader.style.backgroundImage = '';
                 avatarHeader.textContent = safeAvatar || '👤';
             }
+            
+            const skeleton2 = document.getElementById('chatHeaderSkeleton');
+            const avatarEl2 = document.getElementById('chatHeaderAvatar');
+            const chatInfo2 = document.querySelector('.chat-info');
+            if (skeleton2) skeleton2.style.display = 'none';
+            if (avatarEl2) avatarEl2.style.display = 'flex';
+            if (chatInfo2) chatInfo2.style.display = 'flex';
             
             document.getElementById('chatStatus').innerHTML = chat.is_public ? 'Публичный чат' : 'Приватный чат';
             document.getElementById('callBtn').style.display = (chat.type === 'private' && callsTableExists && displayName !== 'Избранное') ? 'flex' : 'none';
@@ -5592,6 +5661,11 @@
             if (editBtn) editBtn.style.display = (isMine && msg.text) ? 'flex' : 'none';
             if (deleteBtn) deleteBtn.style.display = (isMine || currentUser.is_admin) ? 'flex' : 'none';
             
+            const downloadBtn = document.getElementById('ctxDownloadBtn');
+            if (downloadBtn) {
+                downloadBtn.style.display = (msg.image || msg.audio) ? 'flex' : 'none';
+            }
+            
             const reactionsBar = document.getElementById('contextMenuReactions');
             if (reactionsBar) {
                 reactionsBar.innerHTML = '';
@@ -5648,6 +5722,17 @@
                 openForwardModal(messageId);
             } else if (action === 'reaction') {
                 toggleReaction(messageId, extra);
+            } else if (action === 'download') {
+                if (msg.image) {
+                    downloadImage(msg.image);
+                } else if (msg.audio) {
+                    const link = document.createElement('a');
+                    link.href = msg.audio;
+                    link.download = `voice_${Date.now()}.webm`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
             }
         }
         window.ctxAction = ctxAction;
@@ -5957,7 +6042,7 @@
                     const g = grouped[emoji];
                     const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
                     const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
-                    reactionsHtml += '<span class="reaction-pill" onclick="toggleReaction(\'' + messageId + '\', \'' + emoji + '\'); event.stopPropagation();" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:' + bgColor + '; border:1px solid ' + borderColor + '; transition: background 0.15s; user-select:none;"><span>' + emoji + '</span><span style="font-size:11px; color:var(--text-secondary);">' + g.count + '</span></span>';
+                    reactionsHtml += '<span class="reaction-pill" onclick="toggleReaction(\'' + messageId + '\', \'' + emoji + '\'); event.stopPropagation();" style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:15px; cursor:pointer; background:' + bgColor + '; border:1px solid ' + borderColor + '; transition: background 0.15s, transform 0.15s; user-select:none;"><span style="font-size:16px;">' + emoji + '</span><span style="font-size:12px; color:var(--text-secondary); font-weight:600;">' + g.count + '</span></span>';
                 });
                 reactionsHtml += '</div>';
             }
@@ -6284,7 +6369,6 @@
                                 ${replyHtml}
                                 <div class="image-container">
                                     <img src="${msg.image}" class="message-image" onclick="event.stopPropagation(); openMedia('${msg.image.replace(/'/g, "\\'")}')" alt="Изображение">
-                                    <button class="image-download-btn" onclick="downloadImage('${msg.image}', event)" title="Скачать">⬇️</button>
                                 </div>
                             </div>
                         `;
@@ -6343,9 +6427,9 @@
                             const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
                             reactionsHtml += `
                                 <span class="reaction-pill" onclick="toggleReaction('${msg.id}', '${emoji}'); event.stopPropagation();"
-                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: background 0.15s; user-select:none;">
-                                    <span>${emoji}</span>
-                                    <span style="font-size:11px; color:var(--text-secondary);">${g.count}</span>
+                                      style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:14px; font-size:15px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: background 0.15s, transform 0.15s; user-select:none;">
+                                    <span style="font-size:16px;">${emoji}</span>
+                                    <span style="font-size:12px; color:var(--text-secondary); font-weight:600;">${g.count}</span>
                                 </span>`;
                         });
                         reactionsHtml += `</div>`;
@@ -8516,6 +8600,13 @@
             document.getElementById('chatHeaderAvatar').textContent = '👤';
             document.getElementById('callBtn').style.display = 'none';
             document.getElementById('chatStatus').innerHTML = '';
+            
+            const skeleton3 = document.getElementById('chatHeaderSkeleton');
+            const avatarEl3 = document.getElementById('chatHeaderAvatar');
+            const chatInfo3 = document.querySelector('.chat-info');
+            if (skeleton3) skeleton3.style.display = 'none';
+            if (avatarEl3) avatarEl3.style.display = 'flex';
+            if (chatInfo3) chatInfo3.style.display = 'flex';
         }
 
         function updateUrlWithChat(chat) {
@@ -9143,6 +9234,9 @@
         </button>
         <button class="ctx-btn" onclick="ctxAction('copyLink')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">🔗</span> Копировать ссылку
+        </button>
+        <button class="ctx-btn" id="ctxDownloadBtn" onclick="ctxAction('download')" style="display:none; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">⬇️</span> Скачать
         </button>
         <button class="ctx-btn" onclick="ctxAction('forward')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">↗️</span> Переслать
