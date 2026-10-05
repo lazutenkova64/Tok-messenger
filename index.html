@@ -2532,12 +2532,6 @@
             transform: scale(1.08);
             background: rgba(0, 122, 255, 0.3) !important;
         }
-        
-        @keyframes reaction-pop {
-            0% { transform: scale(0.5); opacity: 0; }
-            60% { transform: scale(1.15); }
-            100% { transform: scale(1); opacity: 1; }
-        }
     </style>
 </head>
 <body>
@@ -6413,16 +6407,19 @@
                 if (!messageReactions[r.message_id]) messageReactions[r.message_id] = [];
                 if (messageReactions[r.message_id].some(x => x.id === r.id)) return;
                 messageReactions[r.message_id].push(r);
-                if (currentChat && currentChat.id === foundChatId) renderMessages();
+                if (currentChat && currentChat.id === foundChatId) updateMessageReactions(r.message_id);
             });
             
             ch.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'reactions' }, (payload) => {
                 const old = payload.old;
                 if (!old || !old.id) return;
+                let affectedMessageId = null;
                 Object.keys(messageReactions).forEach(msgId => {
+                    const before = messageReactions[msgId].length;
                     messageReactions[msgId] = (messageReactions[msgId] || []).filter(x => x.id !== old.id);
+                    if (messageReactions[msgId].length !== before) affectedMessageId = msgId;
                 });
-                if (currentChat) renderMessages();
+                if (affectedMessageId && currentChat) updateMessageReactions(affectedMessageId);
             });
             
             ch.subscribe((status) => {
@@ -6439,6 +6436,48 @@
         }
         window.subscribeToReactions = subscribeToReactions;
 
+        function updateMessageReactions(messageId) {
+            if (!currentChat) return;
+            const msgEl = document.querySelector('.message[data-id="' + messageId + '"]');
+            if (!msgEl) return;
+
+            const msgReactions = messageReactions[messageId] || [];
+            let reactionsHtml = '';
+            if (msgReactions.length > 0) {
+                const grouped = {};
+                msgReactions.forEach(r => {
+                    if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, isMine: false, latest: 0 };
+                    grouped[r.emoji].count++;
+                    if (r.user_id === currentUser.id) grouped[r.emoji].isMine = true;
+                    const t = r.created_at ? new Date(r.created_at).getTime() : 0;
+                    if (t > grouped[r.emoji].latest) grouped[r.emoji].latest = t;
+                });
+                let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
+                if (emojiList.length > 3) emojiList = emojiList.slice(-3);
+                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:-4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:1;">';
+                emojiList.forEach((emoji) => {
+                    const g = grouped[emoji];
+                    const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
+                    const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
+                    reactionsHtml += '<span class="reaction-pill" onclick="toggleReaction(\'' + messageId + '\', \'' + emoji + '\'); event.stopPropagation();" style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:' + bgColor + '; border:1px solid ' + borderColor + '; transition: background 0.15s; user-select:none;"><span>' + emoji + '</span><span style="font-size:11px; color:var(--text-secondary);">' + g.count + '</span></span>';
+                });
+                reactionsHtml += '</div>';
+            }
+
+            let row = msgEl.querySelector('.reactions-row');
+            if (row) {
+                row.outerHTML = reactionsHtml || '<div class="reactions-row" style="display:none;"></div>';
+            } else if (reactionsHtml) {
+                const footer = msgEl.querySelector('.message-footer');
+                if (footer) {
+                    footer.insertAdjacentHTML('beforebegin', reactionsHtml);
+                } else {
+                    msgEl.insertAdjacentHTML('beforeend', reactionsHtml);
+                }
+            }
+        }
+        window.updateMessageReactions = updateMessageReactions;
+
         async function toggleReaction(messageId, emoji) {
             if (!currentUser || !messageId) return;
             if (!messageReactions[messageId]) messageReactions[messageId] = [];
@@ -6449,7 +6488,7 @@
                 try {
                     await db.from('reactions').delete().eq('id', existing.id);
                     messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== existing.id);
-                    if (currentChat) renderMessages();
+                    if (currentChat) updateMessageReactions(messageId);
                 } catch (e) { console.warn('[reactions] delete error:', e); }
             } else {
                 try {
@@ -6461,7 +6500,7 @@
                     if (error) { console.warn('[reactions] insert error:', error); return; }
                     if (data && data[0]) {
                         messageReactions[messageId].push(data[0]);
-                        if (currentChat) renderMessages();
+                        if (currentChat) updateMessageReactions(messageId);
                     }
                 } catch (e) { console.warn('[reactions] insert exception:', e); }
             }
@@ -6794,15 +6833,13 @@
                         if (emojiList.length > 3) emojiList = emojiList.slice(-3);
                         
                         reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:-4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:1;">`;
-                        emojiList.forEach((emoji, idx) => {
+                        emojiList.forEach((emoji) => {
                             const g = grouped[emoji];
                             const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
                             const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
-                            const isNewest = idx === emojiList.length - 1;
-                            const animStyle = isNewest ? 'animation: reaction-pop 0.25s ease-out;' : '';
                             reactionsHtml += `
                                 <span class="reaction-pill" onclick="toggleReaction('${msg.id}', '${emoji}'); event.stopPropagation();"
-                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: all 0.15s; user-select:none; ${animStyle}">
+                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: background 0.15s; user-select:none;">
                                     <span>${emoji}</span>
                                     <span style="font-size:11px; color:var(--text-secondary);">${g.count}</span>
                                 </span>`;
