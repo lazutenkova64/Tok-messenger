@@ -34,9 +34,9 @@
             --bg-search: rgba(255, 255, 255, 0.05);
             --bg-hover: rgba(255, 255, 255, 0.08);
             --bg-header: rgba(10, 10, 15, 0.72);
-            --glass-bg-1: rgba(15, 15, 25, 0.15);
-            --glass-bg-2: rgba(15, 15, 25, 0.25);
-            --glass-bg-3: rgba(15, 15, 25, 0.45);
+            --glass-bg-1: rgba(15, 15, 25, 0.35);
+            --glass-bg-2: rgba(15, 15, 25, 0.5);
+            --glass-bg-3: rgba(15, 15, 25, 0.7);
             --glass-border: rgba(255, 255, 255, 0.08);
             --glass-border-strong: rgba(255, 255, 255, 0.14);
             --glass-highlight: rgba(255, 255, 255, 0.06);
@@ -71,12 +71,12 @@
             --safe-left: env(safe-area-inset-left, 0px);
             --safe-right: env(safe-area-inset-right, 0px);
             --glass-intensity: 0.4;
-            --glass-blur-modal: 24px;
-            --glass-blur-menu: 20px;
-            --glass-blur-sidebar: 16px;
-            --glass-blur-header: 14px;
-            --glass-blur-tabs: 12px;
-            --glass-blur-input: 12px;
+            --glass-blur-modal: 48px;
+            --glass-blur-menu: 40px;
+            --glass-blur-sidebar: 36px;
+            --glass-blur-header: 40px;
+            --glass-blur-tabs: 24px;
+            --glass-blur-input: 24px;
             --app-height: 100vh;
         }
 
@@ -854,7 +854,7 @@
 
         /* Liquid Glass — хедер чата */
         .chat-header {
-            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-1) !important;
+            background: rgba(15, 15, 25, calc(0.2 + 0.3 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) saturate(1.6) !important;
             border-bottom: 1px solid var(--glass-border-strong) !important;
@@ -866,7 +866,7 @@
 
         /* Sidebar */
         .sidebar {
-            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%), var(--glass-bg-2) !important;
+            background: rgba(15, 15, 25, calc(0.15 + 0.4 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
             border-right: 1px solid var(--glass-border-strong);
@@ -902,7 +902,7 @@
 
         /* Input контейнер */
         .message-input-container {
-            background: linear-gradient(0deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), var(--glass-bg-1) !important;
+            background: rgba(15, 15, 25, calc(0.1 + 0.35 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) saturate(1.6) !important;
             border-top: 1px solid var(--glass-border-strong) !important;
@@ -920,7 +920,7 @@
 
         /* Модалки */
         .modal-content {
-            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-3) !important;
+            background: rgba(15, 15, 25, calc(0.2 + 0.5 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity))) saturate(1.6) !important;
             border: 1px solid var(--glass-border-strong) !important;
@@ -934,7 +934,7 @@
 
         /* Контекстное меню */
         #contextMenu {
-            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-3) !important;
+            background: rgba(15, 15, 25, calc(0.3 + 0.4 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) saturate(1.6) !important;
             border: 1px solid var(--glass-border-strong) !important;
@@ -1862,12 +1862,12 @@
         /* Mobile — уменьшить размытие для производительности */
         @media (max-width: 768px) {
             :root {
-                --glass-blur-modal: 20px;
-                --glass-blur-menu: 16px;
-                --glass-blur-sidebar: 14px;
-                --glass-blur-header: 12px;
-                --glass-blur-tabs: 10px;
-                --glass-blur-input: 10px;
+                --glass-blur-modal: 32px;
+                --glass-blur-menu: 28px;
+                --glass-blur-sidebar: 28px;
+                --glass-blur-header: 28px;
+                --glass-blur-tabs: 20px;
+                --glass-blur-input: 20px;
             }
         }
     </style>
