@@ -34,9 +34,9 @@
             --bg-search: rgba(255, 255, 255, 0.05);
             --bg-hover: rgba(255, 255, 255, 0.08);
             --bg-header: rgba(10, 10, 15, 0.72);
-            --glass-bg-1: rgba(20, 20, 30, 0.55);
-            --glass-bg-2: rgba(20, 20, 30, 0.7);
-            --glass-bg-3: rgba(20, 20, 30, 0.85);
+            --glass-bg-1: rgba(20, 20, 35, 0.35);
+            --glass-bg-2: rgba(20, 20, 35, 0.5);
+            --glass-bg-3: rgba(20, 20, 35, 0.65);
             --glass-border: rgba(255, 255, 255, 0.08);
             --glass-border-strong: rgba(255, 255, 255, 0.14);
             --glass-highlight: rgba(255, 255, 255, 0.06);
@@ -117,10 +117,10 @@
             top: 0; left: 0; right: 0; bottom: 0;
             pointer-events: none;
             background: 
-                radial-gradient(circle at 15% 20%, rgba(74, 140, 255, 0.35) 0%, transparent 45%),
-                radial-gradient(circle at 85% 15%, rgba(140, 90, 255, 0.30) 0%, transparent 40%),
-                radial-gradient(circle at 75% 85%, rgba(0, 200, 255, 0.25) 0%, transparent 45%),
-                radial-gradient(circle at 25% 90%, rgba(255, 90, 180, 0.20) 0%, transparent 40%),
+                radial-gradient(circle at 15% 20%, rgba(74, 140, 255, 0.55) 0%, transparent 40%),
+                radial-gradient(circle at 85% 15%, rgba(140, 90, 255, 0.45) 0%, transparent 35%),
+                radial-gradient(circle at 75% 85%, rgba(0, 200, 255, 0.40) 0%, transparent 40%),
+                radial-gradient(circle at 25% 90%, rgba(255, 90, 180, 0.35) 0%, transparent 35%),
                 linear-gradient(180deg, #0a0a12 0%, #06060c 100%);
             z-index: 0;
         }
@@ -855,20 +855,24 @@
 
         /* Liquid Glass — хедер чата */
         .chat-header {
-            background: var(--glass-bg-1) !important;
-            backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) !important;
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) !important;
-            border-bottom: 1px solid var(--glass-border) !important;
-            box-shadow: 0 1px 0 var(--glass-highlight) inset;
-            transition: background 0.3s ease, backdrop-filter 0.3s ease;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-1) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) saturate(1.4) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-header) * var(--glass-intensity))) saturate(1.4) !important;
+            border-bottom: 1px solid var(--glass-border-strong) !important;
+            box-shadow: 0 1px 0 var(--glass-highlight) inset, 0 4px 24px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 20;
+            transition: backdrop-filter 0.3s ease;
         }
 
         /* Sidebar */
         .sidebar {
-            background: var(--glass-bg-2) !important;
-            backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
-            transition: background 0.3s ease, backdrop-filter 0.3s ease;
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%), var(--glass-bg-2) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.4) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.4) !important;
+            border-right: 1px solid var(--glass-border-strong);
+            box-shadow: 0 1px 0 var(--glass-highlight) inset;
+            transition: backdrop-filter 0.3s ease;
         }
         @media (min-width: 769px) {
             .sidebar {
@@ -899,11 +903,12 @@
 
         /* Input контейнер */
         .message-input-container {
-            background: var(--glass-bg-1) !important;
-            backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) !important;
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) !important;
-            border-top: 1px solid var(--glass-border) !important;
-            box-shadow: 0 -1px 0 var(--glass-highlight) inset;
+            background: linear-gradient(0deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%), var(--glass-bg-1) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) saturate(1.4) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-input) * var(--glass-intensity))) saturate(1.4) !important;
+            border-top: 1px solid var(--glass-border-strong) !important;
+            box-shadow: 0 -1px 0 var(--glass-highlight) inset, 0 -4px 24px rgba(0, 0, 0, 0.3);
+            transition: backdrop-filter 0.3s ease;
         }
 
         /* Поле ввода */
@@ -916,11 +921,12 @@
 
         /* Модалки */
         .modal-content {
-            background: var(--glass-bg-3);
-            backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity)));
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity)));
-            border: 1px solid var(--glass-border-strong);
-            box-shadow: var(--shadow-lg), 0 1px 0 var(--glass-highlight) inset;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-3) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity))) saturate(1.4) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-modal) * var(--glass-intensity))) saturate(1.4) !important;
+            border: 1px solid var(--glass-border-strong) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 var(--glass-highlight) inset;
+            transition: backdrop-filter 0.3s ease;
         }
 
         .modal {
@@ -929,11 +935,11 @@
 
         /* Контекстное меню */
         #contextMenu {
-            background: var(--glass-bg-3) !important;
-            backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) !important;
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) !important;
+            background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%), var(--glass-bg-3) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) saturate(1.4) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))) saturate(1.4) !important;
             border: 1px solid var(--glass-border-strong) !important;
-            box-shadow: var(--shadow-lg), 0 1px 0 var(--glass-highlight) inset;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 var(--glass-highlight) inset;
         }
 
         /* Аватар */
@@ -2528,16 +2534,20 @@
         function updateGlassIntensity(value) {
             const v = Math.max(0, Math.min(100, parseInt(value) || 0));
             const intensity = v / 100;
-            document.documentElement.style.setProperty('--glass-intensity', intensity);
+            
+            document.documentElement.style.setProperty('--glass-intensity', String(intensity));
             
             const slider = document.getElementById('glassIntensitySlider');
             if (slider) {
                 slider.style.background = `linear-gradient(to right, var(--accent-blue) 0%, var(--accent-blue) ${v}%, rgba(255,255,255,0.1) ${v}%, rgba(255,255,255,0.1) 100%)`;
             }
+            
             const label = document.getElementById('glassIntensityValue');
             if (label) label.textContent = v + '%';
             
             try { localStorage.setItem('liquidGlassIntensity', String(v)); } catch (e) {}
+            
+            console.log('[glass] intensity set to', intensity, 'slider value', v);
         }
         window.updateGlassIntensity = updateGlassIntensity;
 
