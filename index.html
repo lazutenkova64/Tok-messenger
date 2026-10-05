@@ -4800,6 +4800,31 @@
                 }
             });
 
+            // Подписка на UPDATE read_at — когда получатель прочитал сообщение
+            ch.on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'messages',
+                filter: `chat_id=eq.${chatId}`
+            }, (payload) => {
+                const upd = payload.new;
+                if (!upd) return;
+                if (!messages[chatId]) return;
+                
+                const idx = messages[chatId].findIndex(m => m.id === upd.id);
+                if (idx === -1) return;
+                
+                // Если обновлено поле read_at — значит собеседник прочитал
+                if (upd.read_at && !messages[chatId][idx].readAt) {
+                    messages[chatId][idx].readAt = new Date(upd.read_at).getTime();
+                    messageStatuses[upd.id] = { status: 'read', readAt: new Date(upd.read_at).getTime() };
+                    saveMessageStatuses();
+                    
+                    if (currentChat && currentChat.id === chatId) renderMessages();
+                    updateChatsList();
+                }
+            });
+
             ch.subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('[supabase-realtime] subscribed to', chatId);
