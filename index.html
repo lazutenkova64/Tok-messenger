@@ -90,13 +90,14 @@
             height: 100%;
             width: 100%;
             overflow: hidden;
+            background-color: #0a0a0f;
             overscroll-behavior: none;
             -webkit-text-size-adjust: 100%;
             touch-action: manipulation;
         }
 
         body {
-            background: transparent;
+            background-color: #0a0a0f;
             color: var(--text-primary);
             height: 100%;
             height: 100dvh;
@@ -109,6 +110,11 @@
             position: relative;
             overscroll-behavior: none;
             touch-action: manipulation;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
+            box-sizing: border-box;
         }
 
         body::before {
@@ -131,8 +137,11 @@
             background-color: transparent;
             position: relative;
             overflow: hidden;
+            padding-top: env(safe-area-inset-top, 0px);
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            box-sizing: border-box;
             transition: background-color 0.3s ease;
-            z-index: 2;
+            z-index: 1;
             min-height: 0;
         }
 
@@ -702,9 +711,6 @@
             z-index: 10;
             position: relative;
             width: 100%;
-            padding-top: calc(8px + var(--safe-top));
-            height: calc(var(--header-height) + var(--safe-top));
-            min-height: calc(var(--header-height) + var(--safe-top));
         }
 
         .back-button {
@@ -1022,6 +1028,12 @@
             display: block;
             margin: 2px 0;
             object-fit: cover;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-user-drag: none;
+            touch-action: manipulation;
         }
         @media (max-width: 768px) {
             .message-image {
@@ -1159,12 +1171,11 @@
 
         .message-input-container {
             padding: 10px 12px;
-            padding-bottom: calc(10px + var(--safe-bottom));
             border-top: 1px solid var(--border-light);
             display: flex !important;
             gap: 8px;
             align-items: flex-end;
-            min-height: calc(var(--input-height) + var(--safe-bottom));
+            min-height: var(--input-height);
             flex-shrink: 0;
             z-index: 10;
             position: relative;
@@ -1577,6 +1588,28 @@
             transform: scale(0.95);
         }
 
+        .forgot-password-btn {
+            background: transparent;
+            border: none;
+            color: var(--accent-blue);
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+            padding: 8px 12px;
+            width: 100%;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.2s, background 0.2s;
+            border-radius: 12px;
+        }
+        .forgot-password-btn:hover {
+            color: var(--accent-blue-hover);
+            background: rgba(74, 140, 255, 0.1);
+        }
+        .forgot-password-btn:active {
+            background: rgba(74, 140, 255, 0.15);
+        }
+
         .chat-deleted-message {
             text-align: center;
             padding: 30px;
@@ -1622,6 +1655,58 @@
         }
         .media-viewer-close:active {
             background: rgba(255, 255, 255, 0.2);
+        }
+
+        .call-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            backdrop-filter: blur(calc(10px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(10px * var(--glass-intensity)));
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+        .call-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.05);
+        }
+        .call-btn:active {
+            transform: scale(0.95);
+        }
+        .call-btn.accept {
+            background: linear-gradient(135deg, #34c759 0%, #2ab04a 100%);
+            color: white;
+            border-color: rgba(52, 199, 89, 0.4);
+            box-shadow: 0 4px 16px rgba(52, 199, 89, 0.4);
+        }
+        .call-btn.reject {
+            background: linear-gradient(135deg, #ff453a 0%, #d63026 100%);
+            color: white;
+            border-color: rgba(255, 69, 58, 0.4);
+            box-shadow: 0 4px 16px rgba(255, 69, 58, 0.4);
+        }
+        .call-btn.mute {
+            background: rgba(255, 255, 255, 0.08);
+            color: white;
+        }
+        .call-btn.mute.muted {
+            background: linear-gradient(135deg, #ff453a 0%, #d63026 100%);
+            color: white;
+            animation: pulse-mute 2s infinite;
+        }
+
+        @keyframes pulse-mute {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .avatar-grid {
@@ -1819,6 +1904,27 @@
             gap: 8px;
         }
 
+        .user-profile-menu-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 24px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .user-profile-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+        }
+
         .message-bubble {
             -webkit-user-select: none !important;
             user-select: none !important;
@@ -1981,6 +2087,7 @@
             min-width: 40px;
             height: 40px;
             -webkit-tap-highlight-color: transparent;
+            color: inherit;
         }
         #contextMenuReactions .ctx-reaction:hover {
             transform: scale(1.15);
@@ -2011,12 +2118,20 @@
         #scrollToBottomBtn:hover { transform: scale(1.1); }
         #scrollToBottomBtn:active { transform: scale(0.95); }
         #scrollToBottomBtn.visible { display: flex !important; }
+
+        /* Global button reset for dark theme */
+        .modal-content button, .modal button, #contextMenu button {
+            background-color: transparent;
+            color: var(--text-primary);
+            border: none;
+            -webkit-tap-highlight-color: transparent;
+        }
 </style>
 </head>
 <body>
     <div class="splash-screen" id="splashScreen">Tok Web</div>
 
-    <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()">
+    <div class="media-viewer" id="mediaViewer" onclick="closeMediaViewer()" oncontextmenu="event.preventDefault(); return false;">
         <div class="media-viewer-content" id="mediaViewerContent"></div>
         <button class="media-viewer-close" onclick="closeMediaViewer()">×</button>
     </div>
@@ -5738,9 +5853,6 @@
                 } else {
                     alert('Нет текста для копирования');
                 }
-            } else if (action === 'copyLink') {
-                const link = window.location.origin + window.location.pathname + '#' + currentChat.id + '&msg=' + messageId;
-                navigator.clipboard.writeText(link).then(() => {}).catch(() => {});
             } else if (action === 'edit') {
                 editMessage(messageId);
             } else if (action === 'delete') {
@@ -6395,7 +6507,12 @@
                                 ${forwardHtml}
                                 ${replyHtml}
                                 <div class="image-container">
-                                    <img src="${msg.image}" class="message-image" onclick="event.stopPropagation(); openMedia('${msg.image.replace(/'/g, "\\'")}')" alt="Изображение">
+                                    <img src="${msg.image}" class="message-image" 
+                                         onclick="event.stopPropagation(); openMedia('${msg.image.replace(/'/g, "\\'")}')" 
+                                         oncontextmenu="event.preventDefault(); return false;" 
+                                         ondragstart="return false;" 
+                                         onselectstart="return false;" 
+                                         alt="Изображение">
                                 </div>
                             </div>
                         `;
@@ -8702,6 +8819,10 @@
                 img.style.margin = 'auto';
                 img.style.cursor = 'zoom-out';
                 img.onclick = closeMediaViewer;
+                img.style.userSelect = 'none';
+                img.style.webkitUserSelect = 'none';
+                img.style.webkitTouchCallout = 'none';
+                img.style.pointerEvents = 'none';
                 content.appendChild(img);
             }
             
@@ -9310,9 +9431,6 @@
         </button>
         <button class="ctx-btn" onclick="ctxAction('copy')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">📋</span> Копировать текст
-        </button>
-        <button class="ctx-btn" onclick="ctxAction('copyLink')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
-            <span style="font-size:18px;">🔗</span> Копировать ссылку
         </button>
         <button class="ctx-btn" id="ctxDownloadBtn" onclick="ctxAction('download')" style="display:none; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">⬇️</span> Скачать
