@@ -324,8 +324,6 @@
         .chat-header, .sidebar-header, .tabs, .search-bar, .message-input-container {
             background-color: var(--bg-header);
             transition: background-color 0.3s ease;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
         }
 
         .message-input, .modal-input, .search-bar input {
@@ -1316,8 +1314,6 @@
             animation: slideDown 0.2s ease;
             max-height: 200px;
             overflow-y: auto;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             position: absolute;
             bottom: 100%;
             left: 0;
@@ -1372,8 +1368,6 @@
             padding: 16px;
             padding-top: calc(16px + var(--safe-top));
             padding-bottom: calc(16px + var(--safe-bottom));
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
             overscroll-behavior: contain;
         }
 
@@ -1634,8 +1628,6 @@
             justify-content: center;
             -webkit-tap-highlight-color: transparent;
             z-index: 3001;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
         }
 
         .media-viewer-close:active {
@@ -2149,8 +2141,6 @@
             opacity: 0;
             transition: opacity 0.3s ease;
             pointer-events: none;
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
             z-index: 10;
         }
 
@@ -2677,10 +2667,6 @@
             </div>
 
             <div class="chats-list" id="chatsList"></div>
-            
-            <div style="padding: 12px; border-top: 1px solid var(--border-light); flex-shrink: 0;">
-                <button class="modal-btn secondary" style="width: 100%; margin-bottom: 0;" onclick="logout()">Выйти</button>
-            </div>
         </div>
 
         <div class="chat-area" id="chatArea" style="display: none;">
@@ -2814,6 +2800,13 @@
             <div class="theme-grid" id="themeGrid"></div>
             
             <button class="modal-btn" onclick="saveProfile()">Сохранить</button>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-light); text-align: center;">
+                <button onclick="logout()" style="background: none; border: none; color: #ff3b30; font-size: 15px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; transition: background 0.15s;" onmouseover="this.style.background='rgba(255,59,48,0.1)'" onmouseout="this.style.background='none'">
+                    <span style="font-size: 18px;">🚪</span>
+                    <span>Выйти</span>
+                </button>
+            </div>
         </div>
     </div>
 
