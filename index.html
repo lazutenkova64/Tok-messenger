@@ -2532,6 +2532,12 @@
             transform: scale(1.08);
             background: rgba(0, 122, 255, 0.3) !important;
         }
+        
+        @keyframes reaction-pop {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -6394,40 +6400,39 @@
             if (!currentUser || !chatId) return;
             if (reactionChannels[chatId]) return;
             
-            const ch = db.channel(`reactions-${chatId}`);
+            const ch = db.channel('reactions-global-' + Math.random().toString(36).slice(2));
             
-            ch.on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'reactions'
-            }, (payload) => {
+            ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reactions' }, (payload) => {
                 const r = payload.new;
-                if (!r) return;
-                const msgExists = (messages[chatId] || []).some(m => m.id === r.message_id);
-                if (!msgExists) return;
-                
+                if (!r || !r.message_id) return;
+                let foundChatId = null;
+                Object.keys(messages).forEach(cid => {
+                    if ((messages[cid] || []).some(m => m.id === r.message_id)) foundChatId = cid;
+                });
+                if (!foundChatId) return;
                 if (!messageReactions[r.message_id]) messageReactions[r.message_id] = [];
                 if (messageReactions[r.message_id].some(x => x.id === r.id)) return;
                 messageReactions[r.message_id].push(r);
-                
-                if (currentChat && currentChat.id === chatId) renderMessages();
+                if (currentChat && currentChat.id === foundChatId) renderMessages();
             });
             
-            ch.on('postgres_changes', {
-                event: 'DELETE',
-                schema: 'public',
-                table: 'reactions'
-            }, (payload) => {
+            ch.on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'reactions' }, (payload) => {
                 const old = payload.old;
                 if (!old || !old.id) return;
                 Object.keys(messageReactions).forEach(msgId => {
-                    messageReactions[msgId] = (messageReactions[msgId] || []).filter(r => r.id !== old.id);
+                    messageReactions[msgId] = (messageReactions[msgId] || []).filter(x => x.id !== old.id);
                 });
-                if (currentChat && currentChat.id === chatId) renderMessages();
+                if (currentChat) renderMessages();
             });
             
             ch.subscribe((status) => {
-                if (status === 'SUBSCRIBED') console.log('[reactions] subscribed to', chatId);
+                if (status === 'SUBSCRIBED') console.log('[reactions] subscribed (global)');
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('[reactions] error, retry in 3s');
+                    try { db.removeChannel(ch); } catch (e) {}
+                    delete reactionChannels[chatId];
+                    setTimeout(() => { if (currentUser) subscribeToReactions(chatId); }, 3000);
+                }
             });
             
             reactionChannels[chatId] = ch;
@@ -6776,22 +6781,28 @@
                     if (msgReactions.length > 0) {
                         const grouped = {};
                         msgReactions.forEach(r => {
-                            if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, users: [], isMine: false };
+                            if (!grouped[r.emoji]) {
+                                grouped[r.emoji] = { count: 0, isMine: false, latest: 0 };
+                            }
                             grouped[r.emoji].count++;
-                            grouped[r.emoji].users.push(r.user_id);
                             if (r.user_id === currentUser.id) grouped[r.emoji].isMine = true;
+                            const t = r.created_at ? new Date(r.created_at).getTime() : 0;
+                            if (t > grouped[r.emoji].latest) grouped[r.emoji].latest = t;
                         });
                         
-                        const emojiList = Object.keys(grouped);
-                        reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">`;
-                        emojiList.forEach(emoji => {
+                        let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
+                        if (emojiList.length > 3) emojiList = emojiList.slice(-3);
+                        
+                        reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:-4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:1;">`;
+                        emojiList.forEach((emoji, idx) => {
                             const g = grouped[emoji];
                             const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
                             const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
+                            const isNewest = idx === emojiList.length - 1;
+                            const animStyle = isNewest ? 'animation: reaction-pop 0.25s ease-out;' : '';
                             reactionsHtml += `
                                 <span class="reaction-pill" onclick="toggleReaction('${msg.id}', '${emoji}'); event.stopPropagation();"
-                                      title="${g.count} реакций"
-                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: all 0.15s; user-select:none;">
+                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: all 0.15s; user-select:none; ${animStyle}">
                                     <span>${emoji}</span>
                                     <span style="font-size:11px; color:var(--text-secondary);">${g.count}</span>
                                 </span>`;
@@ -6803,11 +6814,11 @@
                         <div class="message ${msg.type}" data-id="${msg.id}" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
                             ${content}
-                            <div class="message-footer">
+                            ${reactionsHtml}
+                            <div class="message-footer" style="margin-top:0;">
                                 <span class="message-time">${msg.time}</span>
                                 ${statusHtml}
                             </div>
-                            ${reactionsHtml}
                         </div>
                     `);
                 });
