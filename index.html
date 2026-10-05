@@ -2520,6 +2520,13 @@
         .reply-quote:hover {
             background: rgba(0, 0, 0, 0.5) !important;
         }
+
+        .ctx-btn:hover { background: var(--bg-hover) !important; }
+        #contextMenuReactions .ctx-reaction {
+            background: none; border: none; font-size: 22px; cursor: pointer;
+            padding: 4px 6px; border-radius: 50%; transition: transform 0.1s;
+        }
+        #contextMenuReactions .ctx-reaction:hover { transform: scale(1.2); background: var(--bg-hover); }
     </style>
 </head>
 <body>
@@ -2656,6 +2663,11 @@
             </div>
 
             <div id="attachmentPreview" style="display:none; padding: 8px 12px; border-bottom: 1px solid var(--border-light);"></div>
+            <div id="editPreview" style="display:none; padding: 8px 12px; background: rgba(255, 152, 0, 0.15); border-left: 4px solid #ff9500; margin: 0 12px 6px; border-radius: 8px; position: relative;">
+                <div style="font-size: 12px; color: #ff9500; font-weight: 700; margin-bottom: 2px;">✏️ Редактирование</div>
+                <div style="font-size: 13px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="editPreviewText"></div>
+                <button onclick="cancelEditMessage()" style="position: absolute; top: 6px; right: 8px; background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 0 4px;">×</button>
+            </div>
             <div id="replyPreview" style="display:none; padding: 8px 12px; background: rgba(0, 122, 255, 0.15); border-left: 4px solid var(--accent-blue); margin: 0 12px 6px; border-radius: 8px; position: relative;">
                 <div style="font-size: 12px; color: var(--accent-blue); font-weight: 600; margin-bottom: 2px;" id="replyPreviewName"></div>
                 <div style="font-size: 14px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="replyPreviewText"></div>
@@ -2690,15 +2702,6 @@
             <h2>Создать публичный чат</h2>
             <input type="text" class="modal-input" id="chatNameInput" placeholder="Название чата" maxlength="30">
             <button class="modal-btn" onclick="createPublicChat()">Создать</button>
-        </div>
-    </div>
-
-    <div class="modal" id="editMessageModal">
-        <div class="modal-content">
-            <button class="close-btn" onclick="closeEditMessageModal()">×</button>
-            <h2>Редактировать</h2>
-            <textarea class="modal-input" id="editMessageText" rows="3" style="resize: none;"></textarea>
-            <button class="modal-btn" onclick="saveEditedMessage()">Сохранить</button>
         </div>
     </div>
 
@@ -2927,6 +2930,8 @@
         let currentChat = null;
         let messages = {};
         let replyToMessage = null;
+        let editingMessage = null;
+        let contextMenuMessageId = null;
         let unreadCounts = {};
         let currentTab = 'chats';
         let messageToEdit = null;
@@ -4993,6 +4998,25 @@
                 }
             );
 
+            // Подписка на UPDATE (редактирование сообщений)
+            ch.on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'messages',
+                filter: `chat_id=eq.${chatId}`
+            }, (payload) => {
+                const upd = payload.new;
+                if (!upd) return;
+                if (!messages[chatId]) return;
+                const idx = messages[chatId].findIndex(m => m.id === upd.id);
+                if (idx !== -1) {
+                    messages[chatId][idx].text = upd.text;
+                    messages[chatId][idx].edited = upd.edited;
+                    if (currentChat && currentChat.id === chatId) renderMessages();
+                    updateChatsList();
+                }
+            });
+
             ch.subscribe((status) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('[supabase-realtime] subscribed to', chatId);
@@ -5562,6 +5586,11 @@
         }
 
         async function sendMessage() {
+            // Если редактируем — сохранить и выйти
+            if (editingMessage) {
+                saveEditedMessage();
+                return;
+            }
             // Если чат был удалён «у себя», при отправке — возвращаем его в список
             if (currentChat && locallyDeletedChats.has(currentChat.id)) {
                 locallyDeletedChats.delete(currentChat.id);
@@ -6036,40 +6065,160 @@
         function editMessage(messageId, event) {
             if (event) { event.stopPropagation(); event.preventDefault(); }
             if (!currentChat) return;
-            
             const msg = messages[currentChat.id]?.find(m => m.id === messageId);
             if (!msg) return;
-            
             if (msg.sender != currentUser.id) {
                 alert('Вы можете редактировать только свои сообщения');
                 return;
             }
+            if (!msg.text) {
+                alert('Можно редактировать только текстовые сообщения');
+                return;
+            }
             
-            messageToEdit = msg;
-            document.getElementById('editMessageText').value = msg.text || '';
-            document.getElementById('editMessageModal').classList.add('active');
+            cancelReply();
+            
+            editingMessage = msg;
+            const input = document.getElementById('messageInput');
+            const preview = document.getElementById('editPreview');
+            const previewText = document.getElementById('editPreviewText');
+            
+            if (input) {
+                input.value = msg.text;
+                input.focus();
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+                input.selectionStart = input.selectionEnd = input.value.length;
+            }
+            if (preview) preview.style.display = 'block';
+            if (previewText) previewText.textContent = msg.text.substring(0, 100);
+            
             hideMessageActions();
         }
 
-        function saveEditedMessage() {
-            const newText = document.getElementById('editMessageText').value.trim();
-            if (!newText || !messageToEdit || !currentChat) return;
+        function cancelEditMessage() {
+            editingMessage = null;
+            const preview = document.getElementById('editPreview');
+            if (preview) preview.style.display = 'none';
+            const input = document.getElementById('messageInput');
+            if (input) {
+                input.value = '';
+                input.style.height = 'auto';
+                if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
+            }
+        }
+        window.cancelEditMessage = cancelEditMessage;
+
+        function openContextMenu(messageId, x, y) {
+            const menu = document.getElementById('contextMenu');
+            if (!menu) return;
+            const msg = messages[currentChat.id]?.find(m => m.id === messageId);
+            if (!msg) return;
+            contextMenuMessageId = messageId;
             
-            const msgIndex = messages[currentChat.id].findIndex(m => m.id === messageToEdit.id);
+            const isMine = msg.sender === currentUser.id;
+            const editBtn = document.getElementById('ctxEditBtn');
+            const deleteBtn = document.getElementById('ctxDeleteBtn');
+            if (editBtn) editBtn.style.display = (isMine && msg.text) ? 'flex' : 'none';
+            if (deleteBtn) deleteBtn.style.display = (isMine || currentUser.is_admin) ? 'flex' : 'none';
+            
+            const reactionsBar = document.getElementById('contextMenuReactions');
+            if (reactionsBar) {
+                reactionsBar.innerHTML = '';
+                ['❤️', '👍', '😂', '🔥', '😢'].forEach(emoji => {
+                    const btn = document.createElement('button');
+                    btn.className = 'ctx-reaction';
+                    btn.textContent = emoji;
+                    btn.onclick = (e) => { e.stopPropagation(); ctxAction('reaction', emoji); };
+                    reactionsBar.appendChild(btn);
+                });
+            }
+            
+            menu.style.display = 'block';
+            
+            const menuRect = menu.getBoundingClientRect();
+            let posX = x, posY = y;
+            if (posX + menuRect.width > window.innerWidth) posX = window.innerWidth - menuRect.width - 8;
+            if (posY + menuRect.height > window.innerHeight) posY = window.innerHeight - menuRect.height - 8;
+            menu.style.left = posX + 'px';
+            menu.style.top = posY + 'px';
+        }
+
+        function closeContextMenu() {
+            const menu = document.getElementById('contextMenu');
+            if (menu) menu.style.display = 'none';
+            contextMenuMessageId = null;
+        }
+
+        function ctxAction(action, extra) {
+            const messageId = contextMenuMessageId;
+            closeContextMenu();
+            if (!messageId) return;
+            const msg = messages[currentChat.id]?.find(m => m.id === messageId);
+            if (!msg) return;
+            
+            if (action === 'reply') {
+                setReplyTo(messageId);
+            } else if (action === 'copy') {
+                if (msg.text) {
+                    navigator.clipboard.writeText(msg.text).then(() => {}).catch(() => { alert('Не удалось скопировать'); });
+                } else {
+                    alert('Нет текста для копирования');
+                }
+            } else if (action === 'copyLink') {
+                const link = window.location.origin + window.location.pathname + '#' + currentChat.id + '&msg=' + messageId;
+                navigator.clipboard.writeText(link).then(() => {}).catch(() => {});
+            } else if (action === 'edit') {
+                editMessage(messageId);
+            } else if (action === 'delete') {
+                deleteMessage(messageId);
+            } else if (action === 'reaction') {
+                alert('Реакции: ' + extra + ' (скоро)');
+            }
+        }
+        window.ctxAction = ctxAction;
+        window.closeContextMenu = closeContextMenu;
+
+        async function saveEditedMessage() {
+            if (!editingMessage || !currentChat) return;
+            const input = document.getElementById('messageInput');
+            const newText = input.value.trim();
+            if (!newText) {
+                alert('Текст не может быть пустым');
+                return;
+            }
+            const messageId = editingMessage.id;
+            
+            const msgIndex = messages[currentChat.id].findIndex(m => m.id === messageId);
             if (msgIndex !== -1) {
                 messages[currentChat.id][msgIndex].text = newText;
                 messages[currentChat.id][msgIndex].edited = true;
-                
-                db.from('messages').update({ text: newText, edited: true }).eq('id', messageToEdit.id);
-                
-                if (ably && !currentChat.is_public && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                    const chatChannel = ably.channels.get(`tok_chat_${currentChat.id}`);
-                    chatChannel.publish('edit', { messageId: messageToEdit.id, newText, editor: currentUser.id }).catch(() => {});
-                }
-                
-                renderMessages();
-                closeEditMessageModal();
             }
+            renderMessages();
+            updateChatsList();
+            
+            try {
+                const { data, error } = await db
+                    .from('messages')
+                    .update({ text: newText, edited: true })
+                    .eq('id', messageId)
+                    .select();
+                if (error) {
+                    console.error('[edit] DB error:', error);
+                    alert('Не удалось сохранить редактирование: ' + error.message);
+                } else if (!data || data.length === 0) {
+                    console.warn('[edit] No rows updated — возможно RLS блокирует UPDATE');
+                    alert('Редактирование не сохранилось (возможно, нет прав).');
+                } else {
+                    console.log('[edit] Сохранено в БД:', data[0]);
+                }
+            } catch (e) {
+                console.error('[edit] Exception:', e);
+                alert('Ошибка при сохранении: ' + e.message);
+            }
+            
+            cancelEditMessage();
+            if (input) input.value = '';
         }
 
         function toggleChatSearch() {
@@ -6336,7 +6485,7 @@
                     if (msg.senderIsAdmin) senderDisplay += ' ⚡';
                     
                     fragment.push(`
-                        <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)">
+                        <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
                             ${actions}
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
                             ${content}
@@ -6352,6 +6501,31 @@
             }
             
             container.innerHTML = newMessages;
+            
+            // Touch handlers для долгого нажатия
+            container.querySelectorAll('.message').forEach(el => {
+                let touchTimer = null;
+                let touchStartX = 0, touchStartY = 0;
+                el.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    touchStartX = touch.clientX;
+                    touchStartY = touch.clientY;
+                    touchTimer = setTimeout(() => {
+                        if (navigator.vibrate) try { navigator.vibrate(30); } catch (err) {}
+                        openContextMenu(el.dataset.id, touchStartX, touchStartY);
+                        touchTimer = null;
+                    }, 1000);
+                }, { passive: true });
+                el.addEventListener('touchmove', (e) => {
+                    const touch = e.touches[0];
+                    if (Math.abs(touch.clientX - touchStartX) > 10 || Math.abs(touch.clientY - touchStartY) > 10) {
+                        if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                    }
+                }, { passive: true });
+                el.addEventListener('touchend', () => {
+                    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                }, { passive: true });
+            });
             
             if (isAtBottom) {
                 container.style.scrollBehavior = 'auto';
@@ -8120,12 +8294,6 @@
             document.getElementById('chatNameInput').value = '';
         }
 
-        function closeEditMessageModal() {
-            document.getElementById('editMessageModal').classList.remove('active');
-            document.getElementById('editMessageText').value = '';
-            messageToEdit = null;
-        }
-
         function openProfileModal() {
             if (!currentUser) return;
             document.getElementById('profileNameInput').value = currentUser.name;
@@ -8891,7 +9059,6 @@
         window.deleteMessage = deleteMessage;
         window.editMessage = editMessage;
         window.saveEditedMessage = saveEditedMessage;
-        window.closeEditMessageModal = closeEditMessageModal;
         window.toggleEmojiPicker = toggleEmojiPicker;
         window.handleKeyPress = handleKeyPress;
         window.handleTextInput = handleTextInput;
@@ -8979,6 +9146,37 @@
 
         // === Загрузка обоев чата ===
         window.handleChatBgUpload = undefined;
+
+        // === Обработчики контекстного меню ===
+        document.addEventListener('click', function(e) {
+            const menu = document.getElementById('contextMenu');
+            if (menu && menu.style.display === 'block' && !menu.contains(e.target)) {
+                closeContextMenu();
+            }
+        });
+
+        document.addEventListener('scroll', closeContextMenu, true);
+        window.addEventListener('resize', closeContextMenu);
     </script>
+
+    <div id="contextMenu" style="display:none; position:fixed; background: var(--bg-tertiary); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); padding: 6px; z-index: 5000; min-width: 200px; border: 1px solid var(--border-color);">
+        <div id="contextMenuReactions" style="display:flex; gap:4px; padding: 6px 8px; border-bottom: 1px solid var(--border-light); margin-bottom: 4px;"></div>
+        <button class="ctx-btn" onclick="ctxAction('reply')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">↩️</span> Ответить
+        </button>
+        <button class="ctx-btn" onclick="ctxAction('copy')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">📋</span> Копировать текст
+        </button>
+        <button class="ctx-btn" onclick="ctxAction('copyLink')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">🔗</span> Копировать ссылку
+        </button>
+        <button class="ctx-btn" onclick="ctxAction('edit')" id="ctxEditBtn" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">✏️</span> Редактировать
+        </button>
+        <button class="ctx-btn" onclick="ctxAction('delete')" id="ctxDeleteBtn" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color: #ff3b30; font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">🗑️</span> Удалить
+        </button>
+    </div>
+
 </body>
 </html>
