@@ -2410,9 +2410,9 @@
 
     <div class="modal" id="userProfileModal">
         <div class="modal-content" style="position: relative;">
-            <div class="user-profile-header" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0 4px; margin-bottom: -30px;">
-                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)" style="position: relative; z-index: 11;">⋯</button>
-                <button class="close-btn" onclick="closeUserProfileModal()" style="position: relative; z-index: 11;">×</button>
+            <div class="user-profile-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px; margin-bottom: -30px; min-height: 40px;">
+                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)" style="position: relative; z-index: 11; margin: 0;">⋯</button>
+                <button class="close-btn" onclick="closeUserProfileModal()" style="position: relative; z-index: 11; margin: 0; padding: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
             </div>
             <div class="user-profile-menu" id="userProfileMenu">
                 <button onclick="blockUser()" id="blockUserBtn" style="display:flex; align-items:center; gap:8px;">🚫 <span id="blockUserBtnText">Заблокировать</span></button>
@@ -4358,6 +4358,8 @@
                         const existingMsg = messages[chatId].find(m => m.id === msg.id);
                         if (!existingMsg) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
+                            
+                            if (msg.sender_id !== currentUser.id && isUserBlocked(msg.sender_id)) return;
                         
                         messages[chatId].push({
                             id: msg.id,
@@ -5379,14 +5381,6 @@
             if (!currentChat) { alert('Сначала выберите чат'); return; }
             if (!text && !pendingImage && !pendingAudio && !pendingForward) return;
             
-            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                if (otherId && isUserBlocked(otherId)) {
-                    alert('Нельзя отправить сообщение: пользователь заблокирован');
-                    return;
-                }
-            }
-            
             disableSendButton();
 
             // Отправляем пересланное сообщение
@@ -5450,6 +5444,20 @@
                 
                 messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
                 saveMessageStatuses();
+                
+                if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                    const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                    if (otherId && isUserBlocked(otherId)) {
+                        messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                        saveMessageStatuses();
+                        renderMessages();
+                        input.value = '';
+                        input.style.height = 'auto';
+                        if (currentChat) localStorage.removeItem(`draft_${currentChat.id}`);
+                        updateChatsList();
+                        return;
+                    }
+                }
                 
                 input.value = '';
                 input.style.height = 'auto';
@@ -5542,14 +5550,6 @@
                 locallyDeletedChats.delete(currentChat.id);
                 saveLocallyDeletedChats();
             }
-            
-            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                if (otherId && isUserBlocked(otherId)) {
-                    alert('Нельзя отправить сообщение: пользователь заблокирован');
-                    return;
-                }
-            }
 
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -5578,6 +5578,17 @@
             
             messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
             saveMessageStatuses();
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                    saveMessageStatuses();
+                    renderMessages();
+                    updateChatsList();
+                    return;
+                }
+            }
             
             renderMessages();
             updateChatsList();
@@ -5654,14 +5665,6 @@
                 locallyDeletedChats.delete(currentChat.id);
                 saveLocallyDeletedChats();
             }
-            
-            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                if (otherId && isUserBlocked(otherId)) {
-                    alert('Нельзя отправить сообщение: пользователь заблокирован');
-                    return;
-                }
-            }
 
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -5696,6 +5699,17 @@
                 
                 messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
                 saveMessageStatuses();
+                
+                if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                    const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                    if (otherId && isUserBlocked(otherId)) {
+                        messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                        saveMessageStatuses();
+                        renderMessages();
+                        updateChatsList();
+                        return;
+                    }
+                }
                 
                 renderMessages();
                 updateChatsList();
@@ -6148,14 +6162,6 @@
         async function sendForwardAsMessage(fw) {
             if (!currentChat) return;
             
-            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
-                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                if (otherId && isUserBlocked(otherId)) {
-                    alert('Нельзя отправить сообщение: пользователь заблокирован');
-                    return;
-                }
-            }
-            
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const timestamp = now.getTime();
@@ -6185,6 +6191,18 @@
             messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
             messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
             saveMessageStatuses();
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                    saveMessageStatuses();
+                    renderMessages();
+                    updateChatsList();
+                    return;
+                }
+            }
+            
             renderMessages();
             updateChatsList();
             const c = document.getElementById('messagesContainer');
@@ -6405,10 +6423,10 @@
 
         async function blockUser() {
             if (!currentChat || !currentUser) return;
-            if (currentChat.type !== 'private') { alert('Можно блокировать только в личных чатах'); return; }
+            if (currentChat.type !== 'private') { showAlertDialog('Можно блокировать только в личных чатах', 'Внимание'); return; }
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
             if (!otherId) return;
-            if (otherId === currentUser.id) { alert('Нельзя заблокировать себя'); return; }
+            if (otherId === currentUser.id) { showAlertDialog('Нельзя заблокировать себя', 'Внимание'); return; }
             
             const isBlocked = blockedUsers.includes(otherId);
             
@@ -6416,15 +6434,28 @@
                 try {
                     await db.from('blocks').delete().eq('blocker_id', currentUser.id).eq('blocked_id', otherId);
                     blockedUsers = blockedUsers.filter(id => id !== otherId);
-                    alert('Пользователь разблокирован');
-                } catch (e) { alert('Не удалось разблокировать: ' + e.message); }
+                    await loadBlocks();
+                    // Переподписаться на каналы
+                    if (currentChat && currentChat.id) {
+                        try { unsubscribeFromSupabaseChat(currentChat.id); } catch (e) {}
+                        setTimeout(() => {
+                            subscribeToSupabaseChat(currentChat.id);
+                            loadChatHistory(currentChat.id);
+                        }, 100);
+                    }
+                    showAlertDialog('Пользователь разблокирован', 'Готово');
+                } catch (e) { showAlertDialog('Не удалось разблокировать: ' + e.message, 'Ошибка'); }
             } else {
-                if (!confirm('Заблокировать этого пользователя? Вы не сможете обмениваться сообщениями.')) return;
-                try {
-                    await db.from('blocks').insert([{ blocker_id: currentUser.id, blocked_id: otherId }]);
-                    blockedUsers.push(otherId);
-                    alert('Пользователь заблокирован');
-                } catch (e) { alert('Не удалось заблокировать: ' + e.message); }
+                showConfirmDialog('Заблокировать пользователя?', 'Вы и этот пользователь не сможете обмениваться сообщениями.', async () => {
+                    try {
+                        await db.from('blocks').insert([{ blocker_id: currentUser.id, blocked_id: otherId }]);
+                        blockedUsers.push(otherId);
+                        showAlertDialog('Пользователь заблокирован', 'Готово');
+                        updateBlockUI();
+                        renderMessages();
+                    } catch (e) { showAlertDialog('Не удалось заблокировать: ' + e.message, 'Ошибка'); }
+                }, null);
+                return;
             }
             
             updateBlockUI();
@@ -6448,6 +6479,64 @@
             }
         }
         window.updateBlockUI = updateBlockUI;
+
+        function showConfirmDialog(title, message, onConfirm, onCancel) {
+            const existing = document.getElementById('customConfirmDialog');
+            if (existing) existing.remove();
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'customConfirmDialog';
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.15s ease;';
+            
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'background: rgba(20,20,30,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-radius: 20px; padding: 24px; max-width: 360px; width: 100%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.08) inset; animation: slideUp 0.2s ease;';
+            
+            dialog.innerHTML = `
+                <div style="font-size: 18px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px; text-align: center;">${escapeHtml(title)}</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; text-align: center; line-height: 1.5;">${escapeHtml(message)}</div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="confirmCancelBtn" style="flex: 1; padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: var(--text-primary); font-size: 15px; cursor: pointer; -webkit-tap-highlight-color: transparent;">Отмена</button>
+                    <button id="confirmOkBtn" style="flex: 1; padding: 12px; border-radius: 14px; background: linear-gradient(135deg, #4a8cff 0%, #3a6fe6 100%); border: none; color: white; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(74,140,255,0.4); -webkit-tap-highlight-color: transparent;">Подтвердить</button>
+                </div>
+            `;
+            
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            const close = () => { overlay.remove(); if (onCancel) onCancel(); };
+            const ok = () => { overlay.remove(); if (onConfirm) onConfirm(); };
+            
+            overlay.querySelector('#confirmCancelBtn').onclick = close;
+            overlay.querySelector('#confirmOkBtn').onclick = ok;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
+        }
+        window.showConfirmDialog = showConfirmDialog;
+
+        function showAlertDialog(message, title) {
+            if (typeof title === 'undefined') title = 'Уведомление';
+            const existing = document.getElementById('customAlertDialog');
+            if (existing) existing.remove();
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'customAlertDialog';
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 99999; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.15s ease;';
+            
+            const dialog = document.createElement('div');
+            dialog.style.cssText = 'background: rgba(20,20,30,0.95); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border-radius: 20px; padding: 24px; max-width: 340px; width: 100%; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.08) inset; animation: slideUp 0.2s ease;';
+            
+            dialog.innerHTML = `
+                <div style="font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; text-align: center;">${escapeHtml(title)}</div>
+                <div style="font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; text-align: center; line-height: 1.5;">${escapeHtml(message)}</div>
+                <button id="alertOkBtn" style="width: 100%; padding: 12px; border-radius: 14px; background: linear-gradient(135deg, #4a8cff 0%, #3a6fe6 100%); border: none; color: white; font-size: 15px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 16px rgba(74,140,255,0.4); -webkit-tap-highlight-color: transparent;">OK</button>
+            `;
+            
+            overlay.appendChild(dialog);
+            document.body.appendChild(overlay);
+            
+            overlay.querySelector('#alertOkBtn').onclick = () => overlay.remove();
+            overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+        }
+        window.showAlertDialog = showAlertDialog;
 
         async function saveEditedMessage() {
             if (!editingMessage || !currentChat) return;
