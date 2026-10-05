@@ -234,10 +234,13 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--glass-border);
             height: var(--header-height);
             flex-shrink: 0;
             min-height: var(--header-height);
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
 
         .avatar {
@@ -384,8 +387,11 @@
             display: flex;
             padding: 8px 12px;
             gap: 4px;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--glass-border);
             flex-shrink: 0;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
 
         .tab {
@@ -418,18 +424,22 @@
             padding: 8px 12px;
             position: relative;
             flex-shrink: 0;
+            background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
 
         .search-bar input {
             width: 100%;
             padding: 12px 16px;
-            border: none;
+            border: 1px solid var(--glass-border);
             border-radius: 28px;
             color: var(--text-primary);
             font-size: 16px;
             outline: none;
-            transition: background-color 0.2s;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: background-color 0.2s, border-color 0.2s;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
 
         .search-bar input::placeholder {
@@ -437,7 +447,8 @@
         }
 
         .search-bar input:focus {
-            background-color: var(--bg-tertiary);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(74, 140, 255, 0.4);
         }
 
         .create-chat-btn {
@@ -458,8 +469,8 @@
             font-size: 24px;
             font-weight: 400;
             -webkit-tap-highlight-color: transparent;
-            transition: background-color 0.2s;
-            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 16px rgba(74, 140, 255, 0.4);
         }
 
         .create-chat-btn:active {
@@ -843,17 +854,14 @@
         }
 
         .message.out .message-bubble {
-            background: linear-gradient(
-                135deg,
-                rgba(74, 140, 255, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 0%,
-                rgba(58, 111, 230, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 100%
-            );
+            background: rgba(74, 140, 255, calc(1 - 0.5 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
-            color: white;
+            color: #ffffff;
             border-bottom-right-radius: 4px;
             border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.3 * var(--glass-intensity)));
         }
 
         .message.in .message-bubble {
@@ -890,22 +898,24 @@
         /* Sidebar header */
         .sidebar-header {
             background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
             border-bottom: 1px solid var(--glass-border);
         }
 
         /* Tabs */
         .tabs {
             background: transparent;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
             border-bottom: 1px solid var(--glass-border);
-            backdrop-filter: blur(calc(var(--glass-blur-tabs) * var(--glass-intensity)));
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-tabs) * var(--glass-intensity)));
         }
 
         /* Search bar */
         .search-bar {
             background: transparent;
-            backdrop-filter: blur(calc(var(--glass-blur-tabs) * var(--glass-intensity)));
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-tabs) * var(--glass-intensity)));
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
         }
 
         /* Input контейнер */
@@ -957,20 +967,17 @@
 
         /* Сообщения */
         .message.out .message-bubble {
-            background: linear-gradient(
-                135deg,
-                rgba(74, 140, 255, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 0%,
-                rgba(58, 111, 230, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 100%
-            );
+            background: rgba(74, 140, 255, calc(1 - 0.5 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
-            color: white;
+            color: #ffffff;
             border-bottom-right-radius: 4px;
             border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.3 * var(--glass-intensity)));
         }
         .message.in .message-bubble {
-            background: rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            background: rgba(60, 60, 75, calc(0.05 + 0.15 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: var(--text-primary);
