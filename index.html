@@ -6598,7 +6598,7 @@
             
             const menu = document.createElement('div');
             menu.id = 'failedMessageMenu';
-            menu.style.cssText = 'position: fixed; background: rgba(20,20,30,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 12px; padding: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.08); z-index: 10000; min-width: 180px;';
+            menu.style.cssText = 'position: fixed; background: rgba(20,20,30, calc(0.4 + 0.5 * (1 - var(--glass-intensity)))); backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))); -webkit-backdrop-filter: blur(calc(var(--glass-blur-menu) * var(--glass-intensity))); border-radius: 14px; padding: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.06) inset; border: 1px solid rgba(255,255,255,0.1); z-index: 10000; min-width: 200px;';
             
             const x = event ? event.clientX : window.innerWidth / 2;
             const y = event ? event.clientY : window.innerHeight / 2;
@@ -6607,10 +6607,12 @@
             
             menu.innerHTML = `
                 <button onclick="retryFailedMessage()" style="display:flex; align-items:center; gap:10px; width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text-primary); font-size:14px; cursor:pointer; text-align:left; border-radius:8px; -webkit-tap-highlight-color: transparent;">
-                    🔄 Повторить ещё раз
+                    <span style="font-size:16px; width:18px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">🔄</span>
+                    <span>Повторить ещё раз</span>
                 </button>
                 <button onclick="deleteFailedMessage()" style="display:flex; align-items:center; gap:10px; width:100%; padding:10px 14px; background:transparent; border:none; color:#ff453a; font-size:14px; cursor:pointer; text-align:left; border-radius:8px; -webkit-tap-highlight-color: transparent;">
-                    🗑 Удалить
+                    <span style="font-size:16px; width:18px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">🗑</span>
+                    <span>Удалить</span>
                 </button>
             `;
             document.body.appendChild(menu);
@@ -7019,7 +7021,7 @@
                         else if (status.status === 'sent') statusIcon = '✓';
                         else if (status.status === 'delivered') statusIcon = '✓';
                         else if (status.status === 'read') statusIcon = '✓✓';
-                        else if (status.status === 'failed') statusIcon = '<span style="color: #ff453a; cursor: pointer; font-weight: 700;" onclick="event.stopPropagation(); showFailedMessageMenu(\'' + msg.id + '\', event);">!</span>';
+                        else if (status.status === 'failed') statusIcon = '<span style="color: #ff453a; cursor: pointer; font-weight: 700; font-size: 14px;" onclick="event.stopPropagation(); showFailedMessageMenu(\'' + msg.id + '\', event);">⚠</span>';
                         statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${statusIcon}</span></span>`;
                     }
                     
