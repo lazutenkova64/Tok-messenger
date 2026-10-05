@@ -1106,6 +1106,10 @@
             animation: pulse 1s infinite;
         }
 
+        .status-icon.failed {
+            color: #ff453a;
+        }
+
         @keyframes pulse {
             0% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -1535,13 +1539,6 @@
             color: var(--text-primary);
         }
 
-        #userProfileModal .close-btn {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            z-index: 12;
-        }
-
         .password-input-container {
             position: relative;
             margin-bottom: 16px;
@@ -1932,12 +1929,60 @@
 
         .user-profile-header {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: -30px;
-            position: relative;
             padding: 0 4px;
+            margin-bottom: -30px;
+            height: 44px;
+            position: relative;
             z-index: 10;
+        }
+
+        .user-profile-menu-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-secondary);
+            font-size: 22px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            margin: 0;
+        }
+        .user-profile-menu-btn:hover {
+            background: rgba(74, 140, 255, 0.2);
+            color: var(--text-primary);
+        }
+
+        .close-btn-profile {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 26px;
+            cursor: pointer;
+            padding: 0;
+            border-radius: 50%;
+            transition: background 0.2s, color 0.2s;
+            -webkit-tap-highlight-color: transparent;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            margin: 0;
+        }
+        .close-btn-profile:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
         }
 
         .user-profile-menu {
@@ -2410,9 +2455,9 @@
 
     <div class="modal" id="userProfileModal">
         <div class="modal-content" style="position: relative;">
-            <div class="user-profile-header" style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px; margin-bottom: -30px; min-height: 40px;">
-                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)" style="position: relative; z-index: 11; margin: 0;">⋯</button>
-                <button class="close-btn" onclick="closeUserProfileModal()" style="position: relative; z-index: 11; margin: 0; padding: 0; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; line-height: 1;">×</button>
+            <div class="user-profile-header" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0 4px; margin-bottom: -30px; height: 44px;">
+                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)">⋯</button>
+                <button class="close-btn-profile" onclick="closeUserProfileModal()">×</button>
             </div>
             <div class="user-profile-menu" id="userProfileMenu">
                 <button onclick="blockUser()" id="blockUserBtn" style="display:flex; align-items:center; gap:8px;">🚫 <span id="blockUserBtnText">Заблокировать</span></button>
@@ -5483,6 +5528,23 @@
                     created_at: now.toISOString()
                 };
                 
+                // Проверяем блокировку в БД (обе стороны)
+                if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                    const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                    if (otherId) {
+                        const { data: blockCheck } = await db.from('blocks')
+                            .select('id')
+                            .or(`and(blocker_id.eq.${currentUser.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${currentUser.id})`)
+                            .limit(1);
+                        if (blockCheck && blockCheck.length > 0) {
+                            messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                            saveMessageStatuses();
+                            renderMessages();
+                            return;
+                        }
+                    }
+                }
+                
                 try {
                     const { data, error } = await db
                         .from('messages')
@@ -5607,6 +5669,23 @@
                 created_at: now.toISOString()
             };
 
+            // Проверяем блокировку в БД (обе стороны)
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId) {
+                    const { data: blockCheck } = await db.from('blocks')
+                        .select('id')
+                        .or(`and(blocker_id.eq.${currentUser.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${currentUser.id})`)
+                        .limit(1);
+                    if (blockCheck && blockCheck.length > 0) {
+                        messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                        saveMessageStatuses();
+                        renderMessages();
+                        return;
+                    }
+                }
+            }
+
             try {
                 const { data, error } = await db
                     .from('messages')
@@ -5728,6 +5807,23 @@
                     reply_to: replyToMessage ? replyToMessage.id : null,
                     created_at: now.toISOString()
                 };
+
+                // Проверяем блокировку в БД (обе стороны)
+                if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                    const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                    if (otherId) {
+                        const { data: blockCheck } = await db.from('blocks')
+                            .select('id')
+                            .or(`and(blocker_id.eq.${currentUser.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${currentUser.id})`)
+                            .limit(1);
+                        if (blockCheck && blockCheck.length > 0) {
+                            messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                            saveMessageStatuses();
+                            renderMessages();
+                            return;
+                        }
+                    }
+                }
 
                 try {
                     const { data, error } = await db
@@ -6221,6 +6317,23 @@
                 created_at: now.toISOString()
             };
             
+            // Проверяем блокировку в БД (обе стороны)
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId) {
+                    const { data: blockCheck } = await db.from('blocks')
+                        .select('id')
+                        .or(`and(blocker_id.eq.${currentUser.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${currentUser.id})`)
+                        .limit(1);
+                    if (blockCheck && blockCheck.length > 0) {
+                        messageStatuses[clientId] = { status: 'failed', reason: 'blocked' };
+                        saveMessageStatuses();
+                        renderMessages();
+                        return;
+                    }
+                }
+            }
+            
             try {
                 const { data, error } = await db.from('messages').insert([dbMessage]).select();
                 if (error) {
@@ -6423,19 +6536,22 @@
 
         async function blockUser() {
             if (!currentChat || !currentUser) return;
-            if (currentChat.type !== 'private') { showAlertDialog('Можно блокировать только в личных чатах', 'Внимание'); return; }
+            if (currentChat.type !== 'private') return;
+            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) return;
             const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-            if (!otherId) return;
-            if (otherId === currentUser.id) { showAlertDialog('Нельзя заблокировать себя', 'Внимание'); return; }
+            if (!otherId || otherId === currentUser.id) return;
             
             const isBlocked = blockedUsers.includes(otherId);
             
             if (isBlocked) {
+                // Разблокировать — без подтверждения
                 try {
                     await db.from('blocks').delete().eq('blocker_id', currentUser.id).eq('blocked_id', otherId);
                     blockedUsers = blockedUsers.filter(id => id !== otherId);
-                    await loadBlocks();
-                    // Переподписаться на каналы
+                    updateBlockUI();
+                    renderMessages();
+                    
+                    // Переподписаться на канал (для получения новых сообщений)
                     if (currentChat && currentChat.id) {
                         try { unsubscribeFromSupabaseChat(currentChat.id); } catch (e) {}
                         setTimeout(() => {
@@ -6443,23 +6559,16 @@
                             loadChatHistory(currentChat.id);
                         }, 100);
                     }
-                    showAlertDialog('Пользователь разблокирован', 'Готово');
-                } catch (e) { showAlertDialog('Не удалось разблокировать: ' + e.message, 'Ошибка'); }
+                } catch (e) { console.warn('[block] unlock error:', e); }
             } else {
-                showConfirmDialog('Заблокировать пользователя?', 'Вы и этот пользователь не сможете обмениваться сообщениями.', async () => {
-                    try {
-                        await db.from('blocks').insert([{ blocker_id: currentUser.id, blocked_id: otherId }]);
-                        blockedUsers.push(otherId);
-                        showAlertDialog('Пользователь заблокирован', 'Готово');
-                        updateBlockUI();
-                        renderMessages();
-                    } catch (e) { showAlertDialog('Не удалось заблокировать: ' + e.message, 'Ошибка'); }
-                }, null);
-                return;
+                // Заблокировать — без подтверждения
+                try {
+                    await db.from('blocks').insert([{ blocker_id: currentUser.id, blocked_id: otherId }]);
+                    blockedUsers.push(otherId);
+                    updateBlockUI();
+                    renderMessages();
+                } catch (e) { console.warn('[block] lock error:', e); }
             }
-            
-            updateBlockUI();
-            renderMessages();
         }
         window.blockUser = blockUser;
 
@@ -6792,6 +6901,7 @@
                         else if (status.status === 'sent') statusIcon = '✓';
                         else if (status.status === 'delivered') statusIcon = '✓';
                         else if (status.status === 'read') statusIcon = '✓✓';
+                        else if (status.status === 'failed') statusIcon = '⚠';
                         statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${statusIcon}</span></span>`;
                     }
                     
