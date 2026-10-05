@@ -4403,8 +4403,6 @@
                         const existingMsg = messages[chatId].find(m => m.id === msg.id);
                         if (!existingMsg) {
                             const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤', is_vip: false, is_admin: false };
-                            
-                            if (msg.sender_id !== currentUser.id && isUserBlocked(msg.sender_id)) return;
                         
                         messages[chatId].push({
                             id: msg.id,
@@ -6589,6 +6587,126 @@
         }
         window.updateBlockUI = updateBlockUI;
 
+        let failedMessageId = null;
+
+        function showFailedMessageMenu(messageId, event) {
+            if (event) { event.stopPropagation(); event.preventDefault(); }
+            failedMessageId = messageId;
+            
+            const existing = document.getElementById('failedMessageMenu');
+            if (existing) existing.remove();
+            
+            const menu = document.createElement('div');
+            menu.id = 'failedMessageMenu';
+            menu.style.cssText = 'position: fixed; background: rgba(20,20,30,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-radius: 12px; padding: 6px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.08); z-index: 10000; min-width: 180px;';
+            
+            const x = event ? event.clientX : window.innerWidth / 2;
+            const y = event ? event.clientY : window.innerHeight / 2;
+            menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+            menu.style.top = Math.min(y, window.innerHeight - 120) + 'px';
+            
+            menu.innerHTML = `
+                <button onclick="retryFailedMessage()" style="display:flex; align-items:center; gap:10px; width:100%; padding:10px 14px; background:transparent; border:none; color:var(--text-primary); font-size:14px; cursor:pointer; text-align:left; border-radius:8px; -webkit-tap-highlight-color: transparent;">
+                    🔄 Повторить ещё раз
+                </button>
+                <button onclick="deleteFailedMessage()" style="display:flex; align-items:center; gap:10px; width:100%; padding:10px 14px; background:transparent; border:none; color:#ff453a; font-size:14px; cursor:pointer; text-align:left; border-radius:8px; -webkit-tap-highlight-color: transparent;">
+                    🗑 Удалить
+                </button>
+            `;
+            document.body.appendChild(menu);
+            
+            setTimeout(() => {
+                document.addEventListener('click', closeFailedMessageMenu, { once: true });
+            }, 100);
+        }
+        window.showFailedMessageMenu = showFailedMessageMenu;
+
+        function closeFailedMessageMenu() {
+            const menu = document.getElementById('failedMessageMenu');
+            if (menu) menu.remove();
+            failedMessageId = null;
+        }
+        window.closeFailedMessageMenu = closeFailedMessageMenu;
+
+        async function retryFailedMessage() {
+            const messageId = failedMessageId;
+            closeFailedMessageMenu();
+            if (!messageId || !currentChat) return;
+            
+            const msg = messages[currentChat.id]?.find(m => m.id === messageId);
+            if (!msg) return;
+            
+            messageStatuses[messageId] = { status: 'pending' };
+            saveMessageStatuses();
+            renderMessages();
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                try {
+                    const { data: blockCheck } = await db.from('blocks')
+                        .select('id')
+                        .or(`and(blocker_id.eq.${currentUser.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${currentUser.id})`)
+                        .limit(1);
+                    if (blockCheck && blockCheck.length > 0) {
+                        messageStatuses[messageId] = { status: 'failed', reason: 'blocked' };
+                        saveMessageStatuses();
+                        renderMessages();
+                        return;
+                    }
+                } catch (e) { console.warn('[retry] block check error:', e); }
+            }
+            
+            try {
+                const { data, error } = await db.from('messages').insert([{
+                    chat_id: currentChat.id,
+                    sender_id: currentUser.id,
+                    text: msg.text || null,
+                    image: msg.image || null,
+                    audio: msg.audio || null,
+                    duration: msg.duration || null,
+                    is_admin: currentUser.is_admin,
+                    read_at: null,
+                    reply_to: msg.reply_to || null,
+                    forwarded_from: msg.forwarded_from || null,
+                    created_at: new Date().toISOString()
+                }]).select();
+                
+                if (error) throw error;
+                
+                if (data && data[0]) {
+                    messageStatuses[data[0].id] = { status: 'sent' };
+                    delete messageStatuses[messageId];
+                    const idx = messages[currentChat.id].findIndex(m => m.id === messageId);
+                    if (idx !== -1) {
+                        messages[currentChat.id][idx].id = data[0].id;
+                        messages[currentChat.id][idx].timestamp = new Date(data[0].created_at).getTime();
+                    }
+                    saveMessageStatuses();
+                    renderMessages();
+                    updateChatsList();
+                }
+            } catch (e) {
+                console.warn('[retry] failed again:', e);
+                messageStatuses[messageId] = { status: 'failed' };
+                saveMessageStatuses();
+                renderMessages();
+            }
+        }
+        window.retryFailedMessage = retryFailedMessage;
+
+        function deleteFailedMessage() {
+            const messageId = failedMessageId;
+            closeFailedMessageMenu();
+            if (!messageId || !currentChat) return;
+            
+            messages[currentChat.id] = messages[currentChat.id].filter(m => m.id !== messageId);
+            delete messageStatuses[messageId];
+            saveMessageStatuses();
+            renderMessages();
+            updateChatsList();
+        }
+        window.deleteFailedMessage = deleteFailedMessage;
+
         function showConfirmDialog(title, message, onConfirm, onCancel) {
             const existing = document.getElementById('customConfirmDialog');
             if (existing) existing.remove();
@@ -6901,7 +7019,7 @@
                         else if (status.status === 'sent') statusIcon = '✓';
                         else if (status.status === 'delivered') statusIcon = '✓';
                         else if (status.status === 'read') statusIcon = '✓✓';
-                        else if (status.status === 'failed') statusIcon = '⚠';
+                        else if (status.status === 'failed') statusIcon = '<span style="color: #ff453a; cursor: pointer; font-weight: 700;" onclick="event.stopPropagation(); showFailedMessageMenu(\'' + msg.id + '\', event);">!</span>';
                         statusHtml = `<span class="message-status"><span class="status-icon ${status.status}">${statusIcon}</span></span>`;
                     }
                     
