@@ -165,8 +165,13 @@
         }
 
         .message.in .message-bubble {
-            background-color: var(--message-in);
-            transition: background-color 0.3s ease;
+            background: rgba(55, 55, 70, calc(0.35 - 0.15 * var(--glass-intensity)));
+            backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.08 * var(--glass-intensity)));
+            transition: background 0.3s ease, backdrop-filter 0.3s ease;
         }
 
         /* Splash screen */
@@ -854,14 +859,14 @@
         }
 
         .message.out .message-bubble {
-            background: rgba(74, 140, 255, calc(1 - 0.5 * var(--glass-intensity)));
+            background: rgba(74, 140, 255, calc(0.35 + 0.65 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: #ffffff;
             border-bottom-right-radius: 4px;
             border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.3 * var(--glass-intensity)));
+            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.4 * var(--glass-intensity)));
         }
 
         .message.in .message-bubble {
@@ -897,25 +902,25 @@
 
         /* Sidebar header */
         .sidebar-header {
-            background: transparent;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             border-bottom: 1px solid var(--glass-border);
         }
 
         /* Tabs */
         .tabs {
-            background: transparent;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
             border-bottom: 1px solid var(--glass-border);
         }
 
         /* Search bar */
         .search-bar {
-            background: transparent;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
         }
 
         /* Input контейнер */
@@ -967,22 +972,22 @@
 
         /* Сообщения */
         .message.out .message-bubble {
-            background: rgba(74, 140, 255, calc(1 - 0.5 * var(--glass-intensity)));
+            background: rgba(74, 140, 255, calc(0.35 + 0.65 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: #ffffff;
             border-bottom-right-radius: 4px;
             border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.3 * var(--glass-intensity)));
+            text-shadow: 0 1px 2px rgba(0, 0, 0, calc(0.4 * var(--glass-intensity)));
         }
         .message.in .message-bubble {
-            background: rgba(60, 60, 75, calc(0.05 + 0.15 * var(--glass-intensity)));
+            background: rgba(55, 55, 70, calc(0.35 - 0.15 * var(--glass-intensity)));
             backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: var(--text-primary);
             border-bottom-left-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, calc(0.03 + 0.12 * var(--glass-intensity)));
+            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.08 * var(--glass-intensity)));
             transition: background 0.3s ease, backdrop-filter 0.3s ease;
         }
 
@@ -1896,7 +1901,85 @@
                 --glass-blur-input: 20px;
             }
         }
-    </style>
+
+        /* Skeleton loading */
+        .skeleton-chat {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            min-height: 72px;
+        }
+        .skeleton-avatar {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            flex-shrink: 0;
+        }
+        .skeleton-lines {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .skeleton-line {
+            height: 14px;
+            border-radius: 7px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.06) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        .skeleton-line.short {
+            width: 40%;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Empty chat animation */
+        .empty-chat-animation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .pulse-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid rgba(74, 140, 255, 0.5);
+            animation: pulse-out 2.5s ease-out infinite;
+        }
+        .pulse-ring.delay-1 { animation-delay: 0.8s; }
+        .pulse-ring.delay-2 { animation-delay: 1.6s; }
+        .pulse-center {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(74, 140, 255, 0.9);
+            box-shadow: 0 0 30px rgba(74, 140, 255, 0.8), 0 0 60px rgba(74, 140, 255, 0.4);
+            animation: pulse-glow 2s ease-in-out infinite alternate;
+        }
+        @keyframes pulse-out {
+            0% { transform: scale(0.4); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
+        @keyframes pulse-glow {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.2); }
+        }
+</style>
 </head>
 <body>
     <div class="splash-screen" id="splashScreen">Tok Web</div>
@@ -3298,14 +3381,19 @@
             isLoadingChats = true;
             const list = document.getElementById('chatsList');
             if (!list) return;
-            
-            let skeletonHTML = '<div class="chats-loading"><div class="spinner"></div><div class="chats-loading-text">Загрузка чатов...</div></div>';
-            skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 70%"></div><div class="skeleton-line short"></div></div></div>';
-            skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 50%"></div><div class="skeleton-line short"></div></div></div>';
-            skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 80%"></div><div class="skeleton-line short"></div></div></div>';
-            skeletonHTML += '<div class="skeleton-chat"><div class="skeleton-avatar"></div><div class="skeleton-lines"><div class="skeleton-line" style="width: 60%"></div><div class="skeleton-line short"></div></div></div>';
-            
-            list.innerHTML = skeletonHTML;
+
+            let html = '';
+            for (let i = 0; i < 7; i++) {
+                html += `
+                    <div class="skeleton-chat">
+                        <div class="skeleton-avatar"></div>
+                        <div class="skeleton-lines">
+                            <div class="skeleton-line" style="width: ${60 + Math.random() * 30}%;"></div>
+                            <div class="skeleton-line short"></div>
+                        </div>
+                    </div>`;
+            }
+            list.innerHTML = html;
         }
 
         function hideChatsLoading() {
@@ -6112,7 +6200,13 @@
             let newMessages = '';
             
             if (!currentChat) {
-                newMessages = '<div class="empty-state">👈 Выберите чат</div>';
+                newMessages = `
+                    <div class="empty-chat-animation">
+                        <div class="pulse-ring"></div>
+                        <div class="pulse-ring delay-1"></div>
+                        <div class="pulse-ring delay-2"></div>
+                        <div class="pulse-center"></div>
+                    </div>`;
             } else if (!messages[currentChat.id] || messages[currentChat.id].length === 0) {
                 newMessages = '<div class="empty-state">Нет сообщений</div>';
             } else {
@@ -7376,11 +7470,15 @@
                     <div class="chat-avatar" style="${avatarStyle} background-size: cover; background-position: center;">${avatarText}</div>
                     <div class="chat-details">
                         <div class="chat-name">
-                            <span class="status-dot ${statusClass}" style="width:8px; height:8px; flex-shrink:0; margin-right:4px;"></span>
+                            ${(chat.type === 'private' && chat.pair_key === `${currentUser.id}_${currentUser.id}`) 
+                                ? '<span class="pin-indicator" style="width:8px; height:8px; flex-shrink:0; margin-right:4px; display:inline-flex; align-items:center; justify-content:center; font-size:11px;">📌</span>' 
+                                : `<span class="status-dot ${statusClass}" style="width:8px; height:8px; flex-shrink:0; margin-right:4px;"></span>`}
                             ${escapeHtml(displayName)}
                             ${isPinned ? '<span class="pin-icon">📌</span>' : ''}
                             ${chat.is_public ? '<span class="lock-icon">🌐</span>' : '<span class="lock-icon">🔒</span>'}
-                            <button class="pin-chat-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinChat('${chat.id}', event)">📌</button>
+                            ${(chat.type === 'private' && chat.pair_key === `${currentUser.id}_${currentUser.id}`) 
+                                ? '' 
+                                : `<button class="pin-chat-btn ${isPinned ? 'pinned' : ''}" onclick="togglePinChat('${chat.id}', event)">📌</button>`}
                         </div>
                         <div class="chat-last-row">
                             ${lastMessageDate ? `<span class="chat-last-date">${escapeHtml(lastMessageDate)}</span>` : ''}
