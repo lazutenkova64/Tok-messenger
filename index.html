@@ -1585,39 +1585,29 @@
         .media-viewer {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: black;
-            z-index: 3000;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.98);
+            z-index: 99999;
             align-items: center;
             justify-content: center;
         }
-
-        .media-viewer.active {
-            display: flex;
-        }
-
+        .media-viewer.active { display: flex; }
         .media-viewer-content {
-            max-width: 100%;
-            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
         }
-
-        .media-viewer-content img,
-        .media-viewer-content video {
-            max-width: 100%;
-            max-height: 100dvh;
-            object-fit: contain;
-        }
-
         .media-viewer-close {
             position: absolute;
             top: calc(20px + var(--safe-top));
             right: calc(20px + var(--safe-right));
-            background: rgba(0, 0, 0, 0.5);
+            background: rgba(0,0,0,0.6);
             border: none;
-            color: white;
+            color: #fff;
             font-size: 40px;
             width: 60px;
             height: 60px;
@@ -1626,10 +1616,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            -webkit-tap-highlight-color: transparent;
-            z-index: 3001;
+            z-index: 100000;
         }
-
         .media-viewer-close:active {
             background: rgba(255, 255, 255, 0.2);
         }
@@ -3002,6 +2990,7 @@
         let mediaRecorder;
         let pendingImage = null;   // { dataUrl }
         let pendingAudio = null;   // { blob, duration, url }
+        let pendingForward = null; // { text, image, audio, duration, forwarded_from }
         let pendingAudioPreview = null;
         let pendingAudioPreviewInterval = null;
         let audioChunks = [];
@@ -5662,8 +5651,16 @@
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             if (!currentChat) { alert('Сначала выберите чат'); return; }
-            if (!text && !pendingImage && !pendingAudio) return;
+            if (!text && !pendingImage && !pendingAudio && !pendingForward) return;
             disableSendButton();
+
+            // Отправляем пересланное сообщение
+            if (pendingForward) {
+                const fw = pendingForward;
+                pendingForward = null;
+                renderAttachmentPreview();
+                await sendForwardAsMessage(fw);
+            }
 
             // Отправляем вложения
             if (pendingImage) {
@@ -6346,7 +6343,7 @@
         }
         window.closeForwardModal = closeForwardModal;
 
-        async function forwardMessageToChat(chatId) {
+        function forwardMessageToChat(chatId) {
             if (!messageToForward || !currentUser) return;
             const msg = messageToForward;
             closeForwardModal();
@@ -6356,70 +6353,107 @@
                 saveLocallyDeletedChats();
             }
             
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const timestamp = now.getTime();
-            
             let forwardedFrom = null;
             if (showForwardAuthor) {
                 forwardedFrom = msg.sender === currentUser.id ? currentUser.name : (msg.senderName || 'Пользователь');
             }
             
-            const dbMessage = {
-                chat_id: chatId,
-                sender_id: currentUser.id,
+            if (!currentChat || currentChat.id !== chatId) {
+                const targetChat = myChats.find(c => c.id === chatId) || publicChats.find(c => c.id === chatId);
+                if (targetChat) {
+                    joinChat(targetChat);
+                }
+            }
+            
+            pendingForward = {
                 text: msg.text || null,
                 image: msg.image || null,
                 audio: msg.audio || null,
                 duration: msg.duration || null,
+                forwarded_from: forwardedFrom
+            };
+            
+            if (pendingImage) clearPendingImage();
+            if (pendingAudio) clearPendingAudio();
+            if (replyToMessage) cancelReply();
+            if (editingMessage) cancelEditMessage();
+            
+            renderAttachmentPreview();
+            messageToForward = null;
+        }
+        window.forwardMessageToChat = forwardMessageToChat;
+
+        async function sendForwardAsMessage(fw) {
+            if (!currentChat) return;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timestamp = now.getTime();
+            const clientId = generateUUID();
+            
+            const localMessage = {
+                id: clientId,
+                chatId: currentChat.id,
+                sender: currentUser.id,
+                senderName: currentUser.name,
+                senderIsVip: currentUser.is_vip,
+                senderIsAdmin: currentUser.is_admin,
+                text: fw.text,
+                image: fw.image,
+                audio: fw.audio,
+                duration: fw.duration,
+                forwarded_from: fw.forwarded_from,
+                time: timeString,
+                timestamp: timestamp,
+                isAdmin: currentUser.is_admin,
+                edited: false,
+                type: 'out'
+            };
+            
+            if (!messages[currentChat.id]) messages[currentChat.id] = [];
+            messages[currentChat.id].push(localMessage);
+            messages[currentChat.id].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            messageStatuses[clientId] = { status: 'pending', sentAt: timestamp };
+            saveMessageStatuses();
+            renderMessages();
+            updateChatsList();
+            const c = document.getElementById('messagesContainer');
+            if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
+            
+            const dbMessage = {
+                chat_id: currentChat.id,
+                sender_id: currentUser.id,
+                text: fw.text || null,
+                image: fw.image || null,
+                audio: fw.audio || null,
+                duration: fw.duration || null,
                 is_admin: currentUser.is_admin,
                 read_at: null,
-                forwarded_from: forwardedFrom,
+                forwarded_from: fw.forwarded_from,
                 created_at: now.toISOString()
             };
             
             try {
                 const { data, error } = await db.from('messages').insert([dbMessage]).select();
                 if (error) {
-                    console.error('[forward] DB error:', error);
-                    alert('Не удалось переслать: ' + error.message);
-                    return;
-                }
-                if (data && data[0]) {
+                    console.warn('[forward] DB error:', error);
+                    if (!pendingMessages[currentUser.id]) pendingMessages[currentUser.id] = [];
+                    pendingMessages[currentUser.id].push({ ...dbMessage, tempId: clientId });
+                    localStorage.setItem('pendingMessages', JSON.stringify(pendingMessages));
+                } else if (data && data[0]) {
                     const realId = data[0].id;
-                    if (currentChat && currentChat.id === chatId) {
-                        if (!messages[chatId]) messages[chatId] = [];
-                        messages[chatId].push({
-                            id: realId,
-                            chatId: chatId,
-                            sender: currentUser.id,
-                            senderName: currentUser.name,
-                            senderIsVip: currentUser.is_vip,
-                            senderIsAdmin: currentUser.is_admin,
-                            text: dbMessage.text,
-                            image: dbMessage.image,
-                            audio: dbMessage.audio,
-                            duration: dbMessage.duration,
-                            forwarded_from: forwardedFrom,
-                            time: timeString,
-                            timestamp: timestamp,
-                            isAdmin: currentUser.is_admin,
-                            edited: false,
-                            type: 'out'
-                        });
-                        messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-                        renderMessages();
-                        const c = document.getElementById('messagesContainer');
-                        if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
-                    }
-                    updateChatsList();
+                    const idx = messages[currentChat.id].findIndex(m => m.id === clientId);
+                    if (idx !== -1) { messages[currentChat.id][idx].id = realId; messages[currentChat.id][idx]._status = 'sent'; }
+                    messageStatuses[realId] = { status: 'sent', sentAt: timestamp };
+                    delete messageStatuses[clientId];
+                    saveMessageStatuses();
+                    renderMessages();
                 }
             } catch (e) {
                 console.error('[forward] Exception:', e);
-                alert('Ошибка пересылки: ' + e.message);
             }
         }
-        window.forwardMessageToChat = forwardMessageToChat;
+        window.sendForwardAsMessage = sendForwardAsMessage;
 
         async function loadReactionsForChat(chatId) {
             if (!currentUser || !chatId) return;
@@ -6831,7 +6865,7 @@
                                 ${forwardHtml}
                                 ${replyHtml}
                                 <div class="image-container">
-                                    <img src="${msg.image}" class="message-image" onclick="openMedia('${msg.image}')" alt="Изображение">
+                                    <img src="${msg.image}" class="message-image" onclick="event.stopPropagation(); openMedia('${msg.image.replace(/'/g, "\\'")}')" alt="Изображение">
                                     <button class="image-download-btn" onclick="downloadImage('${msg.image}', event)" title="Скачать">⬇️</button>
                                 </div>
                             </div>
@@ -6925,6 +6959,9 @@
                 let touchStartX = 0, touchStartY = 0;
                 
                 el.addEventListener('touchstart', (e) => {
+                    const target = e.target;
+                    if (target.tagName === 'IMG' && target.classList.contains('message-image')) return;
+                    
                     const touch = e.touches[0];
                     touchStartX = touch.clientX;
                     touchStartY = touch.clientY;
@@ -7855,20 +7892,27 @@
                 });
                 
                 items = [...filteredChats].sort((a, b) => {
+                    // 1. Избранное всегда первое
                     const aIsSaved = a.type === 'private' && a.pair_key === `${currentUser.id}_${currentUser.id}`;
                     const bIsSaved = b.type === 'private' && b.pair_key === `${currentUser.id}_${currentUser.id}`;
                     if (aIsSaved && !bIsSaved) return -1;
                     if (!aIsSaved && bIsSaved) return 1;
                     
+                    // 2. Закреплённые
                     const aPinned = isChatPinned(a.id);
                     const bPinned = isChatPinned(b.id);
                     if (aPinned && !bPinned) return -1;
                     if (!aPinned && bPinned) return 1;
                     
+                    // 3. По последнему СООБЩЕНИЮ (не по дате чата!)
                     const aMsgs = messages[a.id];
                     const bMsgs = messages[b.id];
-                    const aLast = aMsgs && aMsgs.length > 0 ? aMsgs[aMsgs.length - 1].timestamp : new Date(a.created_at).getTime();
-                    const bLast = bMsgs && bMsgs.length > 0 ? bMsgs[bMsgs.length - 1].timestamp : new Date(b.created_at).getTime();
+                    const aLast = aMsgs && aMsgs.length > 0 
+                        ? Math.max(...aMsgs.map(m => m.timestamp || 0)) 
+                        : (a.created_at ? new Date(a.created_at).getTime() : 0);
+                    const bLast = bMsgs && bMsgs.length > 0 
+                        ? Math.max(...bMsgs.map(m => m.timestamp || 0)) 
+                        : (b.created_at ? new Date(b.created_at).getTime() : 0);
                     return bLast - aLast;
                 });
             } else if (currentTab === 'public') {
@@ -9000,7 +9044,7 @@
             const sendBtn = document.getElementById('sendBtn');
             if (!sendBtn) return;
             const text = document.getElementById('messageInput')?.value.trim();
-            if (text || pendingImage || pendingAudio) {
+            if (text || pendingImage || pendingAudio || pendingForward) {
                 sendBtn.classList.remove('disabled');
                 sendBtn.style.opacity = '1';
                 sendBtn.style.pointerEvents = 'auto';
@@ -9080,20 +9124,52 @@
         }
 
         function openMedia(url) {
+            if (!url) return;
             const viewer = document.getElementById('mediaViewer');
             const content = document.getElementById('mediaViewerContent');
-            if (url.match(/\.(mp4|webm|ogg)$/i) || url.includes('video')) {
-                content.innerHTML = `<video src="${url}" controls autoplay></video>`;
+            if (!viewer || !content) return;
+            
+            content.innerHTML = '';
+            const isVideo = /\.(mp4|webm|ogg)(\?|$)/i.test(url) || url.startsWith('data:video');
+            
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                video.autoplay = true;
+                video.playsInline = true;
+                video.style.maxWidth = '100%';
+                video.style.maxHeight = '100dvh';
+                video.style.objectFit = 'contain';
+                content.appendChild(video);
             } else {
-                content.innerHTML = `<img src="${url}" style="max-width: 100%; max-height: 100%;">`;
+                const img = document.createElement('img');
+                img.src = url;
+                img.style.maxWidth = '100%';
+                img.style.maxHeight = '100dvh';
+                img.style.width = 'auto';
+                img.style.height = 'auto';
+                img.style.objectFit = 'contain';
+                img.style.display = 'block';
+                img.style.margin = 'auto';
+                img.style.cursor = 'zoom-out';
+                img.onclick = closeMediaViewer;
+                content.appendChild(img);
             }
+            
             viewer.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
+        window.openMedia = openMedia;
 
         function closeMediaViewer() {
-            document.getElementById('mediaViewer').classList.remove('active');
-            document.getElementById('mediaViewerContent').innerHTML = '';
+            const viewer = document.getElementById('mediaViewer');
+            if (viewer) viewer.classList.remove('active');
+            const content = document.getElementById('mediaViewerContent');
+            if (content) content.innerHTML = '';
+            document.body.style.overflow = '';
         }
+        window.closeMediaViewer = closeMediaViewer;
 
         function updateBackButtonVisibility() {
             const backButton = document.getElementById('backButton');
@@ -9258,6 +9334,26 @@
                         <button type="button" onclick="clearPendingAudio()" style="width:24px; height:24px; border-radius:50%; background:rgba(255,255,255,0.1); color:#fff; border:none; cursor:pointer; font-size:14px; line-height:1; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✕</button>
                     </div>`;
             }
+            if (pendingForward) {
+                const fw = pendingForward;
+                let previewContent = '';
+                if (fw.image) {
+                    previewContent = `<img src="${fw.image}" style="max-height:70px; max-width:100px; border-radius:8px; object-fit:cover; display:block;">`;
+                } else if (fw.audio) {
+                    previewContent = `<div style="padding:8px 12px; background:var(--bg-input); border-radius:14px; display:flex; align-items:center; gap:8px;"><span style="font-size:18px;">🎤</span><span style="font-size:13px; color:var(--text-secondary);">Голосовое ${formatTime(fw.duration || 0)}</span></div>`;
+                } else if (fw.text) {
+                    previewContent = `<div style="padding:8px 12px; background:var(--bg-input); border-radius:14px; max-width:200px; font-size:13px; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(fw.text)}</div>`;
+                }
+                
+                const authorLabel = fw.forwarded_from ? `↗️ Переслано от ${escapeHtml(fw.forwarded_from)}` : '↗️ Пересланное';
+                
+                html += `
+                    <div style="position:relative; display:inline-flex; flex-direction:column; gap:4px; padding:8px; background:rgba(0,122,255,0.1); border-left:3px solid var(--accent-blue); border-radius:8px; margin-right:8px;">
+                        <div style="font-size:11px; color:var(--accent-blue); font-weight:600;">${authorLabel}</div>
+                        ${previewContent}
+                        <button onclick="clearPendingForward()" style="position:absolute; top:-8px; right:-8px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.7); color:#fff; border:none; cursor:pointer; font-size:16px; line-height:1;">×</button>
+                    </div>`;
+            }
             if (html) {
                 box.innerHTML = html;
                 box.style.display = 'block';
@@ -9269,6 +9365,13 @@
         }
 
         function clearPendingImage() { pendingImage = null; renderAttachmentPreview(); updateSendButtonState(); }
+
+        function clearPendingForward() {
+            pendingForward = null;
+            renderAttachmentPreview();
+            updateSendButtonState();
+        }
+        window.clearPendingForward = clearPendingForward;
 
         function togglePendingAudioPreview() {
             if (!pendingAudio || !pendingAudio.url) return;
