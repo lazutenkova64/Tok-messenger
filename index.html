@@ -2532,6 +2532,20 @@
             transform: scale(1.08);
             background: rgba(0, 122, 255, 0.3) !important;
         }
+
+        .reactions-row {
+            position: relative;
+            z-index: 5;
+        }
+        .message.out .reactions-row {
+            justify-content: flex-end;
+            margin-top: -6px !important;
+            padding-right: 8px;
+        }
+        .message.in .reactions-row {
+            margin-top: -6px !important;
+            padding-left: 6px;
+        }
     </style>
 </head>
 <body>
@@ -6454,7 +6468,7 @@
                 });
                 let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
                 if (emojiList.length > 3) emojiList = emojiList.slice(-3);
-                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:-4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:1;">';
+                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:2px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:5;">';
                 emojiList.forEach((emoji) => {
                     const g = grouped[emoji];
                     const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
@@ -6832,7 +6846,7 @@
                         let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
                         if (emojiList.length > 3) emojiList = emojiList.slice(-3);
                         
-                        reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:-4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:1;">`;
+                        reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:2px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:5;">`;
                         emojiList.forEach((emoji) => {
                             const g = grouped[emoji];
                             const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
