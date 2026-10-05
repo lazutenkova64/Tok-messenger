@@ -49,7 +49,7 @@
             --accent-red: #ff453a;
             --accent-orange: #ff9500;
             --accent-pink: #ff2d55;
-            --message-out: linear-gradient(135deg, #4a8cff 0%, #3a6fe6 100%);
+            --message-out: #4a8cff;
             --message-in: rgba(255, 255, 255, 0.06);
             --border-color: rgba(255, 255, 255, 0.08);
             --border-light: rgba(255, 255, 255, 0.04);
@@ -157,7 +157,7 @@
         }
 
         .chat-item.active {
-            background-color: var(--bg-tertiary);
+            background-color: rgba(74, 140, 255, 0.15);
         }
 
         .chat-item:hover {
@@ -193,12 +193,12 @@
             top: 0;
             bottom: 0;
             width: 100%;
-            background-color: var(--glass-bg-2) !important;
-            backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
-            -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
+            background: rgba(15, 15, 25, calc(0.3 + 0.4 * var(--glass-intensity))) !important;
+            backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
+            -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
             z-index: 1000;
             transform: translateX(-100%);
-            transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), background-color 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), background 0.3s ease, backdrop-filter 0.3s ease;
             display: flex;
             flex-direction: column;
             box-shadow: none;
@@ -222,9 +222,9 @@
                 width: 360px;
                 max-width: 360px;
                 border-right: 1px solid var(--glass-border);
-                background-color: var(--glass-bg-2) !important;
-                backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
-                -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) !important;
+                background: rgba(15, 15, 25, calc(0.3 + 0.4 * var(--glass-intensity))) !important;
+                backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
+                -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
                 padding: 0;
             }
         }
@@ -471,7 +471,7 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            background-color: var(--bg-color);
+            background: transparent !important;
             padding: 4px 0;
             min-height: 0;
             overscroll-behavior: contain;
@@ -496,7 +496,7 @@
         }
 
         .chat-item.active {
-            background-color: var(--bg-tertiary);
+            background-color: rgba(74, 140, 255, 0.15);
         }
 
         .chat-avatar {
@@ -843,9 +843,17 @@
         }
 
         .message.out .message-bubble {
-            background-color: var(--message-out);
+            background: linear-gradient(
+                135deg,
+                rgba(74, 140, 255, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 0%,
+                rgba(58, 111, 230, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 100%
+            );
+            backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
             color: white;
             border-bottom-right-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            transition: background 0.3s ease, backdrop-filter 0.3s ease;
         }
 
         .message.in .message-bubble {
@@ -866,12 +874,12 @@
 
         /* Sidebar */
         .sidebar {
-            background: rgba(15, 15, 25, calc(0.15 + 0.4 * var(--glass-intensity))) !important;
+            background: rgba(15, 15, 25, calc(0.3 + 0.4 * var(--glass-intensity))) !important;
             backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
             -webkit-backdrop-filter: blur(calc(var(--glass-blur-sidebar) * var(--glass-intensity))) saturate(1.6) !important;
             border-right: 1px solid var(--glass-border-strong);
             box-shadow: 0 1px 0 var(--glass-highlight) inset;
-            transition: backdrop-filter 0.3s ease;
+            transition: backdrop-filter 0.3s ease, background 0.3s ease;
         }
         @media (min-width: 769px) {
             .sidebar {
@@ -949,15 +957,26 @@
 
         /* Сообщения */
         .message.out .message-bubble {
-            background: var(--message-out);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: var(--shadow-sm);
+            background: linear-gradient(
+                135deg,
+                rgba(74, 140, 255, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 0%,
+                rgba(58, 111, 230, calc(0.45 + 0.55 * (1 - var(--glass-intensity)))) 100%
+            );
+            backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            color: white;
+            border-bottom-right-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            transition: background 0.3s ease, backdrop-filter 0.3s ease;
         }
         .message.in .message-bubble {
-            background: var(--message-in);
-            border: 1px solid var(--glass-border);
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
+            background: rgba(255, 255, 255, calc(0.05 + 0.15 * var(--glass-intensity)));
+            backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            -webkit-backdrop-filter: blur(calc(14px * var(--glass-intensity)));
+            color: var(--text-primary);
+            border-bottom-left-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, calc(0.03 + 0.12 * var(--glass-intensity)));
+            transition: background 0.3s ease, backdrop-filter 0.3s ease;
         }
 
         /* Непрочитанные */
