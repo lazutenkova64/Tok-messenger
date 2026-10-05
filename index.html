@@ -6472,21 +6472,12 @@
                     const canDelete = currentUser.is_admin || msg.sender == currentUser.id;
                     const canEdit = msg.sender == currentUser.id && msg.text;
                     
-                    let actions = `
-                        <div class="message-actions" data-message-id="${msg.id}">
-                            <button class="message-action-btn" onclick="setReplyTo('${msg.id}'); event.stopPropagation();">↩️</button>
-                            ${canEdit ? `<button class="message-action-btn" onclick="editMessage('${msg.id}', event)">✏️</button>` : ''}
-                            ${canDelete ? `<button class="message-action-btn delete" onclick="deleteMessage('${msg.id}', event)">🗑️</button>` : ''}
-                        </div>
-                    `;
-                    
                     let senderDisplay = escapeHtml(msg.senderName);
                     if (msg.senderIsVip) senderDisplay += ' 👑';
                     if (msg.senderIsAdmin) senderDisplay += ' ⚡';
                     
                     fragment.push(`
-                        <div class="message ${msg.type}" data-id="${msg.id}" onclick="showMessageActions('${msg.id}', event)" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
-                            ${actions}
+                        <div class="message ${msg.type}" data-id="${msg.id}" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
                             ${content}
                             <div class="message-footer">
