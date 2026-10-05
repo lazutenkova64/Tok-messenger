@@ -1942,9 +1942,9 @@
 
         .user-profile-menu {
             position: absolute;
-            top: 46px;
-            right: 4px;
-            background: rgba(20, 20, 30, 0.9);
+            top: 50px;
+            left: 12px;
+            background: rgba(20, 20, 30, 0.95);
             backdrop-filter: blur(calc(20px * var(--glass-intensity)));
             -webkit-backdrop-filter: blur(calc(20px * var(--glass-intensity)));
             border-radius: 16px;
@@ -1957,6 +1957,31 @@
         }
         .user-profile-menu.visible {
             display: block;
+        }
+        .user-profile-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 14px;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 15px;
+            cursor: pointer;
+            text-align: left;
+            border-radius: 8px;
+            transition: background 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .user-profile-menu button:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        .user-profile-menu button.danger {
+            color: var(--accent-red);
+        }
+        .user-profile-menu button.danger:hover {
+            background: rgba(255, 69, 58, 0.15);
         }
 
         .message-bubble {
@@ -2385,12 +2410,13 @@
 
     <div class="modal" id="userProfileModal">
         <div class="modal-content" style="position: relative;">
-            <button class="close-btn" onclick="closeUserProfileModal()">×</button>
-            <div class="user-profile-header">
-                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)">⋯</button>
-                <div class="user-profile-menu" id="userProfileMenu">
-                    <button class="danger" onclick="openDeleteChatConfirm()">🗑️ Удалить чат</button>
-                </div>
+            <div class="user-profile-header" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 0 4px; margin-bottom: -30px;">
+                <button class="user-profile-menu-btn" onclick="toggleUserProfileMenu(event)" style="position: relative; z-index: 11;">⋯</button>
+                <button class="close-btn" onclick="closeUserProfileModal()" style="position: relative; z-index: 11;">×</button>
+            </div>
+            <div class="user-profile-menu" id="userProfileMenu">
+                <button onclick="blockUser()" id="blockUserBtn" style="display:flex; align-items:center; gap:8px;">🚫 <span id="blockUserBtnText">Заблокировать</span></button>
+                <button class="danger" onclick="openDeleteChatConfirm()">🗑️ Удалить чат</button>
             </div>
             <div class="user-profile" id="userProfileContent"></div>
         </div>
@@ -2640,6 +2666,8 @@
         let chatSearchTerm = '';
         let chatSearchMatches = [];
         let chatSearchCurrentIndex = 0;
+        let blockedUsers = [];
+        let blockedByUsers = [];
 
         let notifications = {};
         let incomingMessageSound = null;
@@ -3698,6 +3726,7 @@
                         updateProfileUI();
                         
                         await loadAllUsers();
+                        await loadBlocks();
                         await loadUserChats();
                         await loadAllMessages();
                         
@@ -3880,6 +3909,7 @@
                 updateProfileUI();
                 
                 await loadAllUsers();
+                await loadBlocks();
                 await loadUserChats();
                 await loadAllMessages();
                 
@@ -4652,6 +4682,13 @@
                         username: 'Неизвестно', avatar: '👤'
                     };
 
+                    if (newMsg.sender_id !== currentUser.id) {
+                        if (isUserBlocked(newMsg.sender_id)) {
+                            console.log('[block] message from blocked user, ignored');
+                            return;
+                        }
+                    }
+
                     messages[chatId].push({
                         id: newMsg.id,
                         chatId: newMsg.chat_id,
@@ -4934,6 +4971,7 @@
             subscribeToTypingChannel(chat.id);
             loadReactionsForChat(chat.id);
             subscribeToReactions(chat.id);
+            if (typeof updateBlockUI === 'function') updateBlockUI();
             
             if (chat.is_public) {
                 (async () => {
@@ -5340,6 +5378,15 @@
             const text = input.value.trim();
             if (!currentChat) { alert('Сначала выберите чат'); return; }
             if (!text && !pendingImage && !pendingAudio && !pendingForward) return;
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    alert('Нельзя отправить сообщение: пользователь заблокирован');
+                    return;
+                }
+            }
+            
             disableSendButton();
 
             // Отправляем пересланное сообщение
@@ -5491,10 +5538,17 @@
                 alert('Сначала выберите чат');
                 return;
             }
-            // Если чат был удалён «у себя», при отправке — возвращаем его в список
             if (locallyDeletedChats.has(currentChat.id)) {
                 locallyDeletedChats.delete(currentChat.id);
                 saveLocallyDeletedChats();
+            }
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    alert('Нельзя отправить сообщение: пользователь заблокирован');
+                    return;
+                }
             }
 
             const now = new Date();
@@ -5596,10 +5650,17 @@
                 alert('Сначала выберите чат');
                 return;
             }
-            // Если чат был удалён «у себя», при отправке — возвращаем его в список
             if (locallyDeletedChats.has(currentChat.id)) {
                 locallyDeletedChats.delete(currentChat.id);
                 saveLocallyDeletedChats();
+            }
+            
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    alert('Нельзя отправить сообщение: пользователь заблокирован');
+                    return;
+                }
             }
 
             const now = new Date();
@@ -6087,6 +6148,14 @@
         async function sendForwardAsMessage(fw) {
             if (!currentChat) return;
             
+            if (currentChat.type === 'private' && currentChat.pair_key !== `${currentUser.id}_${currentUser.id}`) {
+                const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                if (otherId && isUserBlocked(otherId)) {
+                    alert('Нельзя отправить сообщение: пользователь заблокирован');
+                    return;
+                }
+            }
+            
             const now = new Date();
             const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const timestamp = now.getTime();
@@ -6316,6 +6385,69 @@
             }
         }
         window.toggleReaction = toggleReaction;
+
+        async function loadBlocks() {
+            if (!currentUser) return;
+            try {
+                const { data: myBlocks } = await db.from('blocks').select('blocked_id').eq('blocker_id', currentUser.id);
+                blockedUsers = (myBlocks || []).map(b => b.blocked_id);
+                
+                const { data: theirBlocks } = await db.from('blocks').select('blocker_id').eq('blocked_id', currentUser.id);
+                blockedByUsers = (theirBlocks || []).map(b => b.blocker_id);
+            } catch (e) { console.warn('[blocks] load error:', e); }
+        }
+        window.loadBlocks = loadBlocks;
+
+        function isUserBlocked(userId) {
+            return blockedUsers.includes(userId) || blockedByUsers.includes(userId);
+        }
+        window.isUserBlocked = isUserBlocked;
+
+        async function blockUser() {
+            if (!currentChat || !currentUser) return;
+            if (currentChat.type !== 'private') { alert('Можно блокировать только в личных чатах'); return; }
+            const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+            if (!otherId) return;
+            if (otherId === currentUser.id) { alert('Нельзя заблокировать себя'); return; }
+            
+            const isBlocked = blockedUsers.includes(otherId);
+            
+            if (isBlocked) {
+                try {
+                    await db.from('blocks').delete().eq('blocker_id', currentUser.id).eq('blocked_id', otherId);
+                    blockedUsers = blockedUsers.filter(id => id !== otherId);
+                    alert('Пользователь разблокирован');
+                } catch (e) { alert('Не удалось разблокировать: ' + e.message); }
+            } else {
+                if (!confirm('Заблокировать этого пользователя? Вы не сможете обмениваться сообщениями.')) return;
+                try {
+                    await db.from('blocks').insert([{ blocker_id: currentUser.id, blocked_id: otherId }]);
+                    blockedUsers.push(otherId);
+                    alert('Пользователь заблокирован');
+                } catch (e) { alert('Не удалось заблокировать: ' + e.message); }
+            }
+            
+            updateBlockUI();
+            renderMessages();
+        }
+        window.blockUser = blockUser;
+
+        function updateBlockUI() {
+            if (!currentChat || currentChat.type !== 'private') return;
+            if (currentChat.pair_key === `${currentUser.id}_${currentUser.id}`) return;
+            const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+            if (!otherId) return;
+            
+            const btn = document.getElementById('blockUserBtn');
+            if (!btn) return;
+            
+            if (blockedUsers.includes(otherId)) {
+                btn.innerHTML = '✅ <span id="blockUserBtnText">Разблокировать</span>';
+            } else {
+                btn.innerHTML = '🚫 <span id="blockUserBtnText">Заблокировать</span>';
+            }
+        }
+        window.updateBlockUI = updateBlockUI;
 
         async function saveEditedMessage() {
             if (!editingMessage || !currentChat) return;
@@ -8713,6 +8845,7 @@
             
             document.getElementById('userProfileContent').innerHTML = content;
             document.getElementById('userProfileModal').classList.add('active');
+            if (typeof updateBlockUI === 'function') updateBlockUI();
         }
 
         function closeUserProfileModal() {
