@@ -2553,19 +2553,30 @@
 
         /* Блокировка выделения текста на сообщениях */
         .message {
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
-            -webkit-touch-callout: none;
+            -webkit-user-select: none !important;
+            -moz-user-select: none !important;
+            -ms-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
             -webkit-tap-highlight-color: transparent;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .message * {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
         .message-bubble {
-            -webkit-user-select: none;
-            user-select: none;
+            -webkit-user-select: none !important;
+            user-select: none !important;
         }
-        input, textarea {
+        .message.pressing {
+            transform: scale(0.96);
+            opacity: 0.85;
+        }
+        input, textarea, [contenteditable="true"] {
             -webkit-user-select: text !important;
+            -moz-user-select: text !important;
             user-select: text !important;
         }
     </style>
@@ -6897,9 +6908,8 @@
                     
                     fragment.push(`
                         <div class="message ${msg.type}" data-id="${msg.id}" 
-                             oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;"
                              onselectstart="return false;"
-                             onmousedown="return false;">
+                             ondragstart="return false;">
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
                             ${content}
                             ${reactionsHtml}
@@ -6920,30 +6930,44 @@
             container.querySelectorAll('.message').forEach(el => {
                 let touchTimer = null;
                 let touchStartX = 0, touchStartY = 0;
-                let touchMoved = false;
+                
                 el.addEventListener('touchstart', (e) => {
                     const touch = e.touches[0];
                     touchStartX = touch.clientX;
                     touchStartY = touch.clientY;
-                    touchMoved = false;
+                    
+                    el.classList.add('pressing');
+                    
                     touchTimer = setTimeout(() => {
                         if (navigator.vibrate) try { navigator.vibrate(30); } catch (err) {}
                         openContextMenu(el.dataset.id, touchStartX, touchStartY);
+                        el.classList.remove('pressing');
                         touchTimer = null;
-                    }, 1000);
+                    }, 600);
                 }, { passive: true });
+                
                 el.addEventListener('touchmove', (e) => {
                     const touch = e.touches[0];
                     if (Math.abs(touch.clientX - touchStartX) > 10 || Math.abs(touch.clientY - touchStartY) > 10) {
-                        touchMoved = true;
                         if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                        el.classList.remove('pressing');
                     }
                 }, { passive: true });
+                
                 el.addEventListener('touchend', (e) => {
                     if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                    el.classList.remove('pressing');
                 }, { passive: true });
+                
+                el.addEventListener('touchcancel', (e) => {
+                    if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+                    el.classList.remove('pressing');
+                }, { passive: true });
+                
                 el.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
+                    const rect = el.getBoundingClientRect();
+                    openContextMenu(el.dataset.id, e.clientX || (rect.left + rect.width / 2), e.clientY || (rect.top + rect.height / 2));
                     return false;
                 });
             });
