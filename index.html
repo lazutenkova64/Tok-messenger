@@ -2935,7 +2935,9 @@
         let unreadCounts = {};
         let currentTab = 'chats';
         let messageToEdit = null;
+        let messageToForward = null;
         let activeMessageId = null;
+        let showForwardAuthor = localStorage.getItem('showForwardAuthor') !== 'false';
         let messageStatuses = {};
         let deletedMessages = {};
         let pinnedChats = [];
@@ -4557,7 +4559,8 @@
                                 edited: msg.edited || false,
                                 readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
                                 type: msg.sender_id === currentUser.id ? 'out' : 'in',
-                                reply_to: msg.reply_to || null
+                                reply_to: msg.reply_to || null,
+                                forwarded_from: msg.forwarded_from || null
                             });
                             
                             if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
@@ -4648,7 +4651,8 @@
                             edited: msg.edited || false,
                             readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
                             type: msg.sender_id === currentUser.id ? 'out' : 'in',
-                            reply_to: msg.reply_to || null
+                            reply_to: msg.reply_to || null,
+                            forwarded_from: msg.forwarded_from || null
                         });
                         
                         if (msg.sender_id === currentUser.id && !messageStatuses[msg.id]) {
@@ -4969,7 +4973,8 @@
                         isAdmin: newMsg.is_admin || false,
                         edited: newMsg.edited || false,
                         type: 'in',
-                        reply_to: newMsg.reply_to || null
+                        reply_to: newMsg.reply_to || null,
+                        forwarded_from: newMsg.forwarded_from || null
                     });
                     messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
 
@@ -6172,12 +6177,181 @@
                 editMessage(messageId);
             } else if (action === 'delete') {
                 deleteMessage(messageId);
+            } else if (action === 'forward') {
+                openForwardModal(messageId);
             } else if (action === 'reaction') {
                 alert('Реакции: ' + extra + ' (скоро)');
             }
         }
         window.ctxAction = ctxAction;
         window.closeContextMenu = closeContextMenu;
+
+        function toggleForwardAuthor() {
+            showForwardAuthor = !showForwardAuthor;
+            localStorage.setItem('showForwardAuthor', showForwardAuthor ? 'true' : 'false');
+            updateForwardAuthorSetting();
+        }
+        window.toggleForwardAuthor = toggleForwardAuthor;
+
+        function updateForwardAuthorSetting() {
+            const el = document.getElementById('forwardAuthorToggle');
+            if (el) el.checked = showForwardAuthor;
+        }
+        window.updateForwardAuthorSetting = updateForwardAuthorSetting;
+
+        function openForwardModal(messageId) {
+            if (!currentChat || !currentUser) return;
+            const msg = messages[currentChat.id]?.find(m => m.id === messageId);
+            if (!msg) return;
+            
+            messageToForward = msg;
+            closeContextMenu();
+            
+            const modal = document.getElementById('forwardModal');
+            const list = document.getElementById('forwardChatList');
+            const searchInput = document.getElementById('forwardSearchInput');
+            const toggle = document.getElementById('forwardAuthorToggle');
+            
+            if (toggle) toggle.checked = showForwardAuthor;
+            if (searchInput) searchInput.value = '';
+            if (list) {
+                list.innerHTML = '';
+                const chats = myChats.filter(c => !(c.type === 'private' && c.pair_key === `${currentUser.id}_${currentUser.id}`));
+                if (chats.length === 0) {
+                    list.innerHTML = '<div class="empty-state">Нет доступных чатов</div>';
+                } else {
+                    chats.forEach(chat => {
+                        const div = document.createElement('div');
+                        div.className = 'chat-item';
+                        div.style.cursor = 'pointer';
+                        div.style.padding = '10px 14px';
+                        div.style.borderRadius = '12px';
+                        div.style.marginBottom = '4px';
+                        div.dataset.chatId = chat.id;
+                        
+                        let displayName = chat.name;
+                        let avatar = chat.avatar || '👥';
+                        if (chat.type === 'private') {
+                            const otherId = chat.pair_key.split('_').find(id => id !== currentUser.id);
+                            const otherUser = allUsers.find(u => u.id === otherId);
+                            if (otherUser) { displayName = otherUser.username; avatar = otherUser.avatar || '👤'; }
+                        }
+                        const safeAvatar = window.normalizeAvatar(avatar, displayName);
+                        const avatarIsUrl = window.isAvatarUrl(safeAvatar);
+                        const avatarHtml = avatarIsUrl
+                            ? `<div class="chat-avatar" style="background-image: url('${safeAvatar}'); background-size: cover; width: 40px; height: 40px;"></div>`
+                            : `<div class="chat-avatar" style="width: 40px; height: 40px; font-size: 18px;">${safeAvatar || '👥'}</div>`;
+                        
+                        div.innerHTML = `
+                            ${avatarHtml}
+                            <div class="chat-details">
+                                <div class="chat-name" style="font-size: 15px;">${escapeHtml(displayName)}</div>
+                            </div>
+                        `;
+                        div.onclick = () => forwardMessageToChat(chat.id);
+                        list.appendChild(div);
+                    });
+                }
+            }
+            
+            modal.classList.add('active');
+        }
+        window.openForwardModal = openForwardModal;
+
+        function filterForwardChats() {
+            const input = document.getElementById('forwardSearchInput');
+            const term = (input ? input.value : '').toLowerCase().trim();
+            const list = document.getElementById('forwardChatList');
+            if (!list) return;
+            const items = list.querySelectorAll('.chat-item');
+            items.forEach(item => {
+                const name = (item.querySelector('.chat-name')?.textContent || '').toLowerCase();
+                item.style.display = name.includes(term) ? 'flex' : 'none';
+            });
+        }
+        window.filterForwardChats = filterForwardChats;
+
+        function closeForwardModal() {
+            const modal = document.getElementById('forwardModal');
+            if (modal) modal.classList.remove('active');
+            messageToForward = null;
+        }
+        window.closeForwardModal = closeForwardModal;
+
+        async function forwardMessageToChat(chatId) {
+            if (!messageToForward || !currentUser) return;
+            const msg = messageToForward;
+            closeForwardModal();
+            
+            if (locallyDeletedChats.has(chatId)) {
+                locallyDeletedChats.delete(chatId);
+                saveLocallyDeletedChats();
+            }
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timestamp = now.getTime();
+            
+            let forwardedFrom = null;
+            if (showForwardAuthor) {
+                forwardedFrom = msg.sender === currentUser.id ? currentUser.name : (msg.senderName || 'Пользователь');
+            }
+            
+            const dbMessage = {
+                chat_id: chatId,
+                sender_id: currentUser.id,
+                text: msg.text || null,
+                image: msg.image || null,
+                audio: msg.audio || null,
+                duration: msg.duration || null,
+                is_admin: currentUser.is_admin,
+                read_at: null,
+                forwarded_from: forwardedFrom,
+                created_at: now.toISOString()
+            };
+            
+            try {
+                const { data, error } = await db.from('messages').insert([dbMessage]).select();
+                if (error) {
+                    console.error('[forward] DB error:', error);
+                    alert('Не удалось переслать: ' + error.message);
+                    return;
+                }
+                if (data && data[0]) {
+                    const realId = data[0].id;
+                    if (currentChat && currentChat.id === chatId) {
+                        if (!messages[chatId]) messages[chatId] = [];
+                        messages[chatId].push({
+                            id: realId,
+                            chatId: chatId,
+                            sender: currentUser.id,
+                            senderName: currentUser.name,
+                            senderIsVip: currentUser.is_vip,
+                            senderIsAdmin: currentUser.is_admin,
+                            text: dbMessage.text,
+                            image: dbMessage.image,
+                            audio: dbMessage.audio,
+                            duration: dbMessage.duration,
+                            forwarded_from: forwardedFrom,
+                            time: timeString,
+                            timestamp: timestamp,
+                            isAdmin: currentUser.is_admin,
+                            edited: false,
+                            type: 'out'
+                        });
+                        messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+                        renderMessages();
+                        const c = document.getElementById('messagesContainer');
+                        if (c) { c.style.scrollBehavior = 'auto'; c.scrollTop = c.scrollHeight; }
+                    }
+                    updateChatsList();
+                }
+            } catch (e) {
+                console.error('[forward] Exception:', e);
+                alert('Ошибка пересылки: ' + e.message);
+            }
+        }
+        window.forwardMessageToChat = forwardMessageToChat;
 
         async function saveEditedMessage() {
             if (!editingMessage || !currentChat) return;
@@ -6409,6 +6583,15 @@
                         }
                     }
                     
+                    let forwardHtml = '';
+                    if (msg.forwarded_from) {
+                        const authorText = showForwardAuthor ? `Переслано от ${escapeHtml(msg.forwarded_from)}` : 'Пересланное сообщение';
+                        forwardHtml = `
+                            <div style="font-size: 12px; color: var(--text-secondary); font-style: italic; margin-bottom: 4px; opacity: 0.85;">
+                                ↗️ ${authorText}
+                            </div>`;
+                    }
+                    
                     let content = '';
                     let statusHtml = '';
                     
@@ -6434,11 +6617,12 @@
                                 displayText = displayText.replace(regex, '<mark style="' + markStyle + '">$1</mark>');
                             }
                         }
-                        content = `<div class="message-bubble">${replyHtml}${displayText}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
+                        content = `<div class="message-bubble">${forwardHtml}${replyHtml}${displayText}${msg.edited ? ' <span style="font-size: 10px; opacity: 0.7;">(ред.)</span>' : ''}</div>`;
                     } else if (msg.image) {
                         const messageId = msg.id;
                         content = `
                             <div class="message-bubble" style="padding: 4px;">
+                                ${forwardHtml}
                                 ${replyHtml}
                                 <div class="image-container">
                                     <img src="${msg.image}" class="message-image" onclick="openMedia('${msg.image}')" alt="Изображение">
@@ -6452,6 +6636,7 @@
                         
                         content = `
                             <div class="message-bubble audio-message">
+                                ${forwardHtml}
                                 ${replyHtml}
                                 <div class="audio-player">
                                     <button class="play-pause-btn" data-message-id="${messageId}" onclick="toggleAudio('${messageId}', '${msg.audio}')">▶️</button>
@@ -9055,6 +9240,11 @@
         window.handleTextInput = handleTextInput;
         window.handleBackButton = handleBackButton;
         window.showMessageActions = showMessageActions;
+        window.openForwardModal = openForwardModal;
+        window.closeForwardModal = closeForwardModal;
+        window.forwardMessageToChat = forwardMessageToChat;
+        window.filterForwardChats = filterForwardChats;
+        window.toggleForwardAuthor = toggleForwardAuthor;
         window.openMedia = openMedia;
         window.closeMediaViewer = closeMediaViewer;
         window.togglePassword = togglePassword;
@@ -9161,12 +9351,28 @@
         <button class="ctx-btn" onclick="ctxAction('copyLink')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">🔗</span> Копировать ссылку
         </button>
+        <button class="ctx-btn" onclick="ctxAction('forward')" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
+            <span style="font-size:18px;">↗️</span> Переслать
+        </button>
         <button class="ctx-btn" onclick="ctxAction('edit')" id="ctxEditBtn" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color:var(--text-primary); font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">✏️</span> Редактировать
         </button>
         <button class="ctx-btn" onclick="ctxAction('delete')" id="ctxDeleteBtn" style="display:flex; align-items:center; gap:12px; width:100%; padding:10px 14px; background:none; border:none; color: #ff3b30; font-size:15px; cursor:pointer; text-align:left; border-radius:8px;">
             <span style="font-size:18px;">🗑️</span> Удалить
         </button>
+    </div>
+
+    <div class="modal" id="forwardModal" onclick="if (event.target === this) closeForwardModal();">
+        <div class="modal-content" style="max-width: 400px;">
+            <button class="close-btn" onclick="closeForwardModal()">×</button>
+            <h2>Переслать в...</h2>
+            <input type="text" class="modal-input" id="forwardSearchInput" placeholder="Поиск чата..." oninput="filterForwardChats()" style="margin-bottom: 12px;">
+            <div class="remember-checkbox" style="margin-bottom: 12px;">
+                <input type="checkbox" id="forwardAuthorToggle" onchange="toggleForwardAuthor()" checked>
+                <label for="forwardAuthorToggle">Показывать автора</label>
+            </div>
+            <div id="forwardChatList" style="max-height: 400px; overflow-y: auto; margin-bottom: 12px;"></div>
+        </div>
     </div>
 
 </body>
