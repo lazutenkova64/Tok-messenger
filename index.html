@@ -2527,6 +2527,11 @@
             padding: 4px 6px; border-radius: 50%; transition: transform 0.1s;
         }
         #contextMenuReactions .ctx-reaction:hover { transform: scale(1.2); background: var(--bg-hover); }
+        
+        .reaction-pill:hover {
+            transform: scale(1.08);
+            background: rgba(0, 122, 255, 0.3) !important;
+        }
     </style>
 </head>
 <body>
@@ -2929,6 +2934,8 @@
         let onlineUsers = {};
         let currentChat = null;
         let messages = {};
+        let messageReactions = {};
+        let reactionChannels = {};
         let replyToMessage = null;
         let editingMessage = null;
         let contextMenuMessageId = null;
@@ -4400,6 +4407,13 @@
             });
             typingTimeouts = {};
             
+            Object.keys(reactionChannels).forEach(chatId => {
+                try { db.removeChannel(reactionChannels[chatId]); } catch (e) {}
+                delete reactionChannels[chatId];
+            });
+            reactionChannels = {};
+            messageReactions = {};
+            
             Object.keys(callSignalChannels).forEach(peerId => {
                 try { db.removeChannel(callSignalChannels[peerId]); } catch (e) {}
                 delete callSignalChannels[peerId];
@@ -5229,6 +5243,8 @@
             subscribeToChatChannel(chat.id);
             subscribeToSupabaseChat(chat.id);
             subscribeToTypingChannel(chat.id);
+            loadReactionsForChat(chat.id);
+            subscribeToReactions(chat.id);
             
             if (chat.is_public) {
                 (async () => {
@@ -6180,7 +6196,7 @@
             } else if (action === 'forward') {
                 openForwardModal(messageId);
             } else if (action === 'reaction') {
-                alert('Реакции: ' + extra + ' (скоро)');
+                toggleReaction(messageId, extra);
             }
         }
         window.ctxAction = ctxAction;
@@ -6352,6 +6368,100 @@
             }
         }
         window.forwardMessageToChat = forwardMessageToChat;
+
+        async function loadReactionsForChat(chatId) {
+            if (!currentUser || !chatId) return;
+            try {
+                const { data, error } = await db
+                    .from('reactions')
+                    .select('id, message_id, user_id, emoji, created_at')
+                    .in('message_id', (messages[chatId] || []).map(m => m.id));
+                if (error) { console.warn('[reactions] load error:', error); return; }
+                
+                (messages[chatId] || []).forEach(m => { delete messageReactions[m.id]; });
+                
+                (data || []).forEach(r => {
+                    if (!messageReactions[r.message_id]) messageReactions[r.message_id] = [];
+                    messageReactions[r.message_id].push(r);
+                });
+                
+                if (currentChat && currentChat.id === chatId) renderMessages();
+            } catch (e) { console.warn('[reactions] exception:', e); }
+        }
+        window.loadReactionsForChat = loadReactionsForChat;
+
+        function subscribeToReactions(chatId) {
+            if (!currentUser || !chatId) return;
+            if (reactionChannels[chatId]) return;
+            
+            const ch = db.channel(`reactions-${chatId}`);
+            
+            ch.on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'reactions'
+            }, (payload) => {
+                const r = payload.new;
+                if (!r) return;
+                const msgExists = (messages[chatId] || []).some(m => m.id === r.message_id);
+                if (!msgExists) return;
+                
+                if (!messageReactions[r.message_id]) messageReactions[r.message_id] = [];
+                if (messageReactions[r.message_id].some(x => x.id === r.id)) return;
+                messageReactions[r.message_id].push(r);
+                
+                if (currentChat && currentChat.id === chatId) renderMessages();
+            });
+            
+            ch.on('postgres_changes', {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'reactions'
+            }, (payload) => {
+                const old = payload.old;
+                if (!old || !old.id) return;
+                Object.keys(messageReactions).forEach(msgId => {
+                    messageReactions[msgId] = (messageReactions[msgId] || []).filter(r => r.id !== old.id);
+                });
+                if (currentChat && currentChat.id === chatId) renderMessages();
+            });
+            
+            ch.subscribe((status) => {
+                if (status === 'SUBSCRIBED') console.log('[reactions] subscribed to', chatId);
+            });
+            
+            reactionChannels[chatId] = ch;
+        }
+        window.subscribeToReactions = subscribeToReactions;
+
+        async function toggleReaction(messageId, emoji) {
+            if (!currentUser || !messageId) return;
+            if (!messageReactions[messageId]) messageReactions[messageId] = [];
+            
+            const existing = messageReactions[messageId].find(r => r.user_id === currentUser.id && r.emoji === emoji);
+            
+            if (existing) {
+                try {
+                    await db.from('reactions').delete().eq('id', existing.id);
+                    messageReactions[messageId] = messageReactions[messageId].filter(r => r.id !== existing.id);
+                    if (currentChat) renderMessages();
+                } catch (e) { console.warn('[reactions] delete error:', e); }
+            } else {
+                try {
+                    const { data, error } = await db.from('reactions').insert([{
+                        message_id: messageId,
+                        user_id: currentUser.id,
+                        emoji: emoji
+                    }]).select();
+                    if (error) { console.warn('[reactions] insert error:', error); return; }
+                    if (data && data[0]) {
+                        messageReactions[messageId].push(data[0]);
+                        if (currentChat) renderMessages();
+                    }
+                } catch (e) { console.warn('[reactions] insert exception:', e); }
+            }
+        }
+        window.toggleReaction = toggleReaction;
 
         async function saveEditedMessage() {
             if (!editingMessage || !currentChat) return;
@@ -6661,6 +6771,34 @@
                     if (msg.senderIsVip) senderDisplay += ' 👑';
                     if (msg.senderIsAdmin) senderDisplay += ' ⚡';
                     
+                    let reactionsHtml = '';
+                    const msgReactions = messageReactions[msg.id] || [];
+                    if (msgReactions.length > 0) {
+                        const grouped = {};
+                        msgReactions.forEach(r => {
+                            if (!grouped[r.emoji]) grouped[r.emoji] = { count: 0, users: [], isMine: false };
+                            grouped[r.emoji].count++;
+                            grouped[r.emoji].users.push(r.user_id);
+                            if (r.user_id === currentUser.id) grouped[r.emoji].isMine = true;
+                        });
+                        
+                        const emojiList = Object.keys(grouped);
+                        reactionsHtml = `<div class="reactions-row" style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">`;
+                        emojiList.forEach(emoji => {
+                            const g = grouped[emoji];
+                            const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
+                            const bgColor = g.isMine ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)';
+                            reactionsHtml += `
+                                <span class="reaction-pill" onclick="toggleReaction('${msg.id}', '${emoji}'); event.stopPropagation();"
+                                      title="${g.count} реакций"
+                                      style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:12px; font-size:13px; cursor:pointer; background:${bgColor}; border:1px solid ${borderColor}; transition: all 0.15s; user-select:none;">
+                                    <span>${emoji}</span>
+                                    <span style="font-size:11px; color:var(--text-secondary);">${g.count}</span>
+                                </span>`;
+                        });
+                        reactionsHtml += `</div>`;
+                    }
+                    
                     fragment.push(`
                         <div class="message ${msg.type}" data-id="${msg.id}" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
@@ -6669,6 +6807,7 @@
                                 <span class="message-time">${msg.time}</span>
                                 ${statusHtml}
                             </div>
+                            ${reactionsHtml}
                         </div>
                     `);
                 });
