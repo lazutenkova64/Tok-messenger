@@ -2550,6 +2550,24 @@
             position: relative;
             z-index: 10;
         }
+
+        /* Блокировка выделения текста на сообщениях */
+        .message {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .message-bubble {
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        input, textarea {
+            -webkit-user-select: text !important;
+            user-select: text !important;
+        }
     </style>
 </head>
 <body>
@@ -6200,7 +6218,9 @@
                 setReplyTo(messageId);
             } else if (action === 'copy') {
                 if (msg.text) {
-                    navigator.clipboard.writeText(msg.text).then(() => {}).catch(() => { alert('Не удалось скопировать'); });
+                    navigator.clipboard.writeText(msg.text).then(() => {
+                        showToast('Скопировано');
+                    }).catch(() => { alert('Не удалось скопировать'); });
                 } else {
                     alert('Нет текста для копирования');
                 }
@@ -6219,6 +6239,16 @@
         }
         window.ctxAction = ctxAction;
         window.closeContextMenu = closeContextMenu;
+
+        function showToast(text) {
+            const toast = document.createElement('div');
+            toast.textContent = text;
+            toast.style.cssText = 'position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:9999; pointer-events:none; transition:opacity 0.3s;';
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '0'; }, 1500);
+            setTimeout(() => { toast.remove(); }, 1800);
+        }
+        window.showToast = showToast;
 
         function toggleForwardAuthor() {
             showForwardAuthor = !showForwardAuthor;
@@ -6866,7 +6896,10 @@
                     }
                     
                     fragment.push(`
-                        <div class="message ${msg.type}" data-id="${msg.id}" oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;">
+                        <div class="message ${msg.type}" data-id="${msg.id}" 
+                             oncontextmenu="event.preventDefault(); openContextMenu('${msg.id}', event.clientX, event.clientY); return false;"
+                             onselectstart="return false;"
+                             onmousedown="return false;">
                             ${msg.type === 'in' ? `<div class="message-sender">${senderDisplay}</div>` : ''}
                             ${content}
                             ${reactionsHtml}
@@ -6887,10 +6920,12 @@
             container.querySelectorAll('.message').forEach(el => {
                 let touchTimer = null;
                 let touchStartX = 0, touchStartY = 0;
+                let touchMoved = false;
                 el.addEventListener('touchstart', (e) => {
                     const touch = e.touches[0];
                     touchStartX = touch.clientX;
                     touchStartY = touch.clientY;
+                    touchMoved = false;
                     touchTimer = setTimeout(() => {
                         if (navigator.vibrate) try { navigator.vibrate(30); } catch (err) {}
                         openContextMenu(el.dataset.id, touchStartX, touchStartY);
@@ -6900,12 +6935,17 @@
                 el.addEventListener('touchmove', (e) => {
                     const touch = e.touches[0];
                     if (Math.abs(touch.clientX - touchStartX) > 10 || Math.abs(touch.clientY - touchStartY) > 10) {
+                        touchMoved = true;
                         if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
                     }
                 }, { passive: true });
-                el.addEventListener('touchend', () => {
+                el.addEventListener('touchend', (e) => {
                     if (touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
                 }, { passive: true });
+                el.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    return false;
+                });
             });
             
             if (isAtBottom) {
