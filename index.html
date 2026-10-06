@@ -89,6 +89,8 @@
         }
 
         html {
+            margin: 0;
+            padding: 0;
             height: 100%;
             width: 100%;
             overflow: hidden;
@@ -101,8 +103,9 @@
         body {
             background-color: #0a0a0f;
             color: var(--text-primary);
-            height: 100%;
+            height: 100vh;
             height: 100dvh;
+            min-height: 100vh;
             min-height: 100dvh;
             width: 100%;
             overflow: hidden;
@@ -132,7 +135,9 @@
 
         .app-container {
             display: flex;
+            height: 100vh;
             height: 100dvh;
+            min-height: 100vh;
             min-height: 100dvh;
             width: 100%;
             background-color: transparent;
@@ -140,10 +145,12 @@
             overflow: hidden;
             box-sizing: border-box;
             z-index: 1;
-            padding-top: env(safe-area-inset-top, 0px);
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            padding-left: env(safe-area-inset-left, 0px);
-            padding-right: env(safe-area-inset-right, 0px);
+            padding-top: constant(safe-area-inset-top);
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: constant(safe-area-inset-bottom);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
         }
 
         .chat-area {
@@ -1172,6 +1179,7 @@
 
         .message-input-container {
             padding: 10px 12px;
+            padding-bottom: 10px;
             border-top: 1px solid var(--border-light);
             display: flex !important;
             gap: 8px;
@@ -1181,9 +1189,8 @@
             z-index: 10;
             position: relative;
             width: 100%;
-            visibility: visible !important;
-            opacity: 1 !important;
             background-color: var(--bg-header);
+            box-sizing: border-box;
         }
 
         .emoji-toggle-btn, .mic-btn, .attach-btn {
@@ -2085,8 +2092,14 @@
                 --glass-blur-input: 20px;
             }
             .sidebar {
-                padding-top: env(safe-area-inset-top, 0px);
-                padding-bottom: env(safe-area-inset-bottom, 0px);
+                padding-top: constant(safe-area-inset-top);
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: constant(safe-area-inset-bottom);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            .chat-area {
+                padding-bottom: env(safe-area-inset-bottom);
+                box-sizing: border-box;
             }
         }
 
