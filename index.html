@@ -1555,6 +1555,7 @@
                         await loadAllUsers();
                         await loadBlocks();
                         await loadUserChats();
+                        if (typeof loadChatsPreviews === 'function') { await loadChatsPreviews(); }
                         await loadAllMessages();
                         
                         await ensureSavedMessagesChat();
@@ -1738,6 +1739,7 @@
                 await loadAllUsers();
                 await loadBlocks();
                 await loadUserChats();
+                if (typeof loadChatsPreviews === 'function') { await loadChatsPreviews(); }
                 await loadAllMessages();
                 
                 await ensureSavedMessagesChat();
@@ -2853,6 +2855,7 @@
             }
             
             currentChat = chat;
+            loadingOlder = false;
             updateUrlWithChat(chat);
             
             let displayName = chat.name;
@@ -4517,6 +4520,13 @@
                 mc.addEventListener('scroll', checkScrollPosition, { passive: true });
             }
             if (mc) checkScrollPosition();
+            const renderScrollBoxOlder = document.getElementById('messagesContainer');
+            if (renderScrollBoxOlder && !renderScrollBoxOlder.dataset.scrollBoundOlder) {
+                renderScrollBoxOlder.dataset.scrollBoundOlder = 'true';
+                renderScrollBoxOlder.addEventListener('scroll', function() {
+                    if (typeof checkLoadOlder === 'function') checkLoadOlder();
+                }, { passive: true });
+            }
         }
 
         function downloadImage(dataUrl, event) {
