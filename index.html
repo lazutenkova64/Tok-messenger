@@ -6018,6 +6018,8 @@
             const miniTimerEl = document.getElementById('callMiniTimer');
             if (miniTimerEl) miniTimerEl.textContent = '00:00';
             resetCallState();
+            const miniContainer = document.getElementById('callMinimizedGlobal');
+            if (miniContainer) miniContainer.remove();
         }
         window.closeCallModal = closeCallModal;
 
@@ -6348,6 +6350,10 @@
 
             resetCallState();
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
+            
+            if (callModal) callModal.classList.remove('active');
+            const miniContainer = document.getElementById('callMinimizedGlobal');
+            if (miniContainer) miniContainer.remove();
         }
 
         function toggleMute() {
@@ -6362,10 +6368,10 @@
             const incomingMuteBtn = document.getElementById('incomingMuteBtn');
             [muteBtn, incomingMuteBtn].forEach(btn => {
                 if (btn) {
-                    btn.textContent = callMuted ? '🔇' : '🎤';
                     btn.classList.toggle('muted', callMuted);
                 }
             });
+            if (typeof toastMsg === 'function') toastMsg(callMuted ? 'Микрофон выключен' : 'Микрофон включён');
         }
 
         function startCallTimer() {
@@ -6388,43 +6394,121 @@
         }
 
         function minimizeCallWindow() {
+            if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
-            ['callScene-outgoing', 'callScene-incoming', 'callScene-active'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.style.display = 'none';
-            });
-            const mini = document.getElementById('callMinimized');
-            if (mini) mini.style.display = 'flex';
+            
+            // УБРАТЬ класс active с модалки — она станет display:none
+            callModal.classList.remove('active');
+            
+            // Скопировать имя и аватар в капсулу
             const activeName = document.getElementById('callActiveName');
             const miniName = document.getElementById('callMiniName');
-            if (activeName && miniName) miniName.textContent = activeName.textContent;
+            if (activeName && miniName) miniName.textContent = activeName.textContent || 'Пользователь';
+            
             const activeAvatar = document.getElementById('callAvatar');
             const miniAvatar = document.getElementById('callAvatarMini');
             if (activeAvatar && miniAvatar) {
-                miniAvatar.style.backgroundImage = activeAvatar.style.backgroundImage;
-                miniAvatar.style.backgroundSize = 'cover';
-                miniAvatar.style.backgroundPosition = 'center';
-                if (!activeAvatar.style.backgroundImage) {
-                    miniAvatar.textContent = activeAvatar.textContent || '👤';
-                } else {
+                const bg = activeAvatar.style.backgroundImage;
+                if (bg && bg !== 'none') {
+                    miniAvatar.style.backgroundImage = bg;
+                    miniAvatar.style.backgroundSize = 'cover';
+                    miniAvatar.style.backgroundPosition = 'center';
                     miniAvatar.textContent = '';
+                } else {
+                    miniAvatar.style.backgroundImage = '';
+                    miniAvatar.textContent = activeAvatar.textContent || '👤';
                 }
             }
+            
+            // ПОКАЗАТЬ капсулу как ОТДЕЛЬНЫЙ блок на странице (не внутри callModal)
+            let miniContainer = document.getElementById('callMinimizedGlobal');
+            if (!miniContainer) {
+                miniContainer = document.createElement('div');
+                miniContainer.id = 'callMinimizedGlobal';
+                miniContainer.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9998;display:block;';
+                document.body.appendChild(miniContainer);
+            }
+            miniContainer.innerHTML = `
+                <div class="capsule" onclick="restoreCallWindow()">
+                    <div class="cap-avatar" id="callAvatarMini">${activeAvatar && activeAvatar.textContent ? activeAvatar.textContent : '👤'}</div>
+                    <div class="cap-info">
+                        <div class="n" id="callMiniName">${activeName && activeName.textContent ? activeName.textContent : 'Пользователь'}</div>
+                        <div class="t">
+                            <span id="callMiniTimer">00:00</span>
+                            <span class="wave-small"><span></span><span></span><span></span></span>
+                        </div>
+                    </div>
+                    <div class="cap-buttons" onclick="event.stopPropagation()">
+                        <button class="cap-btn" onclick="toggleMute()" title="Микрофон">🎤</button>
+                        <button class="cap-btn" onclick="restoreCallWindow()" title="Развернуть">⤴️</button>
+                        <button class="cap-btn end" onclick="endCall()" title="Завершить">❌</button>
+                    </div>
+                </div>
+            `;
+            
+            // Скопировать аватар в новую капсулу
+            const newMiniAvatar = document.getElementById('callAvatarMini');
+            if (newMiniAvatar && activeAvatar) {
+                const bg = activeAvatar.style.backgroundImage;
+                if (bg && bg !== 'none') {
+                    newMiniAvatar.style.backgroundImage = bg;
+                    newMiniAvatar.style.backgroundSize = 'cover';
+                    newMiniAvatar.style.backgroundPosition = 'center';
+                    newMiniAvatar.textContent = '';
+                }
+            }
+            
             if (typeof toastMsg === 'function') toastMsg('Звонок свёрнут');
         }
         window.minimizeCallWindow = minimizeCallWindow;
 
         function restoreCallWindow() {
+            if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
-            const mini = document.getElementById('callMinimized');
-            if (mini) mini.style.display = 'none';
+            
+            // Убрать капсулу
+            const miniContainer = document.getElementById('callMinimizedGlobal');
+            if (miniContainer) miniContainer.remove();
+            
+            // Показать модалку
+            callModal.classList.add('active');
+            
+            // Показать активную сцену
             const active = document.getElementById('callScene-active');
             if (active) active.style.display = 'flex';
+            
+            // Скрыть остальные
+            ['callScene-outgoing', 'callScene-incoming', 'callMinimized'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = 'none';
+            });
+            
             if (typeof toastMsg === 'function') toastMsg('Звонок развёрнут');
         }
         window.restoreCallWindow = restoreCallWindow;
 
         // ========== МОДАЛЬНЫЕ ОКНА ==========
+        let _toastTimer = null;
+        function toastMsg(text) {
+            let t = document.getElementById('_toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = '_toast';
+                t.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);background:rgba(20,20,35,0.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);color:white;padding:12px 20px;border-radius:100px;font-size:14px;font-weight:500;border:1px solid rgba(255,255,255,0.1);box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:99999;transition:transform 0.4s cubic-bezier(0.22,1,0.36,1),opacity 0.3s;opacity:0;pointer-events:none;max-width:calc(100vw - 40px);';
+                document.body.appendChild(t);
+            }
+            t.textContent = text;
+            t.style.transform = 'translateX(-50%) translateY(0)';
+            t.style.opacity = '1';
+            if (navigator.vibrate) navigator.vibrate(20);
+            clearTimeout(_toastTimer);
+            _toastTimer = setTimeout(() => {
+                t.style.transform = 'translateX(-50%) translateY(100px)';
+                t.style.opacity = '0';
+            }, 2000);
+        }
+        window.toastMsg = toastMsg;
+
         function openCreateChatModal() {
             document.getElementById('createChatModal').classList.add('active');
         }
