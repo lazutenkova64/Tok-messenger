@@ -4293,7 +4293,7 @@
                     .from('messages')
                     .select('*')
                     .order('created_at', { ascending: false })
-                    .limit(500);
+                    .limit(50);
                 
                 if (error) return;
                 
@@ -4385,8 +4385,8 @@
                     .from('messages')
                     .select('*')
                     .eq('chat_id', chatId)
-                    .order('created_at', { ascending: true })
-                    .limit(200);
+                    .order('created_at', { ascending: false })
+                    .limit(30);
                 
                 if (error) return;
                 
@@ -10019,4 +10019,4 @@
     </div>
 
 </body>
-</html>
+</html 
