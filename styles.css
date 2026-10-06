@@ -1,4 +1,4 @@
-        * {
+﻿        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -2209,3 +2209,16 @@
             border: none;
             -webkit-tap-highlight-color: transparent;
         }
+
+/* Reactions row fix */
+.reactions-row {
+    position: relative;
+    z-index: 20;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+.message.out .reactions-row,
+.message.in .reactions-row {
+    position: relative;
+    z-index: 20;
+}

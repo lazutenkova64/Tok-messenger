@@ -1,4 +1,4 @@
-// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ FEATURES ==========
+﻿// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ FEATURES ==========
 let replyToMessage = null;
 let messageToForward = null;
 let showForwardAuthor = localStorage.getItem('showForwardAuthor') !== 'false';
@@ -213,7 +213,7 @@ function updateMessageReactions(messageId) {
                 });
                 let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
                 if (emojiList.length > 3) emojiList = emojiList.slice(-3);
-                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:4px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:10;">';
+                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:2px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:20;">';
                 emojiList.forEach((emoji) => {
                     const g = grouped[emoji];
                     const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
