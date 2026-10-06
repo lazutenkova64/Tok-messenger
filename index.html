@@ -3773,7 +3773,6 @@
                         await loadAllUsers();
                         await loadBlocks();
                         await loadUserChats();
-                        await loadAllMessages();
                         
                         await ensureSavedMessagesChat();
                         
@@ -3849,7 +3848,6 @@
                 if (ably && ably.connection.state !== 'connected') {
                     try { ably.connection.connect(); } catch (e) {}
                 }
-                loadAllMessages();
                 if (currentChat) loadChatHistory(currentChat.id);
                 updateAppBadge();
             } else if (document.visibilityState === 'hidden' && currentUser) {
@@ -3956,7 +3954,6 @@
                 await loadAllUsers();
                 await loadBlocks();
                 await loadUserChats();
-                await loadAllMessages();
                 
                 await ensureSavedMessagesChat();
                 
@@ -10019,4 +10016,4 @@
     </div>
 
 </body>
-</html 
+<      
