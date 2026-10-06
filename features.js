@@ -1,3 +1,14 @@
+// ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ FEATURES ==========
+let replyToMessage = null;
+let messageToForward = null;
+let showForwardAuthor = localStorage.getItem('showForwardAuthor') !== 'false';
+let messageReactions = {};
+let reactionChannels = {};
+let blockedUsers = [];
+let blockedByUsers = [];
+let scrollToBottomBadgeCount = 0;
+let failedMessageId = null;
+let loadingOlder = false;
 function toggleForwardAuthor() {
             showForwardAuthor = !showForwardAuthor;
             localStorage.setItem('showForwardAuthor', showForwardAuthor ? 'true' : 'false');
