@@ -223,16 +223,15 @@ function updateMessageReactions(messageId) {
                 reactionsHtml += '</div>';
             }
 
-            let row = msgEl.querySelector('.reactions-row');
-            if (row) {
-                row.outerHTML = reactionsHtml || '<div class="reactions-row" style="display:none;"></div>';
-            } else if (reactionsHtml) {
-                const bubble = msgEl.querySelector('.message-bubble');
-                if (bubble) {
-                    bubble.insertAdjacentHTML('afterend', reactionsHtml);
-                } else {
-                    msgEl.insertAdjacentHTML('beforeend', reactionsHtml);
+            const bubble = msgEl.querySelector('.message-bubble');
+            if (bubble) {
+                const oldRow = bubble.querySelector('.reactions-row');
+                if (oldRow) oldRow.remove();
+                if (reactionsHtml) {
+                    bubble.insertAdjacentHTML('beforeend', reactionsHtml);
                 }
+            } else if (reactionsHtml) {
+                msgEl.insertAdjacentHTML('beforeend', reactionsHtml);
             }
         }
 
