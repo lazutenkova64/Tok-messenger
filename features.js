@@ -213,7 +213,7 @@ function updateMessageReactions(messageId) {
                 });
                 let emojiList = Object.keys(grouped).sort((a, b) => grouped[a].latest - grouped[b].latest);
                 if (emojiList.length > 3) emojiList = emojiList.slice(-3);
-                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; margin-top:2px; margin-bottom:2px; flex-wrap:wrap; position:relative; z-index:20;">';
+                reactionsHtml = '<div class="reactions-row" style="display:flex; gap:4px; flex-wrap:wrap; position:relative; z-index:20;">';
                 emojiList.forEach((emoji) => {
                     const g = grouped[emoji];
                     const borderColor = g.isMine ? 'var(--accent-blue)' : 'var(--border-color)';
@@ -227,9 +227,9 @@ function updateMessageReactions(messageId) {
             if (row) {
                 row.outerHTML = reactionsHtml || '<div class="reactions-row" style="display:none;"></div>';
             } else if (reactionsHtml) {
-                const footer = msgEl.querySelector('.message-footer');
-                if (footer) {
-                    footer.insertAdjacentHTML('beforebegin', reactionsHtml);
+                const bubble = msgEl.querySelector('.message-bubble');
+                if (bubble) {
+                    bubble.insertAdjacentHTML('afterend', reactionsHtml);
                 } else {
                     msgEl.insertAdjacentHTML('beforeend', reactionsHtml);
                 }

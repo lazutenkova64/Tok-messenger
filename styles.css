@@ -2210,15 +2210,13 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-/* Reactions row fix */
+/* Reactions row — вплотную к bubble, footer сразу под реакциями */
 .reactions-row {
     position: relative;
     z-index: 20;
-    margin-top: 2px;
+    margin-top: 0;
     margin-bottom: 2px;
 }
-.message.out .reactions-row,
-.message.in .reactions-row {
-    position: relative;
-    z-index: 20;
+.message-footer {
+    margin-top: 0;
 }
