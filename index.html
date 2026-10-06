@@ -112,10 +112,8 @@
             position: relative;
             overscroll-behavior: none;
             touch-action: manipulation;
-            padding-top: env(safe-area-inset-top, 0px);
-            padding-bottom: env(safe-area-inset-bottom, 0px);
-            padding-left: env(safe-area-inset-left, 0px);
-            padding-right: env(safe-area-inset-right, 0px);
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
@@ -135,16 +133,17 @@
         .app-container {
             display: flex;
             height: 100dvh;
+            min-height: 100dvh;
             width: 100%;
             background-color: transparent;
             position: relative;
             overflow: hidden;
+            box-sizing: border-box;
+            z-index: 1;
             padding-top: env(safe-area-inset-top, 0px);
             padding-bottom: env(safe-area-inset-bottom, 0px);
-            box-sizing: border-box;
-            transition: background-color 0.3s ease;
-            z-index: 1;
-            min-height: 0;
+            padding-left: env(safe-area-inset-left, 0px);
+            padding-right: env(safe-area-inset-right, 0px);
         }
 
         .chat-area {
@@ -219,10 +218,6 @@
             flex-direction: column;
             box-shadow: none;
             max-width: 100%;
-            padding-top: var(--safe-top);
-            padding-bottom: var(--safe-bottom);
-            padding-left: var(--safe-left);
-            padding-right: var(--safe-right);
             overscroll-behavior: contain;
             -webkit-overflow-scrolling: touch;
         }
@@ -2088,6 +2083,10 @@
                 --glass-blur-header: 28px;
                 --glass-blur-tabs: 20px;
                 --glass-blur-input: 20px;
+            }
+            .sidebar {
+                padding-top: env(safe-area-inset-top, 0px);
+                padding-bottom: env(safe-area-inset-bottom, 0px);
             }
         }
 
