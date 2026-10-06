@@ -2248,6 +2248,16 @@
             border: none;
             -webkit-tap-highlight-color: transparent;
         }
+
+        /* Screen share controls */
+        #screenShareControls {
+            animation: fadeIn 0.2s ease;
+        }
+        #screenShareBtn.sharing {
+            background: linear-gradient(135deg, #ff453a 0%, #d63026 100%);
+            border-color: rgba(255, 69, 58, 0.4);
+            color: white;
+        }
 </style>
 </head>
 <body>
@@ -2577,6 +2587,20 @@
                 <button class="call-btn reject" id="endCallBtn" onclick="endCall()">❌</button>
                 <button class="call-btn mute" id="muteCallBtn" onclick="toggleMute()">🎤</button>
             </div>
+            <div id="screenShareControls" style="display:none; margin-top: 16px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08);">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap;">
+                    <button id="screenShareBtn" onclick="toggleScreenShare()" class="call-btn mute" style="width: auto; padding: 10px 16px; border-radius: 24px; font-size: 14px; font-weight: 500; min-width: 160px; height: auto; gap: 8px; display: flex; align-items: center; justify-content: center;">
+                        <span style="font-size: 18px;">🖥️</span>
+                        <span id="screenShareBtnText">Показать экран</span>
+                    </button>
+                </div>
+                <div id="screenShareAudioRow" style="display:none; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--text-primary); font-size: 14px;">
+                        <input type="checkbox" id="screenShareAudioToggle" checked style="width: 18px; height: 18px; accent-color: var(--accent-blue); cursor: pointer;">
+                        <span>🔊 Звук системы</span>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2782,6 +2806,10 @@
         };
         let peerConnection = null;
         let localStream = null;
+        let screenStream = null;
+        let originalVideoTrack = null;
+        let isScreenSharing = false;
+        let screenShareAudioEnabled = true;
         let callRingtone = null;
         let callAcceptedSound = null;
         let callEndedSound = null;
@@ -8718,6 +8746,10 @@
                 audios.forEach(a => {
                     try { a.pause(); a.srcObject = null; a.remove(); } catch (e) {}
                 });
+                const videos = remoteAudioDiv.querySelectorAll('video');
+                videos.forEach(v => {
+                    try { v.pause(); v.srcObject = null; v.remove(); } catch (e) {}
+                });
                 remoteAudioDiv.innerHTML = '';
             } catch (e) {}
         }
@@ -8743,6 +8775,24 @@
             pendingIceCandidates = [];
             remoteDescriptionSet = false;
             clearRemoteAudios();
+            
+            // Screen share cleanup
+            if (screenStream) {
+                screenStream.getTracks().forEach(t => t.stop());
+                screenStream = null;
+            }
+            isScreenSharing = false;
+            screenShareAudioEnabled = true;
+            originalVideoTrack = null;
+            const ssControls = document.getElementById('screenShareControls');
+            if (ssControls) ssControls.style.display = 'none';
+            const ssAudioRow = document.getElementById('screenShareAudioRow');
+            if (ssAudioRow) ssAudioRow.style.display = 'none';
+            const ssBtn = document.getElementById('screenShareBtn');
+            if (ssBtn) ssBtn.classList.remove('sharing');
+            const ssBtnText = document.getElementById('screenShareBtnText');
+            if (ssBtnText) ssBtnText.textContent = 'Показать экран';
+            document.querySelectorAll('#remoteScreenVideo').forEach(v => v.remove());
             
             if (callRingtone) {
                 try { callRingtone.pause(); callRingtone.currentTime = 0; } catch (e) {}
@@ -8800,6 +8850,21 @@
                     });
                 };
                 tryPlay();
+                
+                // Обработка видео (демонстрация экрана)
+                remoteAudioDiv.querySelectorAll('video').forEach(v => {
+                    try { v.pause(); v.srcObject = null; v.remove(); } catch (e) {}
+                });
+                if (remoteStream.getVideoTracks().length > 0) {
+                    const remoteVideo = document.createElement('video');
+                    remoteVideo.id = 'remoteScreenVideo';
+                    remoteVideo.srcObject = remoteStream;
+                    remoteVideo.autoplay = true;
+                    remoteVideo.playsInline = true;
+                    remoteVideo.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; object-fit:contain; background: #000; z-index: 99998;';
+                    remoteVideo.onclick = () => { remoteVideo.style.display = 'none'; };
+                    document.body.appendChild(remoteVideo);
+                }
                 
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
@@ -8919,24 +8984,29 @@
             const callerAvatarEl = document.getElementById('callAvatar');
             const incomingControls = document.getElementById('incomingCallControls');
             const outgoingControls = document.getElementById('outgoingCallControls');
+            const ssControls = document.getElementById('screenShareControls');
 
             if (status === 'calling') {
                 statusEl.textContent = 'Идет гудок...';
                 incomingControls.style.display = 'none';
                 outgoingControls.style.display = 'flex';
+                if (ssControls) ssControls.style.display = 'none';
             } else if (status === 'ringing') {
                 statusEl.textContent = 'Входящий звонок...';
                 incomingControls.style.display = 'flex';
                 outgoingControls.style.display = 'none';
+                if (ssControls) ssControls.style.display = 'none';
             } else if (status === 'connected') {
                 statusEl.textContent = 'В разговоре';
                 incomingControls.style.display = 'none';
                 outgoingControls.style.display = 'flex';
+                if (ssControls) ssControls.style.display = 'block';
             } else if (status === 'ended') {
                 statusEl.textContent = 'Вызов завершён';
                 incomingControls.style.display = 'none';
                 outgoingControls.style.display = 'none';
                 timerEl.textContent = '';
+                if (ssControls) ssControls.style.display = 'none';
             }
 
             callerNameEl.textContent = peerName || 'Пользователь';
@@ -9114,6 +9184,114 @@
                 if (timerEl) timerEl.textContent = formatCallTime(elapsed);
             }, 1000);
         }
+
+        async function toggleScreenShare() {
+            if (!currentCall || currentCall.status !== 'connected') return;
+            if (!peerConnection) return;
+            
+            if (isScreenSharing) {
+                stopScreenShare();
+                return;
+            }
+            
+            if (typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+                alert('Демонстрация экрана не поддерживается в вашем браузере');
+                return;
+            }
+            
+            try {
+                const displayStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: 'always' },
+                    audio: true
+                });
+                
+                screenStream = displayStream;
+                const videoTrack = displayStream.getVideoTracks()[0];
+                const audioTrack = displayStream.getAudioTracks()[0];
+                
+                if (!videoTrack) {
+                    alert('Не удалось захватить видео экрана');
+                    return;
+                }
+                
+                const senders = peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender && videoSender.track) {
+                    originalVideoTrack = videoSender.track;
+                }
+                
+                if (videoSender) {
+                    await videoSender.replaceTrack(videoTrack);
+                } else {
+                    peerConnection.addTrack(videoTrack, screenStream);
+                }
+                
+                if (audioTrack && screenShareAudioEnabled) {
+                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) {
+                        await audioSender.replaceTrack(audioTrack);
+                    } else {
+                        peerConnection.addTrack(audioTrack, screenStream);
+                    }
+                }
+                
+                isScreenSharing = true;
+                const ssBtn = document.getElementById('screenShareBtn');
+                const ssBtnText = document.getElementById('screenShareBtnText');
+                const ssAudioRow = document.getElementById('screenShareAudioRow');
+                if (ssBtn) ssBtn.classList.add('sharing');
+                if (ssBtnText) ssBtnText.textContent = 'Остановить';
+                if (ssAudioRow) ssAudioRow.style.display = 'flex';
+                
+                videoTrack.onended = () => { stopScreenShare(); };
+                
+            } catch (e) {
+                if (e.name === 'NotAllowedError') {
+                    // Пользователь отменил — это ок
+                } else {
+                    console.warn('[screenShare] error:', e);
+                    alert('Ошибка демонстрации: ' + (e.message || 'неизвестная'));
+                }
+            }
+        }
+        window.toggleScreenShare = toggleScreenShare;
+
+        function stopScreenShare() {
+            if (screenStream) {
+                screenStream.getTracks().forEach(t => t.stop());
+                screenStream = null;
+            }
+            
+            if (peerConnection && originalVideoTrack) {
+                const senders = peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    videoSender.replaceTrack(originalVideoTrack).catch(e => console.warn('[screenShare] revert error:', e));
+                }
+            }
+            
+            if (peerConnection && localStream) {
+                const audioTrack = localStream.getAudioTracks()[0];
+                if (audioTrack) {
+                    const senders = peerConnection.getSenders();
+                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) {
+                        audioSender.replaceTrack(audioTrack).catch(e => console.warn('[screenShare] revert audio error:', e));
+                    }
+                }
+            }
+            
+            isScreenSharing = false;
+            originalVideoTrack = null;
+            
+            const ssBtn = document.getElementById('screenShareBtn');
+            const ssBtnText = document.getElementById('screenShareBtnText');
+            const ssAudioRow = document.getElementById('screenShareAudioRow');
+            if (ssBtn) ssBtn.classList.remove('sharing');
+            if (ssBtnText) ssBtnText.textContent = 'Показать экран';
+            if (ssAudioRow) ssAudioRow.style.display = 'none';
+        }
+        window.stopScreenShare = stopScreenShare;
 
         // ========== МОДАЛЬНЫЕ ОКНА ==========
         function openCreateChatModal() {
@@ -10117,6 +10295,17 @@
         window.checkScrollPosition = checkScrollPosition;
         window.scrollToBottomClick = scrollToBottomClick;
         window.incrementScrollBadge = incrementScrollBadge;
+
+        // Screen share audio toggle
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.id === 'screenShareAudioToggle') {
+                screenShareAudioEnabled = e.target.checked;
+                if (screenStream) {
+                    const audioTracks = screenStream.getAudioTracks();
+                    audioTracks.forEach(t => { t.enabled = screenShareAudioEnabled; });
+                }
+            }
+        });
     </script>
 
     <div id="contextMenu" style="display:none; position:fixed; background: var(--bg-tertiary); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); padding: 6px; z-index: 5000; min-width: 200px; border: 1px solid var(--border-color);">
