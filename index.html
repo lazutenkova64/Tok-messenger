@@ -3780,6 +3780,7 @@
                         await loadAllUsers();
                         await loadBlocks();
                         await loadUserChats();
+                        await loadChatsPreviews();
                         
                         await ensureSavedMessagesChat();
                         
@@ -3961,6 +3962,7 @@
                 await loadAllUsers();
                 await loadBlocks();
                 await loadUserChats();
+                await loadChatsPreviews();
                 
                 await ensureSavedMessagesChat();
                 
@@ -4482,6 +4484,7 @@
                     });
                 } catch (e) { console.warn('[preview]', e); }
             }
+            console.log('[previews] loaded for', Object.keys(messages).length, 'chats');
             updateChatsList();
         }
         window.loadChatsPreviews = loadChatsPreviews;
