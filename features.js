@@ -570,3 +570,98 @@ window.scrollToMessage = scrollToMessage;
 window.checkScrollPosition = checkScrollPosition;
 window.scrollToBottomClick = scrollToBottomClick;
 window.incrementScrollBadge = incrementScrollBadge;
+
+async function loadChatsPreviews() {
+    if (!currentUser) return;
+    const sortedChats = [...myChats].sort((a, b) => {
+        const aIsSaved = a.type === 'private' && a.pair_key === `${currentUser.id}_${currentUser.id}`;
+        const bIsSaved = b.type === 'private' && b.pair_key === `${currentUser.id}_${currentUser.id}`;
+        if (aIsSaved && !bIsSaved) return -1;
+        if (!aIsSaved && bIsSaved) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }).slice(0, 10);
+    for (const chat of sortedChats) {
+        if (!messages[chat.id]) messages[chat.id] = [];
+        if (messages[chat.id].length > 0) continue;
+        try {
+            const { data, error } = await db.from('messages').select('*')
+                .eq('chat_id', chat.id).order('created_at', { ascending: false }).limit(1);
+            if (error || !data || !data[0]) continue;
+            const msg = data[0];
+            const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤' };
+            messages[chat.id].push({
+                id: msg.id, chatId: msg.chat_id, sender: msg.sender_id,
+                senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                text: msg.text, audio: msg.audio, image: msg.image, duration: msg.duration,
+                time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0,
+                isAdmin: msg.is_admin || false, edited: msg.edited || false,
+                readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
+                reply_to: msg.reply_to || null, forwarded_from: msg.forwarded_from || null,
+                type: msg.sender_id === currentUser.id ? 'out' : 'in'
+            });
+        } catch (e) { console.warn('[preview]', e); }
+    }
+    updateChatsList();
+}
+
+async function checkLoadOlder() {
+    if (loadingOlder || !currentChat) return;
+    const olderScrollBox = document.getElementById('messagesContainer');
+    if (!olderScrollBox) return;
+    if (olderScrollBox.scrollTop > 100) return;
+    const chatId = currentChat.id;
+    const msgs = messages[chatId] || [];
+    if (msgs.length === 0) return;
+    const oldestTimestamp = Math.min(...msgs.map(m => m.timestamp || 0));
+    if (!oldestTimestamp) return;
+    loadingOlder = true;
+    const loader = document.createElement('div');
+    loader.id = 'olderLoader';
+    loader.style.cssText = 'text-align:center; padding:10px; color:var(--text-secondary); font-size:13px;';
+    loader.textContent = 'Загрузка...';
+    olderScrollBox.insertBefore(loader, olderScrollBox.firstChild);
+    try {
+        const { data, error } = await db.from('messages').select('*')
+            .eq('chat_id', chatId)
+            .lt('created_at', new Date(oldestTimestamp).toISOString())
+            .order('created_at', { ascending: false })
+            .limit(30);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            loader.textContent = 'Это начало диалога';
+            setTimeout(() => { if (loader.parentNode) loader.parentNode.removeChild(loader); }, 1500);
+            loadingOlder = false;
+            return;
+        }
+        const oldHeight = olderScrollBox.scrollHeight;
+        const oldTop = olderScrollBox.scrollTop;
+        data.forEach(msg => {
+            if (messages[chatId].some(m => m.id === msg.id)) return;
+            const sender = allUsers.find(u => u.id === msg.sender_id) || { username: 'Неизвестно', avatar: '👤' };
+            messages[chatId].unshift({
+                id: msg.id, chatId: msg.chat_id, sender: msg.sender_id,
+                senderName: sender.username, senderIsVip: sender.is_vip, senderIsAdmin: sender.is_admin,
+                text: msg.text, audio: msg.audio, image: msg.image, duration: msg.duration,
+                time: msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                timestamp: msg.created_at ? new Date(msg.created_at).getTime() : 0,
+                isAdmin: msg.is_admin || false, edited: msg.edited || false,
+                readAt: msg.read_at ? new Date(msg.read_at).getTime() : null,
+                reply_to: msg.reply_to || null, forwarded_from: msg.forwarded_from || null,
+                type: msg.sender_id === currentUser.id ? 'out' : 'in'
+            });
+        });
+        messages[chatId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        if (loader.parentNode) loader.parentNode.removeChild(loader);
+        renderMessages();
+        const newHeight = olderScrollBox.scrollHeight;
+        olderScrollBox.scrollTop = newHeight - oldHeight + oldTop;
+    } catch (e) {
+        console.warn('[loadOlder]', e);
+        if (loader.parentNode) loader.parentNode.removeChild(loader);
+    }
+    loadingOlder = false;
+}
+
+window.loadChatsPreviews = loadChatsPreviews;
+window.checkLoadOlder = checkLoadOlder;
