@@ -6013,13 +6013,24 @@
         function closeCallModal() {
             if (!callModal) callModal = document.getElementById('callModal');
             if (callModal) callModal.classList.remove('active');
+            
             const timerEl = document.getElementById('callTimer');
             if (timerEl) timerEl.textContent = '00:00';
             const miniTimerEl = document.getElementById('callMiniTimer');
             if (miniTimerEl) miniTimerEl.textContent = '00:00';
-            resetCallState();
+            
+            // Убрать капсулу если есть
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
+            
+            // Закрыть peer connection и остановить потоки
+            resetCallState();
+            
+            // Сбросить currentCall в null
+            currentCall = {
+                status: null, peerId: null, callId: null, dbId: null,
+                isInitiator: false, callerInfo: null, startTime: null, timeout: null
+            };
         }
         window.closeCallModal = closeCallModal;
 
@@ -6186,7 +6197,7 @@
                 minimized: document.getElementById('callMinimized')
             };
             
-            // Скрыть все
+            // Скрыть все сцены
             Object.values(scenes).forEach(s => { if (s) s.style.display = 'none'; });
             
             const setAvatar = (el, avatar) => {
@@ -6211,6 +6222,9 @@
                 if (scenes.incoming) scenes.incoming.style.display = 'flex';
                 const nameEl = document.getElementById('callerName');
                 if (nameEl) nameEl.textContent = peerName || 'Пользователь';
+                // ПРИНУДИТЕЛЬНО сбросить текст статуса
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'аудиозвонок';
                 setAvatar(document.getElementById('callAvatarIncoming'), peerAvatar);
             } else if (status === 'connected') {
                 if (scenes.active) scenes.active.style.display = 'flex';
@@ -6218,9 +6232,14 @@
                 if (nameEl) nameEl.textContent = peerName || 'Пользователь';
                 setAvatar(document.getElementById('callAvatar'), peerAvatar);
             } else if (status === 'ended') {
-                callModal.classList.remove('active');
+                const statusEl = document.getElementById('callStatus');
+                if (statusEl) statusEl.textContent = 'Вызов завершён';
+                setTimeout(() => {
+                    if (callModal) callModal.classList.remove('active');
+                }, 1500);
             }
         }
+        window.showCallModal = showCallModal;
 
         async function handleIncomingCallRequest(data) {
             const { callId, dbCallId, callerId, callerName, callerAvatar, timestamp } = data;
@@ -6293,68 +6312,91 @@
         }
 
         async function rejectCall() {
-            if (!currentCall || currentCall.status === 'ended') return;
-            
-            if (currentCall.isInitiator) {
-                const peerId = currentCall.peerId;
-                if (peerId) {
-                    await sendCallSignal(peerId, 'call_ended', {
-                        callId: currentCall.callId,
-                        reason: 'cancelled',
-                        timestamp: Date.now()
-                    });
-                }
-            } else {
-                const peerId = currentCall.callerInfo && currentCall.callerInfo.id;
-                if (peerId) {
-                    await sendCallSignal(peerId, 'call_rejected', {
-                        callId: currentCall.callId,
-                        reason: 'rejected',
-                        timestamp: Date.now()
-                    });
-                }
-            }
-            
-            if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
-            
-            const statusEl = document.getElementById('callStatus');
-            if (statusEl) statusEl.textContent = 'Вызов завершён';
-            const incoming = document.getElementById('incomingCallControls');
-            const outgoing = document.getElementById('outgoingCallControls');
-            if (incoming) incoming.style.display = 'none';
-            if (outgoing) outgoing.style.display = 'none';
-            
-            resetCallState();
-            if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
-        }
-
-        async function endCall() {
-            if (!currentCall) return;
-
-            if (currentCall.peerId) {
-                await sendCallSignal(currentCall.peerId, 'call_ended', {
-                    callId: currentCall.callId,
-                    reason: 'ended',
-                    timestamp: Date.now()
-                });
+            if (!currentCall) {
+                closeCallModal();
+                return;
             }
 
-            if (currentCall.dbId) db.from('calls').update({ status: 'ended' }).eq('id', currentCall.dbId);
+            const isInitiator = currentCall.isInitiator;
+            const peerId = isInitiator ? currentCall.peerId : (currentCall.callerInfo && currentCall.callerInfo.id);
+            const callId = currentCall.callId;
+            const dbId = currentCall.dbId;
 
+            // 1. Отправить сигнал
+            if (peerId && callId) {
+                try {
+                    const signal = isInitiator ? 'call_ended' : 'call_rejected';
+                    await sendCallSignal(peerId, signal, {
+                        callId: callId,
+                        reason: isInitiator ? 'cancelled' : 'rejected',
+                        timestamp: Date.now()
+                    });
+                } catch (e) { console.warn('[rejectCall] send error:', e); }
+            }
+
+            // 2. Обновить статус в БД
+            if (dbId) {
+                try { await db.from('calls').update({ status: 'ended' }).eq('id', dbId); } catch (e) {}
+            }
+
+            // 3. UI
             const statusEl = document.getElementById('callStatus');
             if (statusEl) statusEl.textContent = 'Вызов завершён';
-            const incoming = document.getElementById('incomingCallControls');
-            const outgoing = document.getElementById('outgoingCallControls');
-            if (incoming) incoming.style.display = 'none';
-            if (outgoing) outgoing.style.display = 'none';
 
-            resetCallState();
-            if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
-            
-            if (callModal) callModal.classList.remove('active');
+            // 4. Убрать капсулу
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
+
+            // 5. Закрыть модалку и сбросить
+            setTimeout(() => {
+                closeCallModal();
+            }, 300);
         }
+        window.rejectCall = rejectCall;
+
+        async function endCall() {
+            if (!currentCall) {
+                // Даже если currentCall пуст — закрыть модалку
+                closeCallModal();
+                return;
+            }
+
+            const peerId = currentCall.peerId;
+            const callId = currentCall.callId;
+            const dbId = currentCall.dbId;
+
+            // 1. Отправить сигнал завершения собеседнику
+            if (peerId && callId) {
+                try {
+                    await sendCallSignal(peerId, 'call_ended', {
+                        callId: callId,
+                        reason: 'ended',
+                        timestamp: Date.now()
+                    });
+                } catch (e) { console.warn('[endCall] send signal error:', e); }
+            }
+
+            // 2. Обновить статус в БД
+            if (dbId) {
+                try { await db.from('calls').update({ status: 'ended' }).eq('id', dbId); } catch (e) {}
+            }
+
+            // 3. UI
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = 'Вызов завершён';
+
+            // 4. Убрать капсулу если есть
+            const miniContainer = document.getElementById('callMinimizedGlobal');
+            if (miniContainer) miniContainer.remove();
+
+            // 5. Закрыть модалку и сбросить состояние
+            setTimeout(() => {
+                closeCallModal();
+            }, 300);
+
+            if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
+        }
+        window.endCall = endCall;
 
         function toggleMute() {
             if (!localStream) return;
