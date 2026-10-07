@@ -6412,17 +6412,16 @@
         function toggleMute() {
             callMuted = !callMuted;
             
-            // Если есть localStream — переключить треки
             if (localStream && localStream.getAudioTracks().length > 0) {
                 localStream.getAudioTracks().forEach(track => { track.enabled = !callMuted; });
             }
             
-            // Обновить все кнопки микрофона (в сценах и капсуле)
             const muteButtons = [
                 document.getElementById('muteCallBtn'),
                 document.getElementById('incomingMuteBtn'),
                 document.getElementById('capMuteBtn')
             ];
+            
             muteButtons.forEach(btn => {
                 if (!btn) return;
                 if (callMuted) {
@@ -6431,8 +6430,9 @@
                     btn.style.borderColor = 'rgba(255, 69, 58, 0.6)';
                 } else {
                     btn.classList.remove('muted');
-                    btn.style.background = '';
-                    btn.style.borderColor = '';
+                    // Явно вернуть серый фон (как у .ctrl-btn по умолчанию)
+                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                    btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                 }
             });
             
@@ -6511,15 +6511,15 @@
         }
 
 const CAPSULE_POSITIONS = [
-            { id: 0, top: 80,  left: 20,                name: 'tl' },
-            { id: 1, top: 80,  centerX: true,           name: 'tc' },
-            { id: 2, top: 80,  right: 130,              name: 'tr' },
-            { id: 3, top: null, centerY: true, left: 20,    name: 'ml' },
-            { id: 4, top: null, centerY: true, right: 20,   name: 'mr' },
-            { id: 5, bottom: 130, left: 20,             name: 'bl' },
-            { id: 6, bottom: 130, centerX: true,        name: 'bc' },
-            { id: 7, bottom: 130, right: 20,            name: 'br' }
-        ];
+    { id: 0, top: 70,  left: 120,               name: 'tl' },
+    { id: 1, top: 70,  centerX: true,           name: 'tc' },
+    { id: 2, top: 70,  right: 120,              name: 'tr' },
+    { id: 3, top: null, centerY: true, left: 20,    name: 'ml' },
+    { id: 4, top: null, centerY: true, right: 20,   name: 'mr' },
+    { id: 5, bottom: 120, left: 20,             name: 'bl' },
+    { id: 6, bottom: 120, centerX: true,        name: 'bc' },
+    { id: 7, bottom: 120, right: 140,           name: 'br' }
+];
 
         function getCapsuleCoords(pos) {
             const w = window.innerWidth;
