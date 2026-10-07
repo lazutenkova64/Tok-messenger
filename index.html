@@ -392,6 +392,10 @@
                 <div class="call-name" id="callActiveName">Пользователь</div>
                 <div class="call-status active-status"><span class="dot"></span> В разговоре</div>
                 <div class="timer-badge">⏱ <span id="callTimer">00:00</span></div>
+                <div class="wave-bars">
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span>
+                </div>
             </div>
             <div class="call-controls-row">
                 <div class="ctrl-wrap">
@@ -6399,22 +6403,31 @@
         window.endCall = endCall;
 
         function toggleMute() {
-            if (!localStream) return;
+            const muteBtn = document.getElementById('muteCallBtn');
+            const incomingMuteBtn = document.getElementById('incomingMuteBtn');
+            
+            // Если нет localStream — просто переключаем визуально
+            if (!localStream || localStream.getAudioTracks().length === 0) {
+                callMuted = !callMuted;
+                [muteBtn, incomingMuteBtn].forEach(btn => {
+                    if (btn) btn.classList.toggle('muted', callMuted);
+                });
+                if (typeof toastMsg === 'function') toastMsg(callMuted ? 'Микрофон выключен' : 'Микрофон включён');
+                return;
+            }
+            
+            // Если есть поток — переключаем треки
             const audioTracks = localStream.getAudioTracks();
-            if (audioTracks.length === 0) return;
             const enabled = !audioTracks[0].enabled;
             audioTracks.forEach(track => track.enabled = enabled);
             callMuted = !enabled;
-
-            const muteBtn = document.getElementById('muteCallBtn');
-            const incomingMuteBtn = document.getElementById('incomingMuteBtn');
+            
             [muteBtn, incomingMuteBtn].forEach(btn => {
-                if (btn) {
-                    btn.classList.toggle('muted', callMuted);
-                }
+                if (btn) btn.classList.toggle('muted', callMuted);
             });
             if (typeof toastMsg === 'function') toastMsg(callMuted ? 'Микрофон выключен' : 'Микрофон включён');
         }
+        window.toggleMute = toggleMute;
 
         function startCallTimer() {
             if (callTimerInterval) clearInterval(callTimerInterval);
@@ -6438,67 +6451,48 @@
         function minimizeCallWindow() {
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
-            
-            // УБРАТЬ класс active с модалки — она станет display:none
             callModal.classList.remove('active');
             
             // Скопировать имя и аватар в капсулу
             const activeName = document.getElementById('callActiveName');
-            const miniName = document.getElementById('callMiniName');
-            if (activeName && miniName) miniName.textContent = activeName.textContent || 'Пользователь';
-            
             const activeAvatar = document.getElementById('callAvatar');
-            const miniAvatar = document.getElementById('callAvatarMini');
-            if (activeAvatar && miniAvatar) {
-                const bg = activeAvatar.style.backgroundImage;
-                if (bg && bg !== 'none') {
-                    miniAvatar.style.backgroundImage = bg;
-                    miniAvatar.style.backgroundSize = 'cover';
-                    miniAvatar.style.backgroundPosition = 'center';
-                    miniAvatar.textContent = '';
-                } else {
-                    miniAvatar.style.backgroundImage = '';
-                    miniAvatar.textContent = activeAvatar.textContent || '👤';
-                }
-            }
             
-            // ПОКАЗАТЬ капсулу как ОТДЕЛЬНЫЙ блок на странице (не внутри callModal)
+            // Убрать старую капсулу если есть
             let miniContainer = document.getElementById('callMinimizedGlobal');
-            if (!miniContainer) {
-                miniContainer = document.createElement('div');
-                miniContainer.id = 'callMinimizedGlobal';
-                miniContainer.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9998;display:block;';
-                document.body.appendChild(miniContainer);
-            }
+            if (miniContainer) miniContainer.remove();
+            
+            // Создать новую капсулу СВЕРХУ ПО ЦЕНТРУ
+            miniContainer = document.createElement('div');
+            miniContainer.id = 'callMinimizedGlobal';
+            miniContainer.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 6px;background:rgba(20,20,35,0.95);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.1);border-radius:100px;box-shadow:0 12px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(74,140,255,0.15);max-width:calc(100vw - 200px);';
+            
+            // Аватар (фото или буква)
+            const avatarBg = activeAvatar && activeAvatar.style.background;
+            const avatarText = activeAvatar ? (activeAvatar.textContent || '👤') : '👤';
+            
             miniContainer.innerHTML = `
-                <div class="capsule" onclick="restoreCallWindow()">
-                    <div class="cap-avatar" id="callAvatarMini">${activeAvatar && activeAvatar.textContent ? activeAvatar.textContent : '👤'}</div>
-                    <div class="cap-info">
-                        <div class="n" id="callMiniName">${activeName && activeName.textContent ? activeName.textContent : 'Пользователь'}</div>
-                        <div class="t">
-                            <span id="callMiniTimer">00:00</span>
-                            <span class="wave-small"><span></span><span></span><span></span></span>
-                        </div>
+                <div style="width:36px;height:36px;border-radius:50%;background:${avatarBg || 'linear-gradient(135deg, #4a8cff, #8c5aff)'};background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:600;flex-shrink:0;position:relative;">
+                    ${avatarBg ? '' : avatarText}
+                </div>
+                <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                    <div style="font-size:13px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${activeName ? activeName.textContent : 'Пользователь'}</div>
+                    <div style="font-size:11px;color:#00c8ff;font-family:monospace;display:flex;align-items:center;gap:4px;">
+                        <span id="callMiniTimer">${document.getElementById('callTimer') ? document.getElementById('callTimer').textContent : '00:00'}</span>
+                        <span style="display:inline-flex;gap:1px;height:8px;align-items:flex-end;">
+                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite;height:40%;"></span>
+                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.15s;height:100%;"></span>
+                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.3s;height:60%;"></span>
+                        </span>
                     </div>
-                    <div class="cap-buttons" onclick="event.stopPropagation()">
-                        <button class="cap-btn" onclick="toggleMute()" title="Микрофон">🎤</button>
-                        <button class="cap-btn" onclick="restoreCallWindow()" title="Развернуть">⤴️</button>
-                        <button class="cap-btn end" onclick="endCall()" title="Завершить">❌</button>
-                    </div>
+                </div>
+                <div style="display:flex;gap:4px;margin-left:4px;">
+                    <button onclick="toggleMute()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button>
+                    <button onclick="restoreCallWindow()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(74,140,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">⤴️</button>
+                    <button onclick="endCall()" style="width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg, #ff453a, #d63026);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">❌</button>
                 </div>
             `;
             
-            // Скопировать аватар в новую капсулу
-            const newMiniAvatar = document.getElementById('callAvatarMini');
-            if (newMiniAvatar && activeAvatar) {
-                const bg = activeAvatar.style.backgroundImage;
-                if (bg && bg !== 'none') {
-                    newMiniAvatar.style.backgroundImage = bg;
-                    newMiniAvatar.style.backgroundSize = 'cover';
-                    newMiniAvatar.style.backgroundPosition = 'center';
-                    newMiniAvatar.textContent = '';
-                }
-            }
+            document.body.appendChild(miniContainer);
             
             if (typeof toastMsg === 'function') toastMsg('Звонок свёрнут');
         }
@@ -6508,18 +6502,14 @@
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
             
-            // Убрать капсулу
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
             
-            // Показать модалку
             callModal.classList.add('active');
             
-            // Показать активную сцену
             const active = document.getElementById('callScene-active');
             if (active) active.style.display = 'flex';
             
-            // Скрыть остальные
             ['callScene-outgoing', 'callScene-incoming', 'callMinimized'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.style.display = 'none';
@@ -7715,6 +7705,34 @@
     50% { transform: scale(1.15); }
 }
 .call-modal-new .orb-core { position: relative; z-index: 2; }
+.call-modal-new .wave-bars {
+    display: flex;
+    gap: 3px;
+    justify-content: center;
+    height: 30px;
+    align-items: center;
+    margin-top: 12px;
+}
+.call-modal-new .wave-bars span {
+    width: 3px;
+    height: 30%;
+    background: linear-gradient(180deg, #00c8ff, #4a8cff);
+    border-radius: 2px;
+    animation: waveAnim 1.2s ease-in-out infinite;
+}
+.call-modal-new .wave-bars span:nth-child(1) { animation-delay: 0s; }
+.call-modal-new .wave-bars span:nth-child(2) { animation-delay: 0.1s; }
+.call-modal-new .wave-bars span:nth-child(3) { animation-delay: 0.2s; }
+.call-modal-new .wave-bars span:nth-child(4) { animation-delay: 0.3s; }
+.call-modal-new .wave-bars span:nth-child(5) { animation-delay: 0.4s; }
+.call-modal-new .wave-bars span:nth-child(6) { animation-delay: 0.5s; }
+.call-modal-new .wave-bars span:nth-child(7) { animation-delay: 0.6s; }
+.call-modal-new .wave-bars span:nth-child(8) { animation-delay: 0.7s; }
+.call-modal-new .wave-bars span:nth-child(9) { animation-delay: 0.8s; }
+@keyframes waveAnim {
+    0%, 100% { height: 20%; opacity: 0.5; }
+    50% { height: 100%; opacity: 1; }
+}
 .call-modal-new .incoming-label {
     font-size: 12px;
     color: #34c759;
