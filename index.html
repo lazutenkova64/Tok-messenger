@@ -6123,28 +6123,73 @@
                 if (typeof toastMsg === 'function') toastMsg('Демонстрация не поддерживается');
                 return;
             }
+            
+            let stream = null;
+            
+            // Попытка 1: с аудио
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: { cursor: 'always' }, 
-                    audio: true 
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: 'always' },
+                    audio: true
                 });
-                screenStreamMine = stream;
-                const videoTrack = stream.getVideoTracks()[0];
-                const audioTrack = stream.getAudioTracks()[0];
-                if (!videoTrack) return;
-                screenTrackMine = videoTrack;
-                isScreenSharing = true;
-                
+            } catch (e1) {
+                console.warn('[screenShare] failed with audio, retry without audio:', e1);
+                // Попытка 2: без аудио (если первая упала)
+                try {
+                    stream = await navigator.mediaDevices.getDisplayMedia({
+                        video: { cursor: 'always' },
+                        audio: false
+                    });
+                } catch (e2) {
+                    if (e2.name !== 'NotAllowedError') {
+                        console.warn('[screenShare] failed total:', e2);
+                        if (typeof toastMsg === 'function') toastMsg('Ошибка демонстрации');
+                    }
+                    return;
+                }
+            }
+            
+            if (!stream) return;
+            
+            const videoTrack = stream.getVideoTracks()[0];
+            if (!videoTrack) {
+                if (typeof toastMsg === 'function') toastMsg('Не удалось захватить видео');
+                stream.getTracks().forEach(t => t.stop());
+                return;
+            }
+            
+            screenStreamMine = stream;
+            screenTrackMine = videoTrack;
+            isScreenSharing = true;
+            
+            // КРИТИЧНО: добавить/заменить видео-трек в peerConnection
+            try {
                 const senders = peerConnection.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                
                 if (videoSender) {
                     await videoSender.replaceTrack(videoTrack);
+                    console.log('[screenShare] video track replaced');
                 } else {
-                    peerConnection.addTrack(videoTrack, stream);
+                    const sender = peerConnection.addTrack(videoTrack, stream);
+                    console.log('[screenShare] video track added, sender:', !!sender);
+                    
+                    // Форсировать renegotiation (пересоздать offer)
+                    if (currentCall && currentCall.peerId && peerConnection) {
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        await sendCallSignal(currentCall.peerId, 'webrtc_offer', {
+                            callId: currentCall.callId,
+                            offer: { type: offer.type, sdp: offer.sdp },
+                            timestamp: Date.now()
+                        });
+                        console.log('[screenShare] renegotiation offer sent');
+                    }
                 }
                 
-                // Заменить аудио-трек в peerConnection на звук экрана
-                if (audioTrack && peerConnection) {
+                // Если есть аудио-трек экрана — заменить аудио
+                const audioTrack = stream.getAudioTracks()[0];
+                if (audioTrack) {
                     const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
                     if (audioSender) {
                         await audioSender.replaceTrack(audioTrack);
@@ -6152,31 +6197,39 @@
                         peerConnection.addTrack(audioTrack, stream);
                     }
                 }
-                
-                // Показать своё видео
-                document.getElementById('shareScreens').style.display = 'flex';
-                document.getElementById('sharePanelMine').style.display = 'block';
-                document.getElementById('shareVideoMine').srcObject = stream;
-                
-                // Скрыть орб-шар
-                const orbWrap = document.querySelector('#callScene-active .orb-wrap');
-                const infoBlock = document.querySelector('#callScene-active .call-info-block');
-                if (orbWrap) orbWrap.style.display = 'none';
-                if (infoBlock) infoBlock.style.display = 'none';
-                
-                // Сообщить собеседнику
-                if (currentCall && currentCall.peerId) {
-                    try { await sendCallSignal(currentCall.peerId, 'screen_share_started', { callId: currentCall.callId, timestamp: Date.now() }); } catch (e) {}
-                }
-                
-                videoTrack.onended = () => { stopScreenShare(); };
-                if (typeof toastMsg === 'function') toastMsg('Демонстрация началась');
-            } catch (e) {
-                if (e.name !== 'NotAllowedError') {
-                    console.warn('[screenShare] error:', e);
-                    if (typeof toastMsg === 'function') toastMsg('Ошибка демонстрации');
-                }
+            } catch (err) {
+                console.error('[screenShare] failed to add/replace track:', err);
             }
+            
+            // Показать своё видео
+            const shareScreens = document.getElementById('shareScreens');
+            const sharePanelMine = document.getElementById('sharePanelMine');
+            const shareVideoMine = document.getElementById('shareVideoMine');
+            if (shareScreens) shareScreens.style.display = 'flex';
+            if (sharePanelMine) sharePanelMine.style.display = 'block';
+            if (shareVideoMine) {
+                shareVideoMine.srcObject = stream;
+                shareVideoMine.play().catch(() => {});
+            }
+            
+            // Скрыть орб-шар
+            const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+            const infoBlock = document.querySelector('#callScene-active .call-info-block');
+            if (orbWrap) orbWrap.style.display = 'none';
+            if (infoBlock) infoBlock.style.display = 'none';
+            
+            // Сообщить собеседнику
+            if (currentCall && currentCall.peerId) {
+                try {
+                    await sendCallSignal(currentCall.peerId, 'screen_share_started', {
+                        callId: currentCall.callId,
+                        timestamp: Date.now()
+                    });
+                } catch (e) {}
+            }
+            
+            videoTrack.onended = () => { stopScreenShare(); };
+            if (typeof toastMsg === 'function') toastMsg('Демонстрация началась');
         }
         window.startScreenShare = startScreenShare;
 
@@ -6192,15 +6245,17 @@
             if (peerConnection) {
                 const senders = peerConnection.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-                if (videoSender) { try { await videoSender.replaceTrack(null); } catch (e) {} }
+                if (videoSender) {
+                    try { await videoSender.replaceTrack(null); } catch (e) {}
+                }
                 
-                // Вернуть микрофон
+                // Вернуть аудио микрофона
                 if (localStream) {
-                    const micAudioTrack = localStream.getAudioTracks()[0];
-                    if (micAudioTrack) {
+                    const micTrack = localStream.getAudioTracks()[0];
+                    if (micTrack) {
                         const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
                         if (audioSender) {
-                            try { await audioSender.replaceTrack(micAudioTrack); } catch (e) {}
+                            try { await audioSender.replaceTrack(micTrack); } catch (e) {}
                         }
                     }
                 }
@@ -6208,11 +6263,14 @@
             
             isScreenSharing = false;
             
-            document.getElementById('shareVideoMine').srcObject = null;
-            document.getElementById('sharePanelMine').style.display = 'none';
+            const shareVideoMine = document.getElementById('shareVideoMine');
+            if (shareVideoMine) shareVideoMine.srcObject = null;
+            const sharePanelMine = document.getElementById('sharePanelMine');
+            if (sharePanelMine) sharePanelMine.style.display = 'none';
             
             if (!peerIsScreenSharing) {
-                document.getElementById('shareScreens').style.display = 'none';
+                const shareScreens = document.getElementById('shareScreens');
+                if (shareScreens) shareScreens.style.display = 'none';
                 const orbWrap = document.querySelector('#callScene-active .orb-wrap');
                 const infoBlock = document.querySelector('#callScene-active .call-info-block');
                 if (orbWrap) orbWrap.style.display = '';
@@ -6220,7 +6278,12 @@
             }
             
             if (currentCall && currentCall.peerId) {
-                try { await sendCallSignal(currentCall.peerId, 'screen_share_stopped', { callId: currentCall.callId, timestamp: Date.now() }); } catch (e) {}
+                try {
+                    await sendCallSignal(currentCall.peerId, 'screen_share_stopped', {
+                        callId: currentCall.callId,
+                        timestamp: Date.now()
+                    });
+                } catch (e) {}
             }
             
             if (typeof toastMsg === 'function') toastMsg('Демонстрация остановлена');
