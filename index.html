@@ -6511,14 +6511,14 @@
         }
 
 const CAPSULE_POSITIONS = [
-    { id: 0, top: 15,  left: 220,               name: 'tl' },  // ① Слева сверху — ВЫШЕ, правее ника
+    { id: 0, top: 15,  left: 220,               name: 'tl' },  // ① Слева сверху
     { id: 1, top: 15,  centerX: true,           name: 'tc' },  // ② Сверху центр
-    { id: 2, top: 15,  right: 160,              name: 'tr' },  // ③ Справа сверху — левее колокольчика
+    { id: 2, top: 15,  right: 60,               name: 'tr' },  // ③ Справа сверху (базовая = 60px от края)
     { id: 3, top: null, centerY: true, left: 20,    name: 'ml' },  // ④ Слева центр
-    { id: 4, top: null, centerY: true, right: 220,  name: 'mr' },  // ⑤ Справа центр
+    { id: 4, top: null, centerY: true, right: 20,   name: 'mr' },  // ⑤ Справа центр
     { id: 5, bottom: 140, left: 20,             name: 'bl' },  // ⑥ Слева снизу
     { id: 6, bottom: 140, centerX: true,        name: 'bc' },  // ⑦ Снизу центр
-    { id: 7, bottom: 140, right: 220,           name: 'br' }   // ⑧ Справа снизу
+    { id: 7, bottom: 140, right: 200,           name: 'br' }   // ⑧ Справа снизу (базовая = 200px от края)
 ];
 
         function getCapsuleCoords(pos) {
@@ -6538,12 +6538,28 @@ const CAPSULE_POSITIONS = [
             const mini = document.getElementById('callMinimizedGlobal');
             if (!mini) return;
             const coords = getCapsuleCoords(pos);
+            
+            // Получить реальную ширину капсулы
+            const rect = mini.getBoundingClientRect();
+            const capsuleWidth = rect.width || 200;
+            
+            // Проценты сдвига для конкретных позиций
+            const offsets = {
+                0: { dx: -0.4, dy: 0 },   // ① 40% влево
+                2: { dx: -1.5, dy: 0 },   // ③ 150% влево (1.5x)
+                7: { dx: -0.45, dy: 0 }   // ⑧ 45% влево
+            };
+            
+            const offset = offsets[pos.id] || { dx: 0, dy: 0 };
+            const shiftX = offset.dx * capsuleWidth;
+            
             mini.style.transition = 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
-            mini.style.left = coords.x + 'px';
+            mini.style.left = (coords.x + shiftX) + 'px';
             mini.style.top = coords.y + 'px';
             mini.style.transform = pos.centerX ? 'translateX(-50%)' : 'translateX(0)';
             mini.style.right = 'auto';
             mini.style.bottom = 'auto';
+            
             localStorage.setItem('capsulePosition', String(pos.id));
         }
         window.applyCapsulePosition = applyCapsulePosition;
