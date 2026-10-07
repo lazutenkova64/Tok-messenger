@@ -384,6 +384,22 @@
 
         <!-- СЦЕНА 3: АКТИВНЫЙ -->
         <div class="call-scene" id="callScene-active" style="display:none;">
+            <div class="share-screens" id="shareScreens" style="display:none;">
+                <div class="share-panel" id="sharePanelMine" style="display:none;">
+                    <div class="share-label">
+                        <span class="live-dot"></span>
+                        <span>Вы показываете</span>
+                    </div>
+                    <video id="shareVideoMine" autoplay playsinline muted></video>
+                </div>
+                <div class="share-panel" id="sharePanelPeer" style="display:none;">
+                    <div class="share-label">
+                        <span class="live-dot"></span>
+                        <span id="sharePeerName">Собеседник показывает</span>
+                    </div>
+                    <video id="shareVideoPeer" autoplay playsinline></video>
+                </div>
+            </div>
             <div class="orb-wrap">
                 <div class="orb-blob"></div><div class="orb-blob b2"></div><div class="orb-blob b3"></div>
                 <div class="core orb-core" id="callAvatar">👤</div>
@@ -407,7 +423,7 @@
                     <span class="ctrl-label">Громкая</span>
                 </div>
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn" onclick="toastMsg && toastMsg('Демонстрация')">🖥️</button>
+                    <button class="ctrl-btn" onclick="startScreenShare()">🖥️</button>
                     <span class="ctrl-label">Экран</span>
                 </div>
                 <div class="ctrl-wrap">
@@ -637,6 +653,10 @@
         };
         let peerConnection = null;
         let localStream = null;
+        let screenStreamMine = null;
+        let screenTrackMine = null;
+        let isScreenSharing = false;
+        let peerIsScreenSharing = false;
         let callRingtone = null;
         let callAcceptedSound = null;
         let callEndedSound = null;
@@ -5358,6 +5378,37 @@
                 if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
             });
 
+            ch.on('broadcast', { event: 'screen_share_started' }, ({ payload }) => {
+                peerIsScreenSharing = true;
+                document.getElementById('shareScreens').style.display = 'flex';
+                document.getElementById('sharePanelPeer').style.display = 'block';
+                const nameEl = document.getElementById('sharePeerName');
+                if (nameEl && currentCall && currentCall.callerInfo) {
+                    nameEl.textContent = (currentCall.callerInfo.name || 'Собеседник') + ' показывает';
+                }
+                if (isScreenSharing) {
+                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                    if (orbWrap) orbWrap.style.display = 'none';
+                    if (infoBlock) infoBlock.style.display = 'none';
+                }
+                if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
+            });
+
+            ch.on('broadcast', { event: 'screen_share_stopped' }, ({ payload }) => {
+                peerIsScreenSharing = false;
+                document.getElementById('sharePanelPeer').style.display = 'none';
+                document.getElementById('shareVideoPeer').srcObject = null;
+                if (!isScreenSharing) {
+                    document.getElementById('shareScreens').style.display = 'none';
+                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                    if (orbWrap) orbWrap.style.display = '';
+                    if (infoBlock) infoBlock.style.display = '';
+                }
+                if (typeof toastMsg === 'function') toastMsg('Собеседник остановил показ');
+            });
+
             ch.on('broadcast', { event: 'webrtc_offer' }, async ({ payload }) => {
                 const { callId, offer, timestamp } = payload;
                 if (!currentCall || currentCall.callId !== callId) return;
@@ -6058,6 +6109,95 @@
         }
         window.closeCallModal = closeCallModal;
 
+        async function startScreenShare() {
+            if (!peerConnection) {
+                if (typeof toastMsg === 'function') toastMsg('Сначала соединитесь');
+                return;
+            }
+            if (isScreenSharing) { stopScreenShare(); return; }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                if (typeof toastMsg === 'function') toastMsg('Демонстрация не поддерживается');
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+                screenStreamMine = stream;
+                const videoTrack = stream.getVideoTracks()[0];
+                if (!videoTrack) return;
+                screenTrackMine = videoTrack;
+                isScreenSharing = true;
+                
+                const senders = peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) {
+                    await videoSender.replaceTrack(videoTrack);
+                } else {
+                    peerConnection.addTrack(videoTrack, stream);
+                }
+                
+                // Показать своё видео
+                document.getElementById('shareScreens').style.display = 'flex';
+                document.getElementById('sharePanelMine').style.display = 'block';
+                document.getElementById('shareVideoMine').srcObject = stream;
+                
+                // Скрыть орб-шар
+                const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                if (orbWrap) orbWrap.style.display = 'none';
+                if (infoBlock) infoBlock.style.display = 'none';
+                
+                // Сообщить собеседнику
+                if (currentCall && currentCall.peerId) {
+                    try { await sendCallSignal(currentCall.peerId, 'screen_share_started', { callId: currentCall.callId, timestamp: Date.now() }); } catch (e) {}
+                }
+                
+                videoTrack.onended = () => { stopScreenShare(); };
+                if (typeof toastMsg === 'function') toastMsg('Демонстрация началась');
+            } catch (e) {
+                if (e.name !== 'NotAllowedError') {
+                    console.warn('[screenShare] error:', e);
+                    if (typeof toastMsg === 'function') toastMsg('Ошибка демонстрации');
+                }
+            }
+        }
+        window.startScreenShare = startScreenShare;
+
+        async function stopScreenShare() {
+            if (!isScreenSharing) return;
+            
+            if (screenStreamMine) {
+                screenStreamMine.getTracks().forEach(t => t.stop());
+                screenStreamMine = null;
+                screenTrackMine = null;
+            }
+            
+            if (peerConnection) {
+                const senders = peerConnection.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                if (videoSender) { try { await videoSender.replaceTrack(null); } catch (e) {} }
+            }
+            
+            isScreenSharing = false;
+            
+            document.getElementById('shareVideoMine').srcObject = null;
+            document.getElementById('sharePanelMine').style.display = 'none';
+            
+            if (!peerIsScreenSharing) {
+                document.getElementById('shareScreens').style.display = 'none';
+                const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                if (orbWrap) orbWrap.style.display = '';
+                if (infoBlock) infoBlock.style.display = '';
+            }
+            
+            if (currentCall && currentCall.peerId) {
+                try { await sendCallSignal(currentCall.peerId, 'screen_share_stopped', { callId: currentCall.callId, timestamp: Date.now() }); } catch (e) {}
+            }
+            
+            if (typeof toastMsg === 'function') toastMsg('Демонстрация остановлена');
+        }
+        window.stopScreenShare = stopScreenShare;
+
         function createPeerConnection() {
             const pc = new RTCPeerConnection(getIceServers());
             
@@ -6082,6 +6222,18 @@
             pc.ontrack = (event) => {
                 const remoteStream = event.streams[0];
                 if (!remoteStream) return;
+                
+                // Демонстрация собеседника
+                if (remoteStream.getVideoTracks().length > 0) {
+                    document.getElementById('shareVideoPeer').srcObject = remoteStream;
+                    document.getElementById('sharePanelPeer').style.display = 'block';
+                    document.getElementById('shareScreens').style.display = 'flex';
+                    peerIsScreenSharing = true;
+                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                    if (orbWrap) orbWrap.style.display = 'none';
+                    if (infoBlock) infoBlock.style.display = 'none';
+                }
                 
                 const remoteAudioDiv = document.getElementById('remote-audios');
                 clearRemoteAudios();
@@ -6372,6 +6524,10 @@
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
 
+            if (isScreenSharing) { try { stopScreenShare(); } catch (e) {} }
+            peerIsScreenSharing = false;
+            isScreenSharing = false;
+
             // 5. Закрыть модалку и сбросить
             setTimeout(() => {
                 closeCallModal();
@@ -6416,6 +6572,10 @@
 
             // 6. Остановить анализатор волн
             if (waveAnimationId) { cancelAnimationFrame(waveAnimationId); waveAnimationId = null; }
+
+            if (isScreenSharing) { try { stopScreenShare(); } catch (e) {} }
+            peerIsScreenSharing = false;
+            isScreenSharing = false;
 
             // 5. Закрыть модалку и сбросить состояние
             setTimeout(() => {
@@ -8071,6 +8231,63 @@ const CAPSULE_POSITIONS = [
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.call-modal-new .share-screens {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 90vw;
+    height: 55vh;
+    min-height: 260px;
+    margin-bottom: 20px;
+}
+.call-modal-new .share-panel {
+    flex: 1;
+    background: #0a0a12;
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255,255,255,0.1);
+    min-width: 0;
+}
+.call-modal-new .share-panel video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    background: #000;
+}
+.call-modal-new .share-label {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.call-modal-new .live-dot {
+    width: 6px;
+    height: 6px;
+    background: #ff453a;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #ff453a;
+    animation: livePulse 1.5s ease-in-out infinite;
+}
+@keyframes livePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
 }
 </style>
 
