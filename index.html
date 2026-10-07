@@ -5380,18 +5380,22 @@
 
             ch.on('broadcast', { event: 'screen_share_started' }, ({ payload }) => {
                 peerIsScreenSharing = true;
-                document.getElementById('shareScreens').style.display = 'flex';
-                document.getElementById('sharePanelPeer').style.display = 'block';
-                const nameEl = document.getElementById('sharePeerName');
-                if (nameEl && currentCall && currentCall.callerInfo) {
-                    nameEl.textContent = (currentCall.callerInfo.name || 'Собеседник') + ' показывает';
+                const shareScreens = document.getElementById('shareScreens');
+                const sharePanelPeer = document.getElementById('sharePanelPeer');
+                const sharePeerName = document.getElementById('sharePeerName');
+                
+                if (shareScreens) shareScreens.style.display = 'flex';
+                if (sharePanelPeer) sharePanelPeer.style.display = 'block';
+                if (sharePeerName && currentCall && currentCall.callerInfo) {
+                    sharePeerName.textContent = (currentCall.callerInfo.name || 'Собеседник') + ' показывает';
                 }
-                if (isScreenSharing) {
-                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
-                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
-                    if (orbWrap) orbWrap.style.display = 'none';
-                    if (infoBlock) infoBlock.style.display = 'none';
-                }
+                
+                // Скрыть орб-шар
+                const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                if (orbWrap) orbWrap.style.display = 'none';
+                if (infoBlock) infoBlock.style.display = 'none';
+                
                 if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
             });
 
@@ -6120,9 +6124,13 @@
                 return;
             }
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'always' }, audio: false });
+                const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { cursor: 'always' }, 
+                    audio: true 
+                });
                 screenStreamMine = stream;
                 const videoTrack = stream.getVideoTracks()[0];
+                const audioTrack = stream.getAudioTracks()[0];
                 if (!videoTrack) return;
                 screenTrackMine = videoTrack;
                 isScreenSharing = true;
@@ -6133,6 +6141,16 @@
                     await videoSender.replaceTrack(videoTrack);
                 } else {
                     peerConnection.addTrack(videoTrack, stream);
+                }
+                
+                // Заменить аудио-трек в peerConnection на звук экрана
+                if (audioTrack && peerConnection) {
+                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) {
+                        await audioSender.replaceTrack(audioTrack);
+                    } else {
+                        peerConnection.addTrack(audioTrack, stream);
+                    }
                 }
                 
                 // Показать своё видео
@@ -6175,6 +6193,17 @@
                 const senders = peerConnection.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video');
                 if (videoSender) { try { await videoSender.replaceTrack(null); } catch (e) {} }
+                
+                // Вернуть микрофон
+                if (localStream) {
+                    const micAudioTrack = localStream.getAudioTracks()[0];
+                    if (micAudioTrack) {
+                        const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                        if (audioSender) {
+                            try { await audioSender.replaceTrack(micAudioTrack); } catch (e) {}
+                        }
+                    }
+                }
             }
             
             isScreenSharing = false;
@@ -6223,37 +6252,59 @@
                 const remoteStream = event.streams[0];
                 if (!remoteStream) return;
                 
-                // Демонстрация собеседника
+                console.log('[call] ontrack fired, video tracks:', remoteStream.getVideoTracks().length, 'audio tracks:', remoteStream.getAudioTracks().length);
+                
+                // ЕСЛИ есть видео-трек — это демонстрация собеседника
                 if (remoteStream.getVideoTracks().length > 0) {
-                    document.getElementById('shareVideoPeer').srcObject = remoteStream;
-                    document.getElementById('sharePanelPeer').style.display = 'block';
-                    document.getElementById('shareScreens').style.display = 'flex';
+                    const shareVideoPeer = document.getElementById('shareVideoPeer');
+                    const sharePanelPeer = document.getElementById('sharePanelPeer');
+                    const shareScreens = document.getElementById('shareScreens');
+                    
+                    if (shareVideoPeer) {
+                        shareVideoPeer.srcObject = null;
+                        shareVideoPeer.srcObject = remoteStream;
+                        shareVideoPeer.play().catch(e => console.warn('[share] play error:', e));
+                    }
+                    if (sharePanelPeer) sharePanelPeer.style.display = 'block';
+                    if (shareScreens) shareScreens.style.display = 'flex';
                     peerIsScreenSharing = true;
-                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
-                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
-                    if (orbWrap) orbWrap.style.display = 'none';
-                    if (infoBlock) infoBlock.style.display = 'none';
+                    
+                    // Скрыть орб-шар если шарю и я, или если шарю только я — оставить
+                    if (isScreenSharing) {
+                        const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                        const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                        if (orbWrap) orbWrap.style.display = 'none';
+                        if (infoBlock) infoBlock.style.display = 'none';
+                    } else {
+                        // Шарю только собеседник — скрыть орб-шар
+                        const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                        const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                        if (orbWrap) orbWrap.style.display = 'none';
+                        if (infoBlock) infoBlock.style.display = 'none';
+                    }
+                    
+                    if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
                 }
                 
-                const remoteAudioDiv = document.getElementById('remote-audios');
-                clearRemoteAudios();
+                // Аудио — всегда отдельно
+                if (remoteStream.getAudioTracks().length > 0) {
+                    let audioEl = document.getElementById('_remoteAudio');
+                    if (!audioEl) {
+                        audioEl = document.createElement('audio');
+                        audioEl.id = '_remoteAudio';
+                        audioEl.autoplay = true;
+                        audioEl.playsInline = true;
+                        audioEl.style.display = 'none';
+                        const remoteAudioDiv = document.getElementById('remote-audios');
+                        if (remoteAudioDiv) remoteAudioDiv.appendChild(audioEl);
+                    }
+                    if (audioEl.srcObject !== remoteStream) {
+                        audioEl.srcObject = remoteStream;
+                        audioEl.play().catch(e => console.warn('[call] audio play error:', e));
+                    }
+                }
                 
-                const audioElement = document.createElement('audio');
-                audioElement.srcObject = remoteStream;
-                audioElement.autoplay = true;
-                audioElement.playsinline = true;
-                audioElement.setAttribute('playsinline', '');
-                audioElement.controls = false;
-                audioElement.style.display = 'none';
-                remoteAudioDiv.appendChild(audioElement);
-                
-                const tryPlay = () => {
-                    audioElement.play().catch(e => {
-                        setTimeout(() => audioElement.play().catch(() => {}), 500);
-                    });
-                };
-                tryPlay();
-                
+                // Соединение установлено
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
@@ -6261,12 +6312,8 @@
                     const peerAvatar = currentCall.callerInfo ? currentCall.callerInfo.avatar : '👤';
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
-                    
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
-                    
-                    if (currentCall.dbId) {
-                        db.from('calls').update({ status: 'active' }).eq('id', currentCall.dbId);
-                    }
+                    if (currentCall.dbId) db.from('calls').update({ status: 'active' }).eq('id', currentCall.dbId);
                 }
             };
             
