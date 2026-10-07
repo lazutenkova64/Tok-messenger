@@ -394,7 +394,7 @@
                 <div class="timer-badge">⏱ <span id="callTimer">00:00</span></div>
                 <div class="wave-bars">
                     <span></span><span></span><span></span><span></span><span></span>
-                    <span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
                 </div>
             </div>
             <div class="call-controls-row">
@@ -6027,6 +6027,9 @@
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
             
+            // Остановить анализатор волн
+            if (waveAnimationId) { cancelAnimationFrame(waveAnimationId); waveAnimationId = null; }
+            
             // Закрыть peer connection и остановить потоки
             resetCallState();
             
@@ -6299,6 +6302,7 @@
 
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                startWaveAnalyser(localStream);
                 peerConnection = createPeerConnection();
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
@@ -6393,6 +6397,9 @@
             const miniContainer = document.getElementById('callMinimizedGlobal');
             if (miniContainer) miniContainer.remove();
 
+            // 6. Остановить анализатор волн
+            if (waveAnimationId) { cancelAnimationFrame(waveAnimationId); waveAnimationId = null; }
+
             // 5. Закрыть модалку и сбросить состояние
             setTimeout(() => {
                 closeCallModal();
@@ -6403,31 +6410,86 @@
         window.endCall = endCall;
 
         function toggleMute() {
-            const muteBtn = document.getElementById('muteCallBtn');
-            const incomingMuteBtn = document.getElementById('incomingMuteBtn');
+            callMuted = !callMuted;
             
-            // Если нет localStream — просто переключаем визуально
-            if (!localStream || localStream.getAudioTracks().length === 0) {
-                callMuted = !callMuted;
-                [muteBtn, incomingMuteBtn].forEach(btn => {
-                    if (btn) btn.classList.toggle('muted', callMuted);
-                });
-                if (typeof toastMsg === 'function') toastMsg(callMuted ? 'Микрофон выключен' : 'Микрофон включён');
-                return;
+            // Если есть localStream — переключить треки
+            if (localStream && localStream.getAudioTracks().length > 0) {
+                localStream.getAudioTracks().forEach(track => { track.enabled = !callMuted; });
             }
             
-            // Если есть поток — переключаем треки
-            const audioTracks = localStream.getAudioTracks();
-            const enabled = !audioTracks[0].enabled;
-            audioTracks.forEach(track => track.enabled = enabled);
-            callMuted = !enabled;
-            
-            [muteBtn, incomingMuteBtn].forEach(btn => {
-                if (btn) btn.classList.toggle('muted', callMuted);
+            // Обновить все кнопки микрофона (в сценах и капсуле)
+            const muteButtons = [
+                document.getElementById('muteCallBtn'),
+                document.getElementById('incomingMuteBtn'),
+                document.getElementById('capMuteBtn')
+            ];
+            muteButtons.forEach(btn => {
+                if (!btn) return;
+                if (callMuted) {
+                    btn.classList.add('muted');
+                    btn.style.background = 'linear-gradient(135deg, #ff453a, #d63026)';
+                    btn.style.borderColor = 'rgba(255, 69, 58, 0.6)';
+                } else {
+                    btn.classList.remove('muted');
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                }
             });
+            
             if (typeof toastMsg === 'function') toastMsg(callMuted ? 'Микрофон выключен' : 'Микрофон включён');
         }
         window.toggleMute = toggleMute;
+
+        // ========== АУДИО-АНАЛИЗАТОР ДЛЯ ВОЛН ==========
+        let waveAnalyser = null;
+        let waveDataArray = null;
+        let waveAnimationId = null;
+
+        function startWaveAnalyser(stream) {
+            if (!stream) return;
+            if (waveAnimationId) cancelAnimationFrame(waveAnimationId);
+            
+            try {
+                if (!audioCtx) {
+                    const Ctx = window.AudioContext || window.webkitAudioContext;
+                    audioCtx = new Ctx();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                waveAnalyser = audioCtx.createAnalyser();
+                waveAnalyser.fftSize = 64;
+                waveAnalyser.smoothingTimeConstant = 0.7;
+                
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(waveAnalyser);
+                
+                waveDataArray = new Uint8Array(waveAnalyser.frequencyBinCount);
+                
+                animateWaves();
+            } catch (e) { console.warn('[wave] analyser error:', e); }
+        }
+        window.startWaveAnalyser = startWaveAnalyser;
+
+        function animateWaves() {
+            if (!waveAnalyser || !waveDataArray) return;
+            waveAnalyser.getByteFrequencyData(waveDataArray);
+            
+            let sum = 0;
+            for (let i = 0; i < waveDataArray.length; i++) sum += waveDataArray[i];
+            const avg = sum / waveDataArray.length;
+            
+            const boost = 1 + (avg / 255) * 1.5;
+            
+            const bars = document.querySelectorAll('.call-modal-new .wave-bars span');
+            bars.forEach((bar, i) => {
+                const baseHeight = 30 + Math.sin(Date.now() / 500 + i * 0.5) * 20;
+                const boostedHeight = Math.min(100, baseHeight * boost);
+                bar.style.transform = 'scaleY(' + (boostedHeight / 30) + ')';
+            });
+            
+            waveAnimationId = requestAnimationFrame(animateWaves);
+        }
+        window.animateWaves = animateWaves;
 
         function startCallTimer() {
             if (callTimerInterval) clearInterval(callTimerInterval);
@@ -6448,62 +6510,173 @@
             }, 1000);
         }
 
+const CAPSULE_POSITIONS = [
+            { id: 0, top: 80,  left: 20,                name: 'tl' },
+            { id: 1, top: 80,  centerX: true,           name: 'tc' },
+            { id: 2, top: 80,  right: 130,              name: 'tr' },
+            { id: 3, top: null, centerY: true, left: 20,    name: 'ml' },
+            { id: 4, top: null, centerY: true, right: 20,   name: 'mr' },
+            { id: 5, bottom: 130, left: 20,             name: 'bl' },
+            { id: 6, bottom: 130, centerX: true,        name: 'bc' },
+            { id: 7, bottom: 130, right: 20,            name: 'br' }
+        ];
+
+        function getCapsuleCoords(pos) {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            let x = 0, y = 0;
+            if (pos.centerX) x = w / 2;
+            else if (pos.left !== undefined) x = pos.left;
+            else if (pos.right !== undefined) x = w - pos.right;
+            if (pos.centerY) y = h / 2;
+            else if (pos.top !== undefined && pos.top !== null) y = pos.top;
+            else if (pos.bottom !== undefined) y = h - pos.bottom;
+            return { x, y };
+        }
+
+        function applyCapsulePosition(pos) {
+            const mini = document.getElementById('callMinimizedGlobal');
+            if (!mini) return;
+            const coords = getCapsuleCoords(pos);
+            mini.style.transition = 'all 0.4s cubic-bezier(0.22, 1, 0.36, 1)';
+            mini.style.left = coords.x + 'px';
+            mini.style.top = coords.y + 'px';
+            mini.style.transform = pos.centerX ? 'translateX(-50%)' : 'translateX(0)';
+            mini.style.right = 'auto';
+            mini.style.bottom = 'auto';
+            localStorage.setItem('capsulePosition', String(pos.id));
+        }
+        window.applyCapsulePosition = applyCapsulePosition;
+
+        function findNearestPosition(x, y) {
+            let nearest = 0;
+            let minDist = Infinity;
+            CAPSULE_POSITIONS.forEach(pos => {
+                const coords = getCapsuleCoords(pos);
+                const dist = Math.hypot(x - coords.x, y - coords.y);
+                if (dist < minDist) { minDist = dist; nearest = pos.id; }
+            });
+            return nearest;
+        }
+        window.findNearestPosition = findNearestPosition;
+
         function minimizeCallWindow() {
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
             callModal.classList.remove('active');
             
-            // Скопировать имя и аватар в капсулу
             const activeName = document.getElementById('callActiveName');
             const activeAvatar = document.getElementById('callAvatar');
             
-            // Убрать старую капсулу если есть
-            let miniContainer = document.getElementById('callMinimizedGlobal');
-            if (miniContainer) miniContainer.remove();
+            let mini = document.getElementById('callMinimizedGlobal');
+            if (mini) mini.remove();
             
-            // Создать новую капсулу СВЕРХУ ПО ЦЕНТРУ
-            miniContainer = document.createElement('div');
-            miniContainer.id = 'callMinimizedGlobal';
-            miniContainer.style.cssText = 'position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 6px;background:rgba(20,20,35,0.95);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.1);border-radius:100px;box-shadow:0 12px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(74,140,255,0.15);max-width:calc(100vw - 200px);';
-            
-            // Аватар (фото или буква)
             const avatarBg = activeAvatar && activeAvatar.style.background;
             const avatarText = activeAvatar ? (activeAvatar.textContent || '👤') : '👤';
             
-            miniContainer.innerHTML = `
-                <div style="width:36px;height:36px;border-radius:50%;background:${avatarBg || 'linear-gradient(135deg, #4a8cff, #8c5aff)'};background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:600;flex-shrink:0;position:relative;">
-                    ${avatarBg ? '' : avatarText}
-                </div>
-                <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-                    <div style="font-size:13px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${activeName ? activeName.textContent : 'Пользователь'}</div>
-                    <div style="font-size:11px;color:#00c8ff;font-family:monospace;display:flex;align-items:center;gap:4px;">
-                        <span id="callMiniTimer">${document.getElementById('callTimer') ? document.getElementById('callTimer').textContent : '00:00'}</span>
-                        <span style="display:inline-flex;gap:1px;height:8px;align-items:flex-end;">
-                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite;height:40%;"></span>
-                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.15s;height:100%;"></span>
-                            <span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.3s;height:60%;"></span>
-                        </span>
-                    </div>
-                </div>
-                <div style="display:flex;gap:4px;margin-left:4px;">
-                    <button onclick="toggleMute()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button>
-                    <button onclick="restoreCallWindow()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(74,140,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">⤴️</button>
-                    <button onclick="endCall()" style="width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg, #ff453a, #d63026);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">❌</button>
-                </div>
-            `;
+            mini = document.createElement('div');
+            mini.id = 'callMinimizedGlobal';
+            mini.style.cssText = 'position:fixed;z-index:9999;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 6px;background:rgba(20,20,35,0.95);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.1);border-radius:100px;box-shadow:0 12px 40px rgba(0,0,0,0.6),0 0 0 1px rgba(74,140,255,0.15);cursor:grab;user-select:none;';
             
-            document.body.appendChild(miniContainer);
+            const timerText = document.getElementById('callTimer') ? document.getElementById('callTimer').textContent : '00:00';
+            const nameText = activeName ? activeName.textContent : 'Пользователь';
+            
+            mini.innerHTML = '<div style="width:36px;height:36px;border-radius:50%;background:' + (avatarBg || 'linear-gradient(135deg, #4a8cff, #8c5aff)') + ';background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:white;font-size:14px;font-weight:600;flex-shrink:0;">' + (avatarBg ? '' : avatarText) + '</div><div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><div style="font-size:13px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px;">' + nameText + '</div><div style="font-size:11px;color:#00c8ff;font-family:monospace;display:flex;align-items:center;gap:4px;"><span id="callMiniTimer">' + timerText + '</span><span style="display:inline-flex;gap:1px;height:8px;align-items:flex-end;"><span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite;height:40%;"></span><span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.15s;height:100%;"></span><span style="width:2px;background:#00c8ff;border-radius:1px;animation:waveSmall 1s ease-in-out infinite 0.3s;height:60%;"></span></span></div></div><div style="display:flex;gap:4px;margin-left:4px;" onclick="event.stopPropagation()"><button id="capMuteBtn" onclick="toggleMute()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,0.08);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">🎤</button><button onclick="restoreCallWindow()" style="width:32px;height:32px;border-radius:50%;border:none;background:rgba(74,140,255,0.3);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">⤴️</button><button onclick="endCall()" style="width:32px;height:32px;border-radius:50%;border:none;background:linear-gradient(135deg, #ff453a, #d63026);color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">❌</button></div>';
+            
+            document.body.appendChild(mini);
+            
+            const saved = localStorage.getItem('capsulePosition');
+            const isMobile = window.innerWidth <= 768;
+            let startPos;
+            if (saved !== null) {
+                startPos = CAPSULE_POSITIONS.find(p => p.id === parseInt(saved)) || CAPSULE_POSITIONS[2];
+            } else {
+                startPos = isMobile ? CAPSULE_POSITIONS[5] : CAPSULE_POSITIONS[2];
+            }
+            applyCapsulePosition(startPos);
+            
+            makeDraggable(mini);
             
             if (typeof toastMsg === 'function') toastMsg('Звонок свёрнут');
         }
         window.minimizeCallWindow = minimizeCallWindow;
 
+        function makeDraggable(el) {
+            let isDragging = false;
+            let startX = 0, startY = 0;
+            let currentX = 0, currentY = 0;
+            let hasMoved = false;
+            
+            const startDrag = (clientX, clientY) => {
+                isDragging = true;
+                hasMoved = false;
+                startX = clientX;
+                startY = clientY;
+                const rect = el.getBoundingClientRect();
+                currentX = rect.left + rect.width / 2;
+                currentY = rect.top + rect.height / 2;
+                el.style.transition = 'none';
+                el.style.cursor = 'grabbing';
+            };
+            
+            const moveDrag = (clientX, clientY) => {
+                if (!isDragging) return;
+                const dx = clientX - startX;
+                const dy = clientY - startY;
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+                
+                el.style.left = (currentX + dx) + 'px';
+                el.style.top = (currentY + dy) + 'px';
+                el.style.transform = 'translate(-50%, -50%)';
+                el.style.right = 'auto';
+                el.style.bottom = 'auto';
+            };
+            
+            const endDrag = () => {
+                if (!isDragging) return;
+                isDragging = false;
+                el.style.cursor = 'grab';
+                
+                if (hasMoved) {
+                    const rect = el.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    const nearestId = findNearestPosition(centerX, centerY);
+                    const nearestPos = CAPSULE_POSITIONS.find(p => p.id === nearestId);
+                    applyCapsulePosition(nearestPos);
+                } else {
+                    restoreCallWindow();
+                }
+            };
+            
+            el.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                e.preventDefault();
+                startDrag(e.clientX, e.clientY);
+            });
+            document.addEventListener('mousemove', (e) => moveDrag(e.clientX, e.clientY));
+            document.addEventListener('mouseup', endDrag);
+            
+            el.addEventListener('touchstart', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
+            }, { passive: true });
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const touch = e.touches[0];
+                moveDrag(touch.clientX, touch.clientY);
+            }, { passive: true });
+            document.addEventListener('touchend', endDrag);
+        }
+        window.makeDraggable = makeDraggable;
+
         function restoreCallWindow() {
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
             
-            const miniContainer = document.getElementById('callMinimizedGlobal');
-            if (miniContainer) miniContainer.remove();
+            const mini = document.getElementById('callMinimizedGlobal');
+            if (mini) mini.remove();
             
             callModal.classList.add('active');
             
@@ -7718,20 +7891,21 @@
     height: 30%;
     background: linear-gradient(180deg, #00c8ff, #4a8cff);
     border-radius: 2px;
-    animation: waveAnim 1.2s ease-in-out infinite;
+    animation: waveAnim 2.4s ease-in-out infinite;
+    transition: height 0.1s ease-out;
 }
 .call-modal-new .wave-bars span:nth-child(1) { animation-delay: 0s; }
-.call-modal-new .wave-bars span:nth-child(2) { animation-delay: 0.1s; }
-.call-modal-new .wave-bars span:nth-child(3) { animation-delay: 0.2s; }
-.call-modal-new .wave-bars span:nth-child(4) { animation-delay: 0.3s; }
-.call-modal-new .wave-bars span:nth-child(5) { animation-delay: 0.4s; }
-.call-modal-new .wave-bars span:nth-child(6) { animation-delay: 0.5s; }
-.call-modal-new .wave-bars span:nth-child(7) { animation-delay: 0.6s; }
-.call-modal-new .wave-bars span:nth-child(8) { animation-delay: 0.7s; }
-.call-modal-new .wave-bars span:nth-child(9) { animation-delay: 0.8s; }
+.call-modal-new .wave-bars span:nth-child(2) { animation-delay: 0.2s; }
+.call-modal-new .wave-bars span:nth-child(3) { animation-delay: 0.4s; }
+.call-modal-new .wave-bars span:nth-child(4) { animation-delay: 0.6s; }
+.call-modal-new .wave-bars span:nth-child(5) { animation-delay: 0.8s; }
+.call-modal-new .wave-bars span:nth-child(6) { animation-delay: 1s; }
+.call-modal-new .wave-bars span:nth-child(7) { animation-delay: 1.2s; }
+.call-modal-new .wave-bars span:nth-child(8) { animation-delay: 1.4s; }
+.call-modal-new .wave-bars span:nth-child(9) { animation-delay: 1.6s; }
 @keyframes waveAnim {
     0%, 100% { height: 20%; opacity: 0.5; }
-    50% { height: 100%; opacity: 1; }
+    50% { height: 80%; opacity: 1; }
 }
 .call-modal-new .incoming-label {
     font-size: 12px;
