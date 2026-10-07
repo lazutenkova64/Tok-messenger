@@ -5317,27 +5317,44 @@
             });
 
             ch.on('broadcast', { event: 'call_rejected' }, ({ payload }) => {
-                const { callId } = payload;
-                if (!currentCall || currentCall.callId !== callId) return;
+                const { callId } = payload || {};
+                if (currentCall && currentCall.callId && callId && currentCall.callId !== callId) return;
+                
                 const statusEl = document.getElementById('callStatus');
-                if (statusEl) statusEl.textContent = 'Вызов завершён';
-                const incoming = document.getElementById('incomingCallControls');
-                const outgoing = document.getElementById('outgoingCallControls');
-                if (incoming) incoming.style.display = 'none';
-                if (outgoing) outgoing.style.display = 'none';
-                resetCallState();
+                if (statusEl) statusEl.textContent = 'Вызов отклонён';
+                
+                const miniContainer = document.getElementById('callMinimizedGlobal');
+                if (miniContainer) miniContainer.remove();
+                
+                setTimeout(() => {
+                    if (callModal) callModal.classList.remove('active');
+                    resetCallState();
+                    currentCall = {
+                        status: null, peerId: null, callId: null, dbId: null,
+                        isInitiator: false, callerInfo: null, startTime: null, timeout: null
+                    };
+                }, 1000);
             });
 
             ch.on('broadcast', { event: 'call_ended' }, ({ payload }) => {
-                const { callId } = payload;
-                if (!currentCall || currentCall.callId !== callId) return;
+                const { callId } = payload || {};
+                if (currentCall && currentCall.callId && callId && currentCall.callId !== callId) return;
+                
                 const statusEl = document.getElementById('callStatus');
                 if (statusEl) statusEl.textContent = 'Вызов завершён';
-                const incoming = document.getElementById('incomingCallControls');
-                const outgoing = document.getElementById('outgoingCallControls');
-                if (incoming) incoming.style.display = 'none';
-                if (outgoing) outgoing.style.display = 'none';
-                resetCallState();
+                
+                const miniContainer = document.getElementById('callMinimizedGlobal');
+                if (miniContainer) miniContainer.remove();
+                
+                setTimeout(() => {
+                    if (callModal) callModal.classList.remove('active');
+                    resetCallState();
+                    currentCall = {
+                        status: null, peerId: null, callId: null, dbId: null,
+                        isInitiator: false, callerInfo: null, startTime: null, timeout: null
+                    };
+                }, 1000);
+                
                 if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
             });
 

@@ -1,0 +1,70 @@
+[33m3ebc20d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{0}: reset: moving to HEAD~1
+[33md45490e[m HEAD@{1}: commit: Капсула: сдвиги 10% / 100%
+[33m3ebc20d[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{2}: commit: Капсула: сдвиги 40% / 150% / 45% от ширины
+[33m4232e84[m HEAD@{3}: commit: Капсула: ① выше, ③ левее колокольчика, ⑤⑧ сдвинуты влево
+[33m7947e07[m HEAD@{4}: commit: Фикс: новые координаты капсулы, фон микрофона при unmute
+[33m10db56a[m HEAD@{5}: commit: Фикс: mute, медленные волны с аудио-анализом, перетаскиваемая капсула с 8 позициями
+[33me8414e4[m HEAD@{6}: commit: Фикс: mute в исходящем, волны, капсула сверху по центру
+[33mbdf9af3[m HEAD@{7}: reset: moving to HEAD~1
+[33m3eb5f7a[m HEAD@{8}: commit: Фикс звонков: аватары, завершение, отмена
+[33mbdf9af3[m HEAD@{9}: commit: Фикс звонков: завершение, отмена, аватары
+[33m9f6c2ce[m HEAD@{10}: commit: Фикс звонков: toastMsg, сворачивание, аватар в капсуле
+[33mf9475ae[m HEAD@{11}: commit: Новая модалка звонка
+[33m14cccd2[m[33m ([m[1;33mtag: [m[1;33mv1.0-stable[m[33m)[m HEAD@{12}: reset: moving to HEAD~1
+[33m0582812[m HEAD@{13}: commit: Заменил HTML модалки звонка на новую структуру (4 сцены)
+[33m14cccd2[m[33m ([m[1;33mtag: [m[1;33mv1.0-stable[m[33m)[m HEAD@{14}: commit: Добавил loadChatsPreviews и checkLoadOlder в features.js
+[33m932e37d[m HEAD@{15}: commit: Вызовы loadChatsPreviews и checkLoadOlder
+[33m9f6359a[m HEAD@{16}: reset: moving to HEAD~1
+[33m436bedc[m HEAD@{17}: commit: Добавил вызовы loadChatsPreviews и checkLoadOlder в index.html
+[33m9f6359a[m HEAD@{18}: commit: Реакция вставляется внутрь bubble
+[33m0ed6e2c[m HEAD@{19}: reset: moving to HEAD~1
+[33m2cb2bb3[m HEAD@{20}: commit: Радикальный фикс реакции: вставка внутрь bubble
+[33m0ed6e2c[m HEAD@{21}: commit: Фикс: время не съезжает при реакции
+[33m022a45d[m HEAD@{22}: commit: Фикс: реакция над bubble, время не съезжает
+[33mae48e46[m HEAD@{23}: reset: moving to HEAD~1
+[33m897cef4[m HEAD@{24}: commit: Фикс: время сообщения не съезжает при реакции
+[33mae48e46[m HEAD@{25}: commit: Добавил глобальные переменные в features.js
+[33m16d3311[m HEAD@{26}: commit: Перенёс 22 функции в features.js
+[33m8e09f03[m HEAD@{27}: commit: Сохранил styles.css на диск
+[33m6753063[m HEAD@{28}: commit: Вынес CSS в styles.css
+[33m448ac27[m HEAD@{29}: commit: Демонстрация экрана в звонках (WebRTC) + тумблер звука системы
+[33m0de0c99[m HEAD@{30}: commit: Фикс safe-area: constant+env, viewport-fit=cover, мета-теги iOS
+[33m4b9d90d[m HEAD@{31}: commit: Фикс safe-area iPhone: input не обрезан, верх не замазан
+[33m70a50ae[m HEAD@{32}: commit: Фикс превью: loadChatsPreviews после loadUserChats
+[33m2fa3a1d[m HEAD@{33}: commit: Пагинация: превью 10 чатов, skeleton, подгрузка по 30
+[33me0c219d[m HEAD@{34}: reset: moving to HEAD~1
+[33m9a08372[m HEAD@{35}: commit: Пагинация: превью 10 чатов, skeleton, подгрузка по 30 при скролле
+[33me0c219d[m HEAD@{36}: reset: moving to HEAD~1
+[33m35f0b0c[m HEAD@{37}: commit: Пагинация: превью 10 чатов, skeleton при открытии, подгрузка по 30 при скролле
+[33me0c219d[m HEAD@{38}: commit: Удалён loadAllMessages: только 30 сообщений при открытии чата
+[33m96b9038[m HEAD@{39}: commit: Оптимизация limit 30/50 + подписка на UPDATE для галочек
+[33m95e3cfa[m HEAD@{40}: commit: Подписка на UPDATE messages для галочек ✓✓
+[33m01a027c[m HEAD@{41}: commit: Подписка на UPDATE messages для галочек прочитано
+[33mc2a5006[m HEAD@{42}: commit: Failed-меню: ⚠ вместо !, выровнены строки, стекло под слайдер
+[33m78b30e7[m HEAD@{43}: commit: Блокировка: история не пропадает, ⚠ кликабельна с меню Повторить/Удалить
+[33m1283854[m HEAD@{44}: commit: Блокировка: крестик ровно, без confirm, failed у обоих, чат не пропадает
+[33mc396abb[m HEAD@{45}: commit: Блокировка: крестик ровно, свой confirm/alert, failed-статус, разблокировка без F5
+[33me2dbd8b[m HEAD@{46}: commit: Добавлена блокировка пользователей, кнопка в левом верхнем углу профиля
+[33m266c3ff[m HEAD@{47}: commit: Фикс: профиль, звонок, удаление чата, реакции без задержки, ускорение загрузки
+[33m33a8016[m HEAD@{48}: commit: Trigger rebuild
+[33m644767e[m HEAD@{49}: commit: Фикс: кнопки в тему, PWA safe-area, картинки, копировать ссылку, реакции в меню
+[33mc092f1e[m HEAD@{50}: reset: moving to HEAD~1
+[33mb500748[m HEAD@{51}: commit: Фикс PWA safe-area, кнопка Забыли пароль, виджет на картинке, убрать Копировать ссылку
+[33mc092f1e[m HEAD@{52}: commit: Liquid Glass: кнопка прокрутки вниз, стилизация иконок
+[33m1d99f8a[m HEAD@{53}: reset: moving to 1d99f8a
+[33m2d6b788[m HEAD@{54}: reset: moving to HEAD
+[33m2d6b788[m HEAD@{55}: reset: moving to HEAD
+[33m2d6b788[m HEAD@{56}: commit: Liquid Glass: кнопка прокрутки вниз, стилизация иконок
+[33m1d99f8a[m HEAD@{57}: commit: Liquid Glass: прозрачность сообщений, skeleton хедера, скачивание в меню, крупные реакции
+[33mada31c7[m HEAD@{58}: commit: Liquid Glass: сообщения, sidebar, skeleton, анимация пустого чата, Избранное
+[33mc427f12[m HEAD@{59}: commit: Liquid Glass: свои сообщения сохраняют синий, чужие инвертированы, sidebar стеклянный
+[33m4b4d696[m HEAD@{60}: reset: moving to HEAD
+[33m4b4d696[m HEAD@{61}: commit: Liquid Glass: свои сообщения реагируют на слайдер, sidebar стеклянный
+[33m8f323e4[m HEAD@{62}: commit: Liquid Glass: драматичный blur 0->40px, alpha растёт со слайдером
+[33mb00bd86[m HEAD@{63}: commit: Liquid Glass: подключён фоновый рисунок bg.webp
+[33mf0c4fc8[m HEAD@{64}: pull origin main: Fast-forward
+[33mb0419c1[m HEAD@{65}: commit: Liquid Glass: фикс слайдера, усиленные пятна, настоящий backdrop-filter
+[33m1972ff9[m HEAD@{66}: commit: Liquid Glass: цветной фон + прозрачные обёртки, чтобы стекло стало видимым
+[33m5c2d157[m HEAD@{67}: commit: Фикс: splash-screen, размер картинок, реальный Liquid Glass
+[33m6a8a806[m HEAD@{68}: commit: Liquid Glass дизайн: единый стиль, слайдер интенсивности, убраны темы
+[33m719f49e[m HEAD@{69}: commit: Пересылка через превью, фикс viewer изображений, сортировка чатов по последнему сообще
