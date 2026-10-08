@@ -5344,6 +5344,7 @@
                     await sendCallSignal(currentCall.peerId, 'webrtc_offer', {
                         callId,
                         offer: { type: offer.type, sdp: offer.sdp },
+                        fromUserId: currentUser.id,
                         timestamp: Date.now()
                     });
                 } catch (err) {
@@ -5395,6 +5396,9 @@
             });
 
             ch.on('broadcast', { event: 'screen_share_started' }, ({ payload }) => {
+                // Игнорировать если от меня же
+                if (payload && payload.fromUserId === currentUser.id) return;
+                
                 peerIsScreenSharing = true;
                 const shareScreens = document.getElementById('shareScreens');
                 const sharePanelPeer = document.getElementById('sharePanelPeer');
@@ -5420,6 +5424,9 @@
             });
 
             ch.on('broadcast', { event: 'screen_share_stopped' }, ({ payload }) => {
+                // Игнорировать если от меня же
+                if (payload && payload.fromUserId === currentUser.id) return;
+                
                 peerIsScreenSharing = false;
                 
                 const sharePanelPeer = document.getElementById('sharePanelPeer');
@@ -5452,11 +5459,16 @@
             });
 
             ch.on('broadcast', { event: 'webrtc_offer' }, async ({ payload }) => {
-                const { callId, offer, timestamp } = payload;
+                const { callId, offer, timestamp, fromUserId } = payload;
                 if (!currentCall || currentCall.callId !== callId) return;
                 if (currentCall.isInitiator) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (!peerConnection) return;
+                // Игнорировать если от меня же
+                if (fromUserId && fromUserId === currentUser.id) {
+                    console.log('[call] own offer detected, ignoring');
+                    return;
+                }
 
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
@@ -5471,6 +5483,7 @@
                     await sendCallSignal(currentCall.peerId, 'webrtc_answer', {
                         callId,
                         answer: { type: answer.type, sdp: answer.sdp },
+                        fromUserId: currentUser.id,
                         timestamp: Date.now()
                     });
                 } catch (err) {
@@ -5479,10 +5492,15 @@
             });
 
             ch.on('broadcast', { event: 'webrtc_answer' }, async ({ payload }) => {
-                const { callId, answer, timestamp } = payload;
+                const { callId, answer, timestamp, fromUserId } = payload;
                 if (!currentCall || currentCall.callId !== callId || !currentCall.isInitiator) return;
                 if (Date.now() - timestamp > 15000) return;
                 if (!peerConnection) return;
+                // Игнорировать если от меня же
+                if (fromUserId && fromUserId === currentUser.id) {
+                    console.log('[call] own answer detected, ignoring');
+                    return;
+                }
 
                 try {
                     await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
@@ -6241,6 +6259,7 @@
                         await sendCallSignal(currentCall.peerId, 'webrtc_offer', {
                             callId: currentCall.callId,
                             offer: { type: offer.type, sdp: offer.sdp },
+                            fromUserId: currentUser.id,
                             timestamp: Date.now()
                         });
                         console.log('[screenShare] renegotiation offer sent');
@@ -6284,6 +6303,7 @@
                 try {
                     await sendCallSignal(currentCall.peerId, 'screen_share_started', {
                         callId: currentCall.callId,
+                        fromUserId: currentUser.id,
                         timestamp: Date.now()
                     });
                 } catch (e) {}
@@ -6343,6 +6363,7 @@
                 try {
                     await sendCallSignal(currentCall.peerId, 'screen_share_stopped', {
                         callId: currentCall.callId,
+                        fromUserId: currentUser.id,
                         timestamp: Date.now()
                     });
                 } catch (e) {}
@@ -6824,6 +6845,18 @@
             else if (activeCount === 2) callModal.classList.add('sharing-2', 'sharing');
             updateShareTopBar();
             
+            // Проверка: не дублируется ли поток (эхо)
+            const shareVideoMine = document.getElementById('shareVideoMine');
+            const shareVideoPeer = document.getElementById('shareVideoPeer');
+            if (shareVideoMine && shareVideoMine.srcObject && shareVideoPeer && shareVideoPeer.srcObject) {
+                if (shareVideoMine.srcObject.id === shareVideoPeer.srcObject.id) {
+                    console.warn('[call] duplicate stream detected, hiding peer panel');
+                    const sharePanelPeer = document.getElementById('sharePanelPeer');
+                    if (sharePanelPeer) sharePanelPeer.style.display = 'none';
+                    peerIsScreenSharing = false;
+                }
+            }
+            
             // Синхронизация muted-состояния кнопок
             const muteButtons = [
                 document.getElementById('muteCallBtn'),
@@ -6865,6 +6898,34 @@
             pc.ontrack = (event) => {
                 const remoteStream = event.streams[0];
                 if (!remoteStream) return;
+                const track = event.track;
+                
+                // ===== ФИЛЬТР ЭХО: игнорируем свой видеотрек =====
+                if (track.kind === 'video') {
+                    // Если я шарю и track совпадает с моим — это эхо, игнорируем
+                    if (isScreenSharing && screenTrackMine && track.id === screenTrackMine.id) {
+                        console.log('[call] own video track echo, ignoring');
+                        return;
+                    }
+                    // Если я шарю и stream совпадает с моим — это эхо, игнорируем
+                    if (isScreenSharing && screenStreamMine && remoteStream.id === screenStreamMine.id) {
+                        console.log('[call] own screen stream returned via peer, ignoring');
+                        return;
+                    }
+                    // Проверяем: если track уже отображается в shareVideoMine
+                    if (isScreenSharing) {
+                        const shareVideoMine = document.getElementById('shareVideoMine');
+                        if (shareVideoMine && shareVideoMine.srcObject) {
+                            const mineTracks = shareVideoMine.srcObject.getVideoTracks();
+                            for (const mt of mineTracks) {
+                                if (mt.id === track.id) {
+                                    console.log('[call] track already in shareVideoMine, ignoring');
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 console.log('[call] ontrack fired, video tracks:', remoteStream.getVideoTracks().length, 'audio tracks:', remoteStream.getAudioTracks().length);
                 
@@ -6887,19 +6948,11 @@
                     applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer');
                     shareVideoPeer.addEventListener('resize', () => applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer'), { once: true });
                     
-                    // Скрыть орб-шар если шарю и я, или если шарю только я — оставить
-                    if (isScreenSharing) {
-                        const orbWrap = document.querySelector('#callScene-active .orb-wrap');
-                        const infoBlock = document.querySelector('#callScene-active .call-info-block');
-                        if (orbWrap) orbWrap.style.display = 'none';
-                        if (infoBlock) infoBlock.style.display = 'none';
-                    } else {
-                        // Шарю только собеседник — скрыть орб-шар
-                        const orbWrap = document.querySelector('#callScene-active .orb-wrap');
-                        const infoBlock = document.querySelector('#callScene-active .call-info-block');
-                        if (orbWrap) orbWrap.style.display = 'none';
-                        if (infoBlock) infoBlock.style.display = 'none';
-                    }
+                    // Скрыть орб-шар
+                    const orbWrap = document.querySelector('#callScene-active .orb-wrap');
+                    const infoBlock = document.querySelector('#callScene-active .call-info-block');
+                    if (orbWrap) orbWrap.style.display = 'none';
+                    if (infoBlock) infoBlock.style.display = 'none';
                     
                     if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
                 }
