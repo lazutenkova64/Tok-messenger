@@ -384,12 +384,20 @@
 
         <!-- СЦЕНА 3: АКТИВНЫЙ -->
         <div class="call-scene" id="callScene-active" style="display:none;">
+            <div class="share-top-bar" id="shareTopBar" style="display:none;">
+                <div class="share-live-badge">
+                    <span class="share-live-dot"></span>
+                    <span>В эфире</span>
+                </div>
+                <div class="share-names" id="shareNames">Демонстрация</div>
+            </div>
             <div class="share-screens" id="shareScreens" style="display:none;">
                 <div class="share-panel" id="sharePanelMine" style="display:none;">
                     <div class="share-label">
                         <span class="live-dot"></span>
                         <span>Вы показываете</span>
                     </div>
+                    <button class="share-zoom-btn" onclick="event.stopPropagation(); toggleShareFullscreen('mine', event)" title="На весь экран">⛶</button>
                     <video id="shareVideoMine" autoplay playsinline muted></video>
                 </div>
                 <div class="share-panel" id="sharePanelPeer" style="display:none;">
@@ -397,6 +405,7 @@
                         <span class="live-dot"></span>
                         <span id="sharePeerName">Собеседник показывает</span>
                     </div>
+                    <button class="share-zoom-btn" onclick="event.stopPropagation(); toggleShareFullscreen('peer', event)" title="На весь экран">⛶</button>
                     <video id="shareVideoPeer" autoplay playsinline></video>
                 </div>
             </div>
@@ -5396,7 +5405,11 @@
                 if (orbWrap) orbWrap.style.display = 'none';
                 if (infoBlock) infoBlock.style.display = 'none';
                 
+                // Применяем пропорции к панели собеседника
+                applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer');
+                
                 if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
+                updateSharingState();
             });
 
             ch.on('broadcast', { event: 'screen_share_stopped' }, ({ payload }) => {
@@ -5411,6 +5424,7 @@
                     if (infoBlock) infoBlock.style.display = '';
                 }
                 if (typeof toastMsg === 'function') toastMsg('Собеседник остановил показ');
+                updateSharingState();
             });
 
             ch.on('broadcast', { event: 'webrtc_offer' }, async ({ payload }) => {
@@ -6210,6 +6224,7 @@
             if (shareVideoMine) {
                 shareVideoMine.srcObject = stream;
                 shareVideoMine.play().catch(() => {});
+                applyVideoAspectRatio('sharePanelMine', 'shareVideoMine');
             }
             
             // Скрыть орб-шар
@@ -6229,6 +6244,7 @@
             }
             
             videoTrack.onended = () => { stopScreenShare(); };
+            updateSharingState();
             if (typeof toastMsg === 'function') toastMsg('Демонстрация началась');
         }
         window.startScreenShare = startScreenShare;
@@ -6286,9 +6302,98 @@
                 } catch (e) {}
             }
             
+            updateSharingState();
             if (typeof toastMsg === 'function') toastMsg('Демонстрация остановлена');
         }
         window.stopScreenShare = stopScreenShare;
+
+        // ===== ДИНАМИЧЕСКИЕ ПРОПОРЦИИ =====
+        function applyVideoAspectRatio(panelId, videoId) {
+            const panel = document.getElementById(panelId);
+            const video = document.getElementById(videoId);
+            if (!panel || !video) return;
+            
+            const apply = () => {
+                const w = video.videoWidth;
+                const h = video.videoHeight;
+                if (w > 0 && h > 0) {
+                    const ratio = w / h;
+                    panel.style.aspectRatio = ratio;
+                    console.log('[share] aspect ratio applied:', ratio, 'for', panelId);
+                }
+            };
+            
+            if (video.videoWidth > 0) apply();
+            else video.addEventListener('loadedmetadata', apply, { once: true });
+        }
+        window.applyVideoAspectRatio = applyVideoAspectRatio;
+
+        // ===== FULLSCREEN SHARE =====
+        let fullscreenSharePanel = null;
+        function toggleShareFullscreen(which, event) {
+            if (event) event.stopPropagation();
+            const panelId = which === 'peer' ? 'sharePanelPeer' : 'sharePanelMine';
+            const panel = document.getElementById(panelId);
+            if (!panel) return;
+            
+            if (fullscreenSharePanel === panelId) {
+                panel.classList.remove('fullscreen');
+                fullscreenSharePanel = null;
+                if (typeof toastMsg === 'function') toastMsg('Возврат');
+            } else {
+                document.querySelectorAll('.share-panel.fullscreen').forEach(p => p.classList.remove('fullscreen'));
+                panel.classList.add('fullscreen');
+                fullscreenSharePanel = panelId;
+                if (typeof toastMsg === 'function') toastMsg('Развёрнуто. Двойной клик — вернуться');
+            }
+            if (navigator.vibrate) navigator.vibrate(15);
+        }
+        window.toggleShareFullscreen = toggleShareFullscreen;
+
+        document.addEventListener('dblclick', (e) => {
+            const panel = e.target.closest('.share-panel.fullscreen');
+            if (panel) {
+                panel.classList.remove('fullscreen');
+                fullscreenSharePanel = null;
+                if (typeof toastMsg === 'function') toastMsg('Возврат');
+            }
+        });
+
+        // ===== TOP BAR UPDATE =====
+        function updateShareTopBar() {
+            const topBar = document.getElementById('shareTopBar');
+            const namesEl = document.getElementById('shareNames');
+            if (!topBar || !namesEl) return;
+            if (!isScreenSharing && !peerIsScreenSharing) {
+                topBar.style.display = 'none';
+                return;
+            }
+            topBar.style.display = 'flex';
+            let text = '';
+            if (isScreenSharing && peerIsScreenSharing) {
+                text = 'Вы и ' + (currentCall && currentCall.callerInfo ? currentCall.callerInfo.name : 'Собеседник');
+            } else if (isScreenSharing) {
+                text = 'Вы показываете экран';
+            } else if (peerIsScreenSharing) {
+                text = (currentCall && currentCall.callerInfo ? currentCall.callerInfo.name : 'Собеседник') + ' показывает экран';
+            }
+            namesEl.textContent = text;
+        }
+        window.updateShareTopBar = updateShareTopBar;
+
+        // ===== SHARING STATE =====
+        function updateSharingState() {
+            if (!callModal) callModal = document.getElementById('callModal');
+            if (!callModal) return;
+            callModal.classList.remove('sharing-1', 'sharing-2', 'sharing');
+            let activeCount = 0;
+            if (isScreenSharing) activeCount++;
+            if (peerIsScreenSharing) activeCount++;
+            if (activeCount === 1) callModal.classList.add('sharing-1', 'sharing');
+            else if (activeCount === 2) callModal.classList.add('sharing-2', 'sharing');
+            updateShareTopBar();
+        }
+        window.updateSharingState = updateSharingState;
 
         function createPeerConnection() {
             const pc = new RTCPeerConnection(getIceServers());
@@ -6331,6 +6436,10 @@
                     if (sharePanelPeer) sharePanelPeer.style.display = 'block';
                     if (shareScreens) shareScreens.style.display = 'flex';
                     peerIsScreenSharing = true;
+                    
+                    // Применяем динамические пропорции
+                    applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer');
+                    shareVideoPeer.addEventListener('resize', () => applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer'), { once: true });
                     
                     // Скрыть орб-шар если шарю и я, или если шарю только я — оставить
                     if (isScreenSharing) {
@@ -6642,6 +6751,7 @@
             setTimeout(() => {
                 closeCallModal();
             }, 300);
+            updateSharingState();
         }
         window.rejectCall = rejectCall;
 
@@ -6693,6 +6803,7 @@
             }, 300);
 
             if (callEndedSound) { try { callEndedSound.play().catch(() => {}); } catch (e) {} }
+            updateSharingState();
         }
         window.endCall = endCall;
 
@@ -8347,19 +8458,21 @@ const CAPSULE_POSITIONS = [
     display: flex;
     gap: 10px;
     width: 100%;
-    max-width: 90vw;
-    height: 55vh;
-    min-height: 260px;
-    margin-bottom: 20px;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
 }
 .call-modal-new .share-panel {
     flex: 1;
-    background: #0a0a12;
+    max-width: 100%;
+    background: #000;
     border-radius: 16px;
     overflow: hidden;
     position: relative;
     border: 1px solid rgba(255,255,255,0.1);
     min-width: 0;
+    cursor: pointer;
+    /* aspect-ratio устанавливается динамически через JS */
 }
 .call-modal-new .share-panel video {
     width: 100%;
@@ -8367,6 +8480,26 @@ const CAPSULE_POSITIONS = [
     object-fit: contain;
     display: block;
     background: #000;
+}
+
+/* 1 панель — до 50% ширины */
+.call-modal-new.sharing-1 .share-screens {
+    max-width: 50vw;
+    margin: 0 auto;
+}
+
+/* 2 панели — до 70% ширины */
+.call-modal-new.sharing-2 .share-screens {
+    max-width: 70vw;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .call-modal-new.sharing-1 .share-screens,
+    .call-modal-new.sharing-2 .share-screens {
+        max-width: 95vw;
+        flex-direction: column;
+    }
 }
 .call-modal-new .share-label {
     position: absolute;
@@ -8398,6 +8531,112 @@ const CAPSULE_POSITIONS = [
 @keyframes livePulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
+}
+
+/* ===== CINEMATIC SHARE: TOP BAR ===== */
+.share-top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    background: rgba(20, 20, 35, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    margin-bottom: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.share-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #ff453a, #d63026);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+}
+.share-live-dot {
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 50%;
+    animation: shareLivePulse 1.5s ease-in-out infinite;
+}
+@keyframes shareLivePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+.share-names {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===== ZOOM BUTTON ===== */
+.share-zoom-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    opacity: 0.7;
+}
+.share-zoom-btn:hover {
+    background: rgba(74, 140, 255, 0.6);
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ===== FULLSCREEN ===== */
+.share-panel.fullscreen {
+    position: fixed !important;
+    top: 60px !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 110px !important;
+    width: auto !important;
+    height: auto !important;
+    aspect-ratio: auto !important;
+    z-index: 500 !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+}
+@media (max-width: 768px) {
+    .share-panel.fullscreen {
+        top: 60px !important;
+        left: 8px !important;
+        right: 8px !important;
+        bottom: 110px !important;
+    }
+}
+.call-modal-new.sharing .call-close {
+    z-index: 600;
+    background: rgba(0, 0, 0, 0.8);
 }
 </style>
 
