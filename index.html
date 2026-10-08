@@ -6790,6 +6790,14 @@
             isScreenSharing = false;
 
             // 5. Закрыть модалку и сбросить
+            // Выйти из fullscreen перед закрытием
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => {});
+            }
+            if (callModal) {
+                callModal.classList.remove('share-fullscreen-mode');
+            }
+            fullscreenSharePanel = null;
             setTimeout(() => {
                 closeCallModal();
             }, 300);
@@ -6840,6 +6848,14 @@
             isScreenSharing = false;
 
             // 5. Закрыть модалку и сбросить состояние
+            // Выйти из fullscreen перед закрытием
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => {});
+            }
+            if (callModal) {
+                callModal.classList.remove('share-fullscreen-mode');
+            }
+            fullscreenSharePanel = null;
             setTimeout(() => {
                 closeCallModal();
             }, 300);
@@ -7020,7 +7036,16 @@ const CAPSULE_POSITIONS = [
         function minimizeCallWindow() {
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
+            
+            // Выйти из нативного fullscreen если там
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => console.warn('[fullscreen] exit error:', e));
+            }
+            
+            // Снять классы fullscreen
             callModal.classList.remove('active');
+            callModal.classList.remove('share-fullscreen-mode');
+            fullscreenSharePanel = null;
             
             const activeName = document.getElementById('callActiveName');
             const activeAvatar = document.getElementById('callAvatar');
