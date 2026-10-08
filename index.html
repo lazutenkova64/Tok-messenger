@@ -425,23 +425,23 @@
             </div>
             <div class="call-controls-row">
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn" id="muteCallBtn" onclick="toggleMute()">🎤</button>
+                    <button class="ctrl-btn" id="muteCallBtn" onclick="event.stopPropagation(); toggleMute()">🎤</button>
                     <span class="ctrl-label">Микрофон</span>
                 </div>
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn" onclick="toastMsg && toastMsg('Громкая связь')">🔊</button>
+                    <button class="ctrl-btn" onclick="event.stopPropagation(); toastMsg && toastMsg('Громкая связь')">🔊</button>
                     <span class="ctrl-label">Громкая</span>
                 </div>
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn" onclick="startScreenShare()">🖥️</button>
+                    <button class="ctrl-btn" onclick="event.stopPropagation(); startScreenShare()">🖥️</button>
                     <span class="ctrl-label">Экран</span>
                 </div>
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn" onclick="minimizeCallWindow()">🔽</button>
+                    <button class="ctrl-btn" onclick="event.stopPropagation(); minimizeCallWindow()">🔽</button>
                     <span class="ctrl-label">Свернуть</span>
                 </div>
                 <div class="ctrl-wrap">
-                    <button class="ctrl-btn end" id="endCallBtn" onclick="endCall()">❌</button>
+                    <button class="ctrl-btn end" id="endCallBtn" onclick="event.stopPropagation(); endCall()">❌</button>
                     <span class="ctrl-label">Завершить</span>
                 </div>
             </div>
@@ -6471,16 +6471,18 @@
 
         document.addEventListener('dblclick', (e) => {
             if (!callModal) return;
-            if (callModal.classList.contains('share-fullscreen-mode')) {
-                callModal.classList.remove('share-fullscreen-mode');
-                fullscreenSharePanel = null;
-                
-                if (document.fullscreenElement) {
-                    document.exitFullscreen().catch(e => {});
-                }
-                
-                if (typeof toastMsg === 'function') toastMsg('Возврат');
+            if (!callModal.classList.contains('share-fullscreen-mode')) return;
+            if (e.target.closest('.ctrl-btn')) return;
+            if (e.target.closest('.cap-btn')) return;
+            if (e.target.closest('button')) return;
+            callModal.classList.remove('share-fullscreen-mode');
+            fullscreenSharePanel = null;
+            
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => {});
             }
+            
+            if (typeof toastMsg === 'function') toastMsg('Возврат');
         });
 
         // Слушатель: если пользователь вышел из fullscreen (Esc) — снять класс
