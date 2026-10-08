@@ -6584,6 +6584,24 @@
                         }
                     }
                     
+                    // Резервный поиск аватара если пустой
+                    if (!peerAvatar || peerAvatar === '👤') {
+                        if (currentChat && currentChat.type === 'private') {
+                            const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                            const otherUser = allUsers.find(u => u.id === otherId);
+                            if (otherUser) {
+                                peerName = otherUser.username || peerName;
+                                peerAvatar = otherUser.avatar || peerAvatar;
+                            }
+                        }
+                        if ((!peerAvatar || peerAvatar === '👤') && currentCall.callerInfo && currentCall.callerInfo.id !== currentUser.id) {
+                            peerName = currentCall.callerInfo.name || peerName;
+                            peerAvatar = currentCall.callerInfo.avatar || peerAvatar;
+                        }
+                    }
+                    
+                    console.log('[call] CONNECTED. peerName:', peerName, '| peerAvatar:', peerAvatar, '| type:', typeof peerAvatar);
+                    
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
@@ -6672,7 +6690,7 @@
                 return;
             }
 
-            showCallModal('calling', otherUser.name, otherUser.avatar);
+            showCallModal('calling', otherUser.username || otherUser.name || 'Пользователь', otherUser.avatar);
 
             currentCall.timeout = setTimeout(() => {
                 if (currentCall.status === 'calling') {
@@ -6698,13 +6716,17 @@
             Object.values(scenes).forEach(s => { if (s) s.style.display = 'none'; });
             
             const setAvatar = (el, avatar) => {
-                if (!el) return;
-                if (avatar && (avatar.startsWith('http') || avatar.startsWith('data:'))) {
-                    el.style.backgroundImage = 'url(' + avatar + ')';
-                    el.style.backgroundSize = 'cover';
-                    el.style.backgroundPosition = 'center';
+                if (!el) {
+                    console.warn('[setAvatar] element not found');
+                    return;
+                }
+                console.log('[setAvatar] applying to', el.id, 'avatar:', avatar);
+                if (avatar && typeof avatar === 'string' && (avatar.startsWith('http') || avatar.startsWith('data:'))) {
+                    el.style.setProperty('background', 'url("' + avatar + '") center/cover no-repeat', 'important');
                     el.textContent = '';
                 } else {
+                    el.style.removeProperty('background');
+                    el.style.background = '';
                     el.style.backgroundImage = '';
                     el.textContent = avatar || '👤';
                 }
@@ -8390,7 +8412,6 @@ const CAPSULE_POSITIONS = [
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #4a8cff, #8c5aff);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -8400,6 +8421,7 @@ const CAPSULE_POSITIONS = [
     z-index: 2;
     background-size: cover;
     background-position: center;
+    background-repeat: no-repeat;
     box-shadow: 0 0 60px rgba(74,140,255,0.6);
 }
 .call-modal-new .orb-blob {
@@ -8416,7 +8438,23 @@ const CAPSULE_POSITIONS = [
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.15); }
 }
-.call-modal-new .orb-core { position: relative; z-index: 2; }
+.call-modal-new .orb-core {
+    position: relative;
+    z-index: 2;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 48px;
+    font-weight: 600;
+    box-shadow: 0 0 80px rgba(74, 140, 255, 0.6), inset 0 2px 24px rgba(255, 255, 255, 0.15);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
 .call-modal-new .wave-bars {
     display: flex;
     gap: 3px;
