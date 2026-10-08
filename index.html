@@ -6202,6 +6202,12 @@
                 return;
             }
             
+            // КРИТИЧНО: сбросить shareVideoPeer — там НЕ должен быть мой поток
+            const shareVideoPeerPre = document.getElementById('shareVideoPeer');
+            if (shareVideoPeerPre) {
+                shareVideoPeerPre.srcObject = null;
+            }
+            
             let stream = null;
             
             // Попытка 1: с аудио
@@ -6900,65 +6906,44 @@
                 if (!remoteStream) return;
                 const track = event.track;
                 
-                // ===== ФИЛЬТР ЭХО: игнорируем свой видеотрек =====
+                console.log('[call] ontrack fired. kind:', track.kind, '| isScreenSharing:', isScreenSharing, '| peerIsScreenSharing:', peerIsScreenSharing, '| trackId:', track.id);
+                
+                // ОБРАБОТКА ВИДЕО
                 if (track.kind === 'video') {
-                    // Если я шарю и track совпадает с моим — это эхо, игнорируем
-                    if (isScreenSharing && screenTrackMine && track.id === screenTrackMine.id) {
-                        console.log('[call] own video track echo, ignoring');
-                        return;
-                    }
-                    // Если я шарю и stream совпадает с моим — это эхо, игнорируем
-                    if (isScreenSharing && screenStreamMine && remoteStream.id === screenStreamMine.id) {
-                        console.log('[call] own screen stream returned via peer, ignoring');
-                        return;
-                    }
-                    // Проверяем: если track уже отображается в shareVideoMine
+                    // Если я шарю — этот видео-трек НЕ должен отображаться в shareVideoPeer
+                    // Он мой (echo). Игнорируем его полностью.
                     if (isScreenSharing) {
-                        const shareVideoMine = document.getElementById('shareVideoMine');
-                        if (shareVideoMine && shareVideoMine.srcObject) {
-                            const mineTracks = shareVideoMine.srcObject.getVideoTracks();
-                            for (const mt of mineTracks) {
-                                if (mt.id === track.id) {
-                                    console.log('[call] track already in shareVideoMine, ignoring');
-                                    return;
-                                }
-                            }
-                        }
+                        console.log('[call] ignoring video track — I am sharing (echo protection)');
+                        return;
                     }
-                }
-                
-                console.log('[call] ontrack fired, video tracks:', remoteStream.getVideoTracks().length, 'audio tracks:', remoteStream.getAudioTracks().length);
-                
-                // ЕСЛИ есть видео-трек — это демонстрация собеседника
-                if (remoteStream.getVideoTracks().length > 0) {
+                    
+                    // Если я не шарю — это точно демка собеседника
+                    console.log('[call] receiving PEER screen share');
                     const shareVideoPeer = document.getElementById('shareVideoPeer');
                     const sharePanelPeer = document.getElementById('sharePanelPeer');
                     const shareScreens = document.getElementById('shareScreens');
                     
                     if (shareVideoPeer) {
-                        shareVideoPeer.srcObject = null;
-                        shareVideoPeer.srcObject = remoteStream;
-                        shareVideoPeer.play().catch(e => console.warn('[share] play error:', e));
+                        if (shareVideoPeer.srcObject !== remoteStream) {
+                            shareVideoPeer.srcObject = null;
+                            shareVideoPeer.srcObject = remoteStream;
+                        }
+                        shareVideoPeer.play().catch(e => {});
                     }
                     if (sharePanelPeer) sharePanelPeer.style.display = 'block';
                     if (shareScreens) shareScreens.style.display = 'flex';
                     peerIsScreenSharing = true;
                     
-                    // Применяем динамические пропорции
-                    applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer');
-                    shareVideoPeer.addEventListener('resize', () => applyVideoAspectRatio('sharePanelPeer', 'shareVideoPeer'), { once: true });
-                    
-                    // Скрыть орб-шар
                     const orbWrap = document.querySelector('#callScene-active .orb-wrap');
                     const infoBlock = document.querySelector('#callScene-active .call-info-block');
                     if (orbWrap) orbWrap.style.display = 'none';
                     if (infoBlock) infoBlock.style.display = 'none';
                     
-                    if (typeof toastMsg === 'function') toastMsg('Собеседник показывает экран');
+                    if (typeof updateSharingState === 'function') updateSharingState();
                 }
                 
-                // Аудио — всегда отдельно
-                if (remoteStream.getAudioTracks().length > 0) {
+                // ОБРАБОТКА АУДИО
+                if (track.kind === 'audio') {
                     let audioEl = document.getElementById('_remoteAudio');
                     if (!audioEl) {
                         audioEl = document.createElement('audio');
@@ -6971,7 +6956,7 @@
                     }
                     if (audioEl.srcObject !== remoteStream) {
                         audioEl.srcObject = remoteStream;
-                        audioEl.play().catch(e => console.warn('[call] audio play error:', e));
+                        audioEl.play().catch(e => {});
                     }
                 }
                 
@@ -6979,43 +6964,8 @@
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
-                    
-                    // Определяем имя СОБЕСЕДНИКА (не своё)
-                    let peerName = 'Пользователь';
-                    let peerAvatar = '👤';
-                    
-                    if (currentCall && currentCall.callerInfo && currentCall.callerInfo.id !== currentUser.id) {
-                        // Я принимаю — callerInfo = звонящий (собеседник)
-                        peerName = currentCall.callerInfo.name || 'Пользователь';
-                        peerAvatar = currentCall.callerInfo.avatar || '👤';
-                    } else if (currentChat && currentChat.type === 'private') {
-                        // Я звоню — собеседник из pair_key
-                        const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                        const otherUser = allUsers.find(u => u.id === otherId);
-                        if (otherUser) {
-                            peerName = otherUser.username;
-                            peerAvatar = otherUser.avatar || '👤';
-                        }
-                    }
-                    
-                    // Резервный поиск аватара если пустой
-                    if (!peerAvatar || peerAvatar === '👤') {
-                        if (currentChat && currentChat.type === 'private') {
-                            const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
-                            const otherUser = allUsers.find(u => u.id === otherId);
-                            if (otherUser) {
-                                peerName = otherUser.username || peerName;
-                                peerAvatar = otherUser.avatar || peerAvatar;
-                            }
-                        }
-                        if ((!peerAvatar || peerAvatar === '👤') && currentCall.callerInfo && currentCall.callerInfo.id !== currentUser.id) {
-                            peerName = currentCall.callerInfo.name || peerName;
-                            peerAvatar = currentCall.callerInfo.avatar || peerAvatar;
-                        }
-                    }
-                    
-                    console.log('[call] CONNECTED. peerName:', peerName, '| peerAvatar:', peerAvatar, '| type:', typeof peerAvatar);
-                    
+                    const peerName = currentCall.callerInfo ? currentCall.callerInfo.name : 'Пользователь';
+                    const peerAvatar = currentCall.callerInfo ? currentCall.callerInfo.avatar : '👤';
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
@@ -9082,13 +9032,17 @@ const CAPSULE_POSITIONS = [
     flex: 1;
     width: 100%;
     height: 100%;
-    background: #000;
+    background: #000 !important;
     border-radius: 16px;
     overflow: hidden;
     position: relative;
     border: 1px solid rgba(255,255,255,0.1);
     min-width: 0;
     min-height: 0;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    mix-blend-mode: normal !important;
+    animation: none !important;
 }
 .call-modal-new .share-panel video {
     width: 100%;
@@ -9096,6 +9050,13 @@ const CAPSULE_POSITIONS = [
     object-fit: contain;
     display: block;
     background: #000;
+    mix-blend-mode: normal !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
 }
 
 /* 1 панель — до 50% ширины */
