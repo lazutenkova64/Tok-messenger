@@ -331,6 +331,7 @@
 
     <div class="modal call-modal-new" id="callModal">
     <div class="call-stage-wrap">
+        <div class="call-drag-handle" id="callDragHandle"></div>
         <button class="close-btn call-close" id="callModalCloseBtn" onclick="closeCallModal()">×</button>
 
         <!-- СЦЕНА 1: ИСХОДЯЩИЙ -->
@@ -6127,6 +6128,20 @@
             if (callModal) callModal.classList.remove('share-fullscreen-mode');
             fullscreenSharePanel = null;
             
+            // Убрать draggable-режим
+            if (callModal) callModal.classList.remove('draggable-mode', 'dragging', 'drag-ended');
+            
+            // Сбросить позицию
+            const wrap = document.querySelector('.call-stage-wrap');
+            if (wrap) {
+                wrap.style.left = '';
+                wrap.style.top = '';
+                wrap.style.right = '';
+                wrap.style.bottom = '';
+                wrap.style.width = '';
+                wrap.style.maxWidth = '';
+            }
+            
             if (callModal) callModal.classList.remove('active');
             
             const timerEl = document.getElementById('callTimer');
@@ -6384,9 +6399,24 @@
                     document.exitFullscreen().catch(e => console.warn('[fullscreen] exit error:', e));
                 }
                 
+                // Восстановить позицию
+                setTimeout(() => applyCallModalPosition(), 100);
+                
                 if (typeof toastMsg === 'function') toastMsg('Возврат');
             } else {
                 // ВХОД
+                // Сбросить позицию draggable
+                const wrap = document.querySelector('.call-stage-wrap');
+                if (wrap) {
+                    wrap.style.left = '';
+                    wrap.style.top = '';
+                    wrap.style.right = '';
+                    wrap.style.bottom = '';
+                    wrap.style.width = '';
+                    wrap.style.maxWidth = '';
+                }
+                if (callModal) callModal.classList.remove('draggable-mode');
+                
                 callModal.classList.add('share-fullscreen-mode');
                 fullscreenSharePanel = panelId;
                 
@@ -6428,6 +6458,159 @@
                 if (typeof toastMsg === 'function') toastMsg('Возврат');
             }
         });
+
+        // ===== DRAGGABLE CALL MODAL =====
+        let isDraggingCallModal = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartLeft = 0;
+        let dragStartTop = 0;
+        let hasMoved = false;
+
+        function makeCallModalDraggable() {
+            const modal = document.getElementById('callModal');
+            const handle = document.getElementById('callDragHandle');
+            if (!modal || !handle) return;
+            if (handle.dataset.bound === 'true') return;
+            handle.dataset.bound = 'true';
+            
+            // MOUSE
+            handle.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button')) return;
+                e.preventDefault();
+                startDragCallModal(e.clientX, e.clientY);
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDraggingCallModal) return;
+                moveCallModal(e.clientX, e.clientY);
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (!isDraggingCallModal) return;
+                endDragCallModal();
+            });
+            
+            // TOUCH
+            handle.addEventListener('touchstart', (e) => {
+                if (e.target.closest('button')) return;
+                const touch = e.touches[0];
+                startDragCallModal(touch.clientX, touch.clientY);
+            }, { passive: true });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (!isDraggingCallModal) return;
+                const touch = e.touches[0];
+                moveCallModal(touch.clientX, touch.clientY);
+            }, { passive: true });
+            
+            document.addEventListener('touchend', () => {
+                if (!isDraggingCallModal) return;
+                endDragCallModal();
+            });
+        }
+        window.makeCallModalDraggable = makeCallModalDraggable;
+
+        function startDragCallModal(clientX, clientY) {
+            const modal = document.getElementById('callModal');
+            const wrap = document.querySelector('.call-stage-wrap');
+            if (!modal || !wrap) return;
+            
+            // Не таскать в fullscreen
+            if (modal.classList.contains('share-fullscreen-mode')) return;
+            
+            const rect = wrap.getBoundingClientRect();
+            isDraggingCallModal = true;
+            hasMoved = false;
+            dragStartX = clientX;
+            dragStartY = clientY;
+            dragStartLeft = rect.left;
+            dragStartTop = rect.top;
+            
+            modal.classList.add('draggable-mode', 'dragging');
+            
+            wrap.style.left = rect.left + 'px';
+            wrap.style.top = rect.top + 'px';
+            wrap.style.right = 'auto';
+            wrap.style.bottom = 'auto';
+            wrap.style.margin = '0';
+            wrap.style.width = rect.width + 'px';
+            wrap.style.maxWidth = rect.width + 'px';
+            
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+        window.startDragCallModal = startDragCallModal;
+
+        function moveCallModal(clientX, clientY) {
+            if (!isDraggingCallModal) return;
+            const modal = document.getElementById('callModal');
+            const wrap = document.querySelector('.call-stage-wrap');
+            if (!modal || !wrap) return;
+            
+            const dx = clientX - dragStartX;
+            const dy = clientY - dragStartY;
+            
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true;
+            
+            const rect = wrap.getBoundingClientRect();
+            const minVisible = 100;
+            
+            let newLeft = dragStartLeft + dx;
+            let newTop = dragStartTop + dy;
+            
+            newLeft = Math.max(-rect.width + minVisible, Math.min(window.innerWidth - minVisible, newLeft));
+            newTop = Math.max(0, Math.min(window.innerHeight - minVisible, newTop));
+            
+            wrap.style.left = newLeft + 'px';
+            wrap.style.top = newTop + 'px';
+        }
+        window.moveCallModal = moveCallModal;
+
+        function endDragCallModal() {
+            if (!isDraggingCallModal) return;
+            const modal = document.getElementById('callModal');
+            const wrap = document.querySelector('.call-stage-wrap');
+            if (modal) {
+                modal.classList.remove('dragging');
+                modal.classList.add('drag-ended');
+                setTimeout(() => { if (modal) modal.classList.remove('drag-ended'); }, 250);
+            }
+            isDraggingCallModal = false;
+            
+            if (hasMoved && wrap) {
+                try {
+                    localStorage.setItem('callModalPosition', JSON.stringify({
+                        left: parseFloat(wrap.style.left) || 0,
+                        top: parseFloat(wrap.style.top) || 0
+                    }));
+                } catch (e) {}
+                if (navigator.vibrate) navigator.vibrate(10);
+            }
+        }
+        window.endDragCallModal = endDragCallModal;
+
+        function applyCallModalPosition() {
+            const modal = document.getElementById('callModal');
+            const wrap = document.querySelector('.call-stage-wrap');
+            if (!modal || !wrap) return;
+            
+            if (modal.classList.contains('share-fullscreen-mode')) return;
+            
+            try {
+                const saved = localStorage.getItem('callModalPosition');
+                if (!saved) return;
+                const pos = JSON.parse(saved);
+                if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return;
+                
+                modal.classList.add('draggable-mode');
+                wrap.style.left = pos.left + 'px';
+                wrap.style.top = pos.top + 'px';
+                wrap.style.right = 'auto';
+                wrap.style.bottom = 'auto';
+                wrap.style.margin = '0';
+            } catch (e) {}
+        }
+        window.applyCallModalPosition = applyCallModalPosition;
 
         // ===== TOP BAR UPDATE =====
         function updateShareTopBar() {
@@ -6704,6 +6887,11 @@
             if (!callModal) callModal = document.getElementById('callModal');
             if (!callModal) return;
             callModal.classList.add('active');
+            
+            setTimeout(() => {
+                makeCallModalDraggable();
+                applyCallModalPosition();
+            }, 100);
             
             const scenes = {
                 outgoing: document.getElementById('callScene-outgoing'),
@@ -8978,6 +9166,37 @@ const CAPSULE_POSITIONS = [
 .call-modal-new.sharing .call-close {
     z-index: 600;
     background: rgba(0, 0, 0, 0.8);
+}
+
+/* ===== DRAGGABLE CALL MODAL ===== */
+.call-modal-new .call-drag-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    z-index: 5;
+    cursor: grab;
+}
+.call-modal-new .call-drag-handle:active {
+    cursor: grabbing;
+}
+.call-modal-new.draggable-mode .call-stage-wrap {
+    position: fixed !important;
+    margin: 0 !important;
+    transition: none !important;
+    cursor: grabbing;
+    z-index: 1000;
+    user-select: none;
+}
+.call-modal-new.dragging .call-stage-wrap {
+    transition: none !important;
+}
+.call-modal-new.drag-ended .call-stage-wrap {
+    transition: left 0.2s ease, top 0.2s ease !important;
+}
+.call-modal-new.share-fullscreen-mode .call-drag-handle {
+    display: none;
 }
 </style>
 
