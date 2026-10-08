@@ -6699,7 +6699,7 @@
             const MAX_W = Math.min(window.innerWidth - 40, Math.round(window.innerWidth * 0.6), 800);
             
             // Высота интерфейса (top bar + кнопки + padding) — ФИКСИРОВАННАЯ
-            const UI_HEIGHT = 160;
+            const UI_HEIGHT = 190;
             
             // Определяем "главную" ось изменения
             let deltaWidth = 0;
@@ -8641,9 +8641,9 @@ const CAPSULE_POSITIONS = [
 </body>
 <style>
 .call-modal-new .call-stage-wrap {
-    background: rgba(20, 20, 35, 0.92);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    background: rgba(20, 20, 35, 0.55) !important;
+    backdrop-filter: blur(20px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
     border-radius: 28px;
     padding: 30px 24px 24px;
     max-width: 420px;
@@ -8681,9 +8681,10 @@ const CAPSULE_POSITIONS = [
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
-    padding: 0 8px !important;
+    padding: 0 10px !important;
     box-sizing: border-box !important;
     flex: 0 0 auto !important;
+    overflow: visible !important;
 }
 .call-modal-new .ctrl-wrap {
     display: flex;
@@ -8714,7 +8715,9 @@ const CAPSULE_POSITIONS = [
     transition: all 0.2s;
     -webkit-tap-highlight-color: transparent;
     flex-shrink: 1;
-    overflow: hidden;
+    overflow: visible;
+    box-shadow: none;
+    position: relative;
 }
 .call-modal-new .ctrl-btn:hover {
     transform: scale(1.08);
@@ -9144,6 +9147,13 @@ const CAPSULE_POSITIONS = [
     text-overflow: ellipsis;
 }
 
+/* Top bar в draggable режиме — прозрачнее */
+.call-modal-new.draggable-mode .share-top-bar {
+    background: rgba(10, 10, 20, 0.35) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
 /* ===== ZOOM BUTTON ===== */
 .share-zoom-btn {
     position: absolute;
@@ -9404,6 +9414,11 @@ const CAPSULE_POSITIONS = [
     max-width: 100vw;
     max-height: 100vh;
     box-sizing: border-box;
+    padding: 16px !important;
+    background: rgba(20, 20, 35, 0.35) !important;
+    backdrop-filter: blur(6px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(1.3) !important;
+    border: 1px solid rgba(255,255,255,0.08) !important;
 }
 .call-modal-new.dragging .call-stage-wrap {
     transition: none !important;
