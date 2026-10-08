@@ -6966,8 +6966,37 @@
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
-                    const peerName = currentCall.callerInfo ? currentCall.callerInfo.name : 'Пользователь';
-                    const peerAvatar = currentCall.callerInfo ? currentCall.callerInfo.avatar : '👤';
+                    
+                    // Определяем СОБЕСЕДНИКА правильно
+                    let peerName = 'Пользователь';
+                    let peerAvatar = '👤';
+                    
+                    // Способ 1: через pair_key текущего чата
+                    if (currentChat && currentChat.pair_key) {
+                        const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                        const otherUser = allUsers.find(u => u.id === otherId);
+                        if (otherUser) {
+                            peerName = otherUser.username || otherUser.name || 'Пользователь';
+                            peerAvatar = otherUser.avatar || '👤';
+                        }
+                    }
+                    
+                    // Способ 2: через peerId
+                    if (peerName === 'Пользователь' && currentCall.peerId) {
+                        const peerUser = allUsers.find(u => u.id === currentCall.peerId);
+                        if (peerUser) {
+                            peerName = peerUser.username || peerUser.name || 'Пользователь';
+                            peerAvatar = peerUser.avatar || '👤';
+                        }
+                    }
+                    
+                    // Способ 3: fallback на callerInfo (только для входящего звонка)
+                    if (peerName === 'Пользователь' && currentCall.callerInfo && currentCall.callerInfo.id !== currentUser.id) {
+                        peerName = currentCall.callerInfo.name || 'Пользователь';
+                        peerAvatar = currentCall.callerInfo.avatar || '👤';
+                    }
+                    
+                    console.log('[call] connected with peer:', peerName, peerAvatar, 'myId:', currentUser.id, 'peerId:', currentCall.peerId);
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
@@ -7071,11 +7100,20 @@
             if (!callModal) return;
             callModal.classList.add('active');
             
-            setTimeout(() => {
-                applyCallModalPosition();
-                makeCallModalDraggable();
-                makeCallModalResizable();
-            }, 100);
+            // Позицию сбрасываем ТОЛЬКО при старте нового звонка (calling или ringing)
+            if (status === 'calling' || status === 'ringing') {
+                setTimeout(() => {
+                    applyCallModalPosition();
+                    makeCallModalDraggable();
+                    makeCallModalResizable();
+                }, 100);
+            } else {
+                // При соединении (connected) — НЕ сбрасываем позицию, просто инициализируем
+                setTimeout(() => {
+                    makeCallModalDraggable();
+                    makeCallModalResizable();
+                }, 100);
+            }
             
             const scenes = {
                 outgoing: document.getElementById('callScene-outgoing'),
@@ -8646,9 +8684,9 @@ const CAPSULE_POSITIONS = [
 </body>
 <style>
 .call-modal-new .call-stage-wrap {
-    background: rgba(20, 20, 35, 0.55) !important;
-    backdrop-filter: blur(20px) saturate(1.3) !important;
-    -webkit-backdrop-filter: blur(20px) saturate(1.3) !important;
+    background: rgba(20, 20, 35, 0.25) !important;
+    backdrop-filter: blur(8px) saturate(1.3) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(1.3) !important;
     border-radius: 28px;
     padding: 30px 24px 24px;
     max-width: 420px;
