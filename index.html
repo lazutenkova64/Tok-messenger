@@ -5414,17 +5414,34 @@
 
             ch.on('broadcast', { event: 'screen_share_stopped' }, ({ payload }) => {
                 peerIsScreenSharing = false;
-                document.getElementById('sharePanelPeer').style.display = 'none';
-                document.getElementById('shareVideoPeer').srcObject = null;
+                
+                const sharePanelPeer = document.getElementById('sharePanelPeer');
+                const shareVideoPeer = document.getElementById('shareVideoPeer');
+                
+                if (sharePanelPeer) sharePanelPeer.style.display = 'none';
+                if (shareVideoPeer) shareVideoPeer.srcObject = null;
+                
                 if (!isScreenSharing) {
-                    document.getElementById('shareScreens').style.display = 'none';
+                    // Больше никто не шарит — выйти из fullscreen и показать орб-шар
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(e => {});
+                    }
+                    if (callModal) {
+                        callModal.classList.remove('share-fullscreen-mode');
+                    }
+                    fullscreenSharePanel = null;
+                    
+                    const shareScreens = document.getElementById('shareScreens');
+                    if (shareScreens) shareScreens.style.display = 'none';
+                    
                     const orbWrap = document.querySelector('#callScene-active .orb-wrap');
                     const infoBlock = document.querySelector('#callScene-active .call-info-block');
                     if (orbWrap) orbWrap.style.display = '';
                     if (infoBlock) infoBlock.style.display = '';
                 }
-                if (typeof toastMsg === 'function') toastMsg('Собеседник остановил показ');
+                
                 updateSharingState();
+                if (typeof toastMsg === 'function') toastMsg('Собеседник остановил показ');
             });
 
             ch.on('broadcast', { event: 'webrtc_offer' }, async ({ payload }) => {
@@ -6312,6 +6329,17 @@
             
             updateSharingState();
             if (typeof toastMsg === 'function') toastMsg('Демонстрация остановлена');
+            
+            // Выход из fullscreen если больше никто не шарит
+            if (!peerIsScreenSharing) {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(e => {});
+                }
+                if (callModal) {
+                    callModal.classList.remove('share-fullscreen-mode');
+                }
+                fullscreenSharePanel = null;
+            }
         }
         window.stopScreenShare = stopScreenShare;
 
@@ -6537,8 +6565,25 @@
                 if (currentCall.status !== 'connected') {
                     currentCall.status = 'connected';
                     currentCall.startTime = Date.now();
-                    const peerName = currentCall.callerInfo ? currentCall.callerInfo.name : 'Пользователь';
-                    const peerAvatar = currentCall.callerInfo ? currentCall.callerInfo.avatar : '👤';
+                    
+                    // Определяем имя СОБЕСЕДНИКА (не своё)
+                    let peerName = 'Пользователь';
+                    let peerAvatar = '👤';
+                    
+                    if (currentCall && currentCall.callerInfo && currentCall.callerInfo.id !== currentUser.id) {
+                        // Я принимаю — callerInfo = звонящий (собеседник)
+                        peerName = currentCall.callerInfo.name || 'Пользователь';
+                        peerAvatar = currentCall.callerInfo.avatar || '👤';
+                    } else if (currentChat && currentChat.type === 'private') {
+                        // Я звоню — собеседник из pair_key
+                        const otherId = currentChat.pair_key.split('_').find(id => id !== currentUser.id);
+                        const otherUser = allUsers.find(u => u.id === otherId);
+                        if (otherUser) {
+                            peerName = otherUser.username;
+                            peerAvatar = otherUser.avatar || '👤';
+                        }
+                    }
+                    
                     showCallModal('connected', peerName, peerAvatar);
                     startCallTimer();
                     if (callAcceptedSound) { try { callAcceptedSound.play().catch(() => {}); } catch (e) {} }
