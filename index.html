@@ -6434,6 +6434,21 @@
             if (activeCount === 1) callModal.classList.add('sharing-1', 'sharing');
             else if (activeCount === 2) callModal.classList.add('sharing-2', 'sharing');
             updateShareTopBar();
+            
+            // Синхронизация muted-состояния кнопок
+            const muteButtons = [
+                document.getElementById('muteCallBtn'),
+                document.getElementById('incomingMuteBtn'),
+                document.getElementById('capMuteBtn')
+            ];
+            muteButtons.forEach(btn => {
+                if (!btn) return;
+                if (callMuted) {
+                    btn.classList.add('muted');
+                } else {
+                    btn.classList.remove('muted');
+                }
+            });
         }
         window.updateSharingState = updateSharingState;
 
@@ -6882,13 +6897,8 @@
                 if (!btn) return;
                 if (callMuted) {
                     btn.classList.add('muted');
-                    btn.style.background = 'linear-gradient(135deg, #ff453a, #d63026)';
-                    btn.style.borderColor = 'rgba(255, 69, 58, 0.6)';
                 } else {
                     btn.classList.remove('muted');
-                    // Явно вернуть серый фон (как у .ctrl-btn по умолчанию)
-                    btn.style.background = 'rgba(255, 255, 255, 0.08)';
-                    btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
                 }
             });
             
@@ -8262,7 +8272,9 @@ const CAPSULE_POSITIONS = [
     background: rgba(74,140,255,0.2);
 }
 .call-modal-new .ctrl-btn.muted {
-    background: linear-gradient(135deg, #ff453a, #d63026);
+    background: linear-gradient(135deg, #ff453a, #d63026) !important;
+    border-color: rgba(255, 69, 58, 0.6) !important;
+    box-shadow: 0 6px 20px rgba(255, 69, 58, 0.5) !important;
 }
 .call-modal-new .ctrl-btn.end {
     background: linear-gradient(135deg, #ff453a, #d63026);
@@ -8827,6 +8839,17 @@ const CAPSULE_POSITIONS = [
 /* Скрыть подписи кнопок */
 .call-modal-new.share-fullscreen-mode .ctrl-label {
     display: none !important;
+}
+
+/* Muted кнопка во fullscreen — красная */
+.call-modal-new.share-fullscreen-mode .ctrl-btn.muted {
+    background: linear-gradient(135deg, #ff453a, #d63026) !important;
+    border-color: rgba(255, 69, 58, 0.6) !important;
+    box-shadow: 0 6px 20px rgba(255, 69, 58, 0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+    color: white !important;
+}
+.call-modal-new.share-fullscreen-mode .ctrl-btn.muted:hover {
+    background: linear-gradient(135deg, #ff5c52, #e63b30) !important;
 }
 
 /* Крестик скрыт — выходим двойным кликом */
