@@ -6102,6 +6102,10 @@
 
         function closeCallModal() {
             if (!callModal) callModal = document.getElementById('callModal');
+            // Выйти из нативного fullscreen
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(e => {});
+            }
             // Убрать fullscreen-режим
             if (callModal) callModal.classList.remove('share-fullscreen-mode');
             fullscreenSharePanel = null;
@@ -6342,16 +6346,32 @@
             
             const panelId = which === 'peer' ? 'sharePanelPeer' : 'sharePanelMine';
             
-            // Переключаем fullscreen
             if (fullscreenSharePanel === panelId) {
-                // Выход
+                // ВЫХОД
                 callModal.classList.remove('share-fullscreen-mode');
                 fullscreenSharePanel = null;
+                
+                // Выйти из нативного fullscreen
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(e => console.warn('[fullscreen] exit error:', e));
+                }
+                
                 if (typeof toastMsg === 'function') toastMsg('Возврат');
             } else {
-                // Вход
+                // ВХОД
                 callModal.classList.add('share-fullscreen-mode');
                 fullscreenSharePanel = panelId;
+                
+                // Запросить нативный fullscreen
+                const el = document.documentElement;
+                if (el.requestFullscreen) {
+                    el.requestFullscreen().catch(e => console.warn('[fullscreen] request error:', e));
+                } else if (el.webkitRequestFullscreen) {
+                    el.webkitRequestFullscreen();
+                } else if (el.msRequestFullscreen) {
+                    el.msRequestFullscreen();
+                }
+                
                 if (typeof toastMsg === 'function') toastMsg('Двойной клик — вернуться');
             }
             if (navigator.vibrate) navigator.vibrate(15);
@@ -6361,6 +6381,20 @@
         document.addEventListener('dblclick', (e) => {
             if (!callModal) return;
             if (callModal.classList.contains('share-fullscreen-mode')) {
+                callModal.classList.remove('share-fullscreen-mode');
+                fullscreenSharePanel = null;
+                
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(e => {});
+                }
+                
+                if (typeof toastMsg === 'function') toastMsg('Возврат');
+            }
+        });
+
+        // Слушатель: если пользователь вышел из fullscreen (Esc) — снять класс
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && callModal && callModal.classList.contains('share-fullscreen-mode')) {
                 callModal.classList.remove('share-fullscreen-mode');
                 fullscreenSharePanel = null;
                 if (typeof toastMsg === 'function') toastMsg('Возврат');
@@ -8652,7 +8686,7 @@ const CAPSULE_POSITIONS = [
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
-    gap: 2px !important;
+    gap: 0 !important;
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
@@ -8667,11 +8701,12 @@ const CAPSULE_POSITIONS = [
     border: none !important;
     aspect-ratio: auto !important;
     height: 100% !important;
+    width: 100% !important;
     background: #000 !important;
 }
 
 .call-modal-new.share-fullscreen-mode .share-panel video {
-    object-fit: contain !important;
+    object-fit: cover !important;
     width: 100% !important;
     height: 100% !important;
     background: #000 !important;
