@@ -6689,46 +6689,60 @@
             if (!isResizingCallModal) return;
             const wrap = document.querySelector('.call-stage-wrap');
             if (!wrap) return;
+            const modal = document.getElementById('callModal');
             
             const dx = clientX - resizeStartX;
             const dy = clientY - resizeStartY;
             
-            const MIN_W = 300;
-            const MIN_H = 250;
+            // Константы
+            const MIN_W = 280;
+            const MAX_W = Math.min(window.innerWidth - 40, Math.round(window.innerWidth * 0.6), 800);
             
-            // Максимальная ширина — 60% экрана или ширина окна минус отступ
-            const MAX_W = Math.min(window.innerWidth - 40, Math.round(window.innerWidth * 0.6));
+            // Высота интерфейса (top bar + кнопки + padding) — ФИКСИРОВАННАЯ
+            const UI_HEIGHT = 160;
             
-            // Максимальная высота — с учётом top bar + кнопок + демки 16:9
-            const MAX_H = Math.min(window.innerHeight - 40, Math.round(MAX_W * 9 / 16) + 200);
+            // Определяем "главную" ось изменения
+            let deltaWidth = 0;
+            if (resizeCorner === 'br' || resizeCorner === 'tr') {
+                deltaWidth = dx;
+            } else if (resizeCorner === 'bl' || resizeCorner === 'tl') {
+                deltaWidth = -dx;
+            }
             
-            let newWidth = resizeStartWidth;
-            let newHeight = resizeStartHeight;
+            let deltaHeight = 0;
+            if (resizeCorner === 'br' || resizeCorner === 'bl') {
+                deltaHeight = dy;
+            } else if (resizeCorner === 'tr' || resizeCorner === 'tl') {
+                deltaHeight = -dy;
+            }
+            
+            // Новая ширина: берём максимум из deltaWidth и (deltaHeight × 16/9)
+            const widthFromHeight = deltaHeight * (16 / 9);
+            const delta = Math.max(deltaWidth, widthFromHeight);
+            
+            let newWidth = Math.max(MIN_W, Math.min(MAX_W, resizeStartWidth + delta));
+            // Высота ВСЕГДА пропорциональна ширине
+            let newHeight = Math.round(newWidth * 9 / 16) + UI_HEIGHT;
+            
             let newLeft = resizeStartLeft;
             let newTop = resizeStartTop;
             
-            if (resizeCorner === 'br') {
-                newWidth = Math.max(MIN_W, Math.min(MAX_W, resizeStartWidth + dx));
-                newHeight = Math.max(MIN_H, Math.min(MAX_H, resizeStartHeight + dy));
-            } else if (resizeCorner === 'bl') {
-                newWidth = Math.max(MIN_W, Math.min(MAX_W, resizeStartWidth - dx));
-                newHeight = Math.max(MIN_H, Math.min(MAX_H, resizeStartHeight + dy));
+            // Корректировка позиции для левых/верхних углов
+            if (resizeCorner === 'bl' || resizeCorner === 'tl') {
                 newLeft = resizeStartLeft + (resizeStartWidth - newWidth);
-            } else if (resizeCorner === 'tr') {
-                newWidth = Math.max(MIN_W, Math.min(MAX_W, resizeStartWidth + dx));
-                newHeight = Math.max(MIN_H, Math.min(MAX_H, resizeStartHeight - dy));
-                newTop = resizeStartTop + (resizeStartHeight - newHeight);
-            } else if (resizeCorner === 'tl') {
-                newWidth = Math.max(MIN_W, Math.min(MAX_W, resizeStartWidth - dx));
-                newHeight = Math.max(MIN_H, Math.min(MAX_H, resizeStartHeight - dy));
-                newLeft = resizeStartLeft + (resizeStartWidth - newWidth);
+            }
+            if (resizeCorner === 'tr' || resizeCorner === 'tl') {
                 newTop = resizeStartTop + (resizeStartHeight - newHeight);
             }
             
-            // Не дать уйти за верх
+            // Не уходить за верх
             newTop = Math.max(0, newTop);
             
-            const modal = document.getElementById('callModal');
+            // Не уходить за право
+            if (newLeft + newWidth > window.innerWidth) {
+                newLeft = window.innerWidth - newWidth;
+            }
+            if (newLeft < 0) newLeft = 0;
             
             wrap.style.left = newLeft + 'px';
             wrap.style.top = newTop + 'px';
@@ -6737,13 +6751,11 @@
             wrap.style.maxWidth = 'none';
             wrap.style.maxHeight = 'none';
             
-            // Скрыть подписи кнопок если модалка узкая
-            if (modal) {
-                if (newWidth < 400) {
-                    modal.classList.add('narrow-modal');
-                } else {
-                    modal.classList.remove('narrow-modal');
-                }
+            // Класс для узкой модалки
+            if (newWidth < 360) {
+                modal.classList.add('very-narrow');
+            } else {
+                modal.classList.remove('very-narrow');
             }
         }
         window.moveResizeCallModal = moveResizeCallModal;
@@ -8665,25 +8677,33 @@ const CAPSULE_POSITIONS = [
 .call-modal-new .call-controls-row {
     display: flex !important;
     flex-wrap: nowrap !important;
-    gap: 10px !important;
+    gap: 6px !important;
     justify-content: center !important;
     align-items: center !important;
     width: 100% !important;
-    overflow: visible !important;
+    padding: 0 8px !important;
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
 }
 .call-modal-new .ctrl-wrap {
     display: flex;
     flex-direction: column;
     align-items: center;
-    flex-shrink: 0;
+    gap: 4px;
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 80px;
 }
 .call-modal-new .ctrl-btn {
-    width: clamp(44px, 8vw, 68px) !important;
-    height: clamp(44px, 8vw, 68px) !important;
-    font-size: clamp(18px, 3vw, 24px) !important;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    max-width: 68px;
+    min-width: 32px;
+    font-size: 20px;
     border-radius: 50%;
     border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.08);
+    background: rgba(255, 255, 255, 0.08);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     color: white;
@@ -8693,7 +8713,8 @@ const CAPSULE_POSITIONS = [
     justify-content: center;
     transition: all 0.2s;
     -webkit-tap-highlight-color: transparent;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    overflow: hidden;
 }
 .call-modal-new .ctrl-btn:hover {
     transform: scale(1.08);
@@ -8716,12 +8737,21 @@ const CAPSULE_POSITIONS = [
     50% { box-shadow: 0 6px 20px rgba(52,199,89,0.5), 0 0 0 16px rgba(52,199,89,0); }
 }
 .call-modal-new .ctrl-label {
-    font-size: 11px;
-    color: var(--text-secondary, #9a9aa5);
-    margin-top: 6px;
+    display: block;
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    line-height: 1.2;
 }
-.call-modal-new.narrow-modal .ctrl-label {
+.call-modal-new.very-narrow .ctrl-label {
     display: none !important;
+}
+.call-modal-new.very-narrow .ctrl-wrap {
+    max-width: 56px;
 }
 .call-modal-new .call-close {
     position: absolute;
@@ -8986,19 +9016,23 @@ const CAPSULE_POSITIONS = [
     width: 100%;
     flex-direction: row;
     justify-content: center;
-    align-items: center;
+    align-items: stretch;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 .call-modal-new .share-panel {
     flex: 1;
-    max-width: 100%;
+    width: 100%;
+    height: 100%;
     background: #000;
     border-radius: 16px;
     overflow: hidden;
     position: relative;
     border: 1px solid rgba(255,255,255,0.1);
     min-width: 0;
-    cursor: pointer;
-    /* aspect-ratio устанавливается динамически через JS */
+    min-height: 0;
 }
 .call-modal-new .share-panel video {
     width: 100%;
@@ -9364,6 +9398,12 @@ const CAPSULE_POSITIONS = [
     cursor: default !important;
     z-index: 1000;
     user-select: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: 100vw;
+    max-height: 100vh;
+    box-sizing: border-box;
 }
 .call-modal-new.dragging .call-stage-wrap {
     transition: none !important;
