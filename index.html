@@ -8183,6 +8183,10 @@ const CAPSULE_POSITIONS = [
             
             // Обработка drop
             chatArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                chatArea.classList.remove('drag-over');
+                
                 const files = e.dataTransfer.files;
                 if (!files || files.length === 0) return;
                 
@@ -8199,75 +8203,79 @@ const CAPSULE_POSITIONS = [
                     return;
                 }
                 
-                // Передаём в ту же функцию обработки
-                simulateFileInput(file);
+                // Очищаем dataTransfer и передаём файл в общую обработку
+                e.dataTransfer.clearData();
+                processImageFile(file);
             }, false);
         }
-        
-        // Имитация выбора файла для переиспользования логики
-        function simulateFileInput(file) {
-            // Создаём временный DataTransfer для имитации FileList
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            
-            // Вызываем ту же логику, что и handleImageUpload, но напрямую
-            processImageFile(file);
-        }
-        
+
         async function processImageFile(file) {
-            console.log('[process-image] Обработка файла:', file.name);
+            console.log('[process-image] === Обработка файла ===', file.name, file.type, file.size);
             
             try {
                 // 1. Сжимаем изображение
-                console.log('[process-image] Сжатие...');
+                console.log('[process-image] Шаг 1: сжатие через canvas...');
                 const blob = await compressImageToBlob(file, 1024, 0.7);
                 console.log('[process-image] Сжато до:', blob.size, 'bytes');
                 
                 // 2. Показываем превью
                 const blobUrl = URL.createObjectURL(blob);
                 pendingImage = { url: null, blobUrl: blobUrl, blob: blob };
-                console.log('[process-image] Превью показано');
+                console.log('[process-image] Шаг 2: превью показано');
                 renderAttachmentPreview();
                 
-                // 3. Загружаем в Storage
+                // 3. Загружаем в Supabase Storage
                 const fileName = currentUser.id + '/' + generateUUID() + '.jpg';
-                console.log('[process-image] Загрузка в Storage...');
+                console.log('[process-image] Шаг 3: загрузка в Storage:', fileName);
                 const { error: uploadError } = await db.storage
                     .from(IMAGE_BUCKET)
                     .upload(fileName, blob, { upsert: false, cacheControl: '31536000' });
                 
                 if (uploadError) {
-                    console.error('[process-image] upload error:', uploadError);
+                    console.error('[process-image] Ошибка загрузки в Storage:', uploadError);
                     URL.revokeObjectURL(blobUrl);
                     pendingImage = null;
                     renderAttachmentPreview();
-                    alert('Не удалось загрузить изображение в хранилище. Попробуйте ещё раз.');
+                    alert('Не удалось загрузить изображение в хранилище: ' + (uploadError.message || 'неизвестная ошибка'));
                     return;
                 }
-                console.log('[process-image] Загружено');
+                console.log('[process-image] Загружено в Storage');
                 
-                // 4. Получаем URL
-                const { data: urlData } = db.storage
+                // 4. Получаем публичный URL
+                console.log('[process-image] Шаг 4: получение публичного URL...');
+                const { data: urlData, error: urlError } = db.storage
                     .from(IMAGE_BUCKET)
                     .getPublicUrl(fileName);
                 
-                if (!urlData || !urlData.publicUrl) {
-                    console.error('[process-image] no public URL');
+                if (urlError) {
+                    console.error('[process-image] Ошибка получения URL:', urlError);
                     URL.revokeObjectURL(blobUrl);
                     pendingImage = null;
                     renderAttachmentPreview();
-                    alert('Не удалось получить ссылку на изображение.');
+                    alert('Не удалось получить ссылку на изображение: ' + urlError.message);
                     return;
                 }
-                console.log('[process-image] URL:', urlData.publicUrl);
                 
-                // 5. Готово
-                pendingImage = { url: urlData.publicUrl };
+                if (!urlData || !urlData.publicUrl) {
+                    console.error('[process-image] Нет publicUrl в ответе');
+                    URL.revokeObjectURL(blobUrl);
+                    pendingImage = null;
+                    renderAttachmentPreview();
+                    alert('Не удалось получить ссылку на изображение. Проверьте права доступа к bucket.');
+                    return;
+                }
+                
+                const imageUrl = urlData.publicUrl;
+                console.log('[process-image] URL получен:', imageUrl);
+                
+                // 5. Сохраняем URL, освобождаем временный blob URL
+                URL.revokeObjectURL(blobUrl);
+                pendingImage = { url: imageUrl };
                 renderAttachmentPreview();
-                console.log('[process-image] Готово к отправке');
+                console.log('[process-image] === Готово к отправке ===');
                 
             } catch (err) {
-                console.error('[process-image] error:', err);
+                console.error('[process-image] ОШИБКА:', err);
                 pendingImage = null;
                 renderAttachmentPreview();
                 alert('Ошибка обработки изображения: ' + (err.message || 'неизвестная ошибка'));
@@ -8372,6 +8380,16 @@ const CAPSULE_POSITIONS = [
             }, MESSAGE_COOLDOWN);
         }
 
+        function base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64.split(',')[1]);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], { type: mimeType });
+        }
+
         function compressImageToBlob(file, maxSize, quality) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -8381,7 +8399,6 @@ const CAPSULE_POSITIONS = [
                     let w = img.naturalWidth;
                     let h = img.naturalHeight;
                     if (w <= maxSize && h <= maxSize) {
-                        // Не требуется масштабирование — конвертируем в JPEG напрямую
                         canvasForCompression.width = w;
                         canvasForCompression.height = h;
                     } else {
@@ -8392,16 +8409,18 @@ const CAPSULE_POSITIONS = [
                     }
                     const ctx = canvasForCompression.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
-                    canvasForCompression.toBlob(
-                        (blob) => {
-                            if (blob) resolve(blob);
-                            else reject(new Error('Canvas toBlob failed'));
-                        },
-                        'image/jpeg',
-                        quality
-                    );
+                    
+                    // iOS-safe: toDataURL + base64 → Blob (toBlob часто зависает на iOS)
+                    const dataUrl = canvasForCompression.toDataURL('image/jpeg', quality);
+                    try {
+                        const blob = base64ToBlob(dataUrl, 'image/jpeg');
+                        console.log('[compress] Сжато:', blob.size, 'bytes');
+                        resolve(blob);
+                    } catch (e) {
+                        reject(new Error('Не удалось создать Blob из canvas: ' + e.message));
+                    }
                 };
-                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Не удалось загрузить изображение')); };
             });
         }
 
