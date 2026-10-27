@@ -3369,6 +3369,10 @@
             // Отправляем вложения
             if (pendingImage) {
                 const img = pendingImage.url;
+                if (!img) {
+                    alert('Изображение ещё загружается. Подождите пару секунд и попробуйте снова.');
+                    return;
+                }
                 pendingImage = null;
                 renderAttachmentPreview();
                 await sendImageMessage(img);
@@ -8146,6 +8150,128 @@ const CAPSULE_POSITIONS = [
             }
             
             forceShowInput();
+            setupDragAndDrop();
+        }
+
+        function setupDragAndDrop() {
+            const chatArea = document.getElementById('chatArea');
+            const messagesContainer = document.getElementById('messagesContainer');
+            
+            if (!chatArea || !messagesContainer) return;
+            
+            // Предотвращаем стандартное поведение браузера для drag events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                chatArea.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            
+            // Подсветка области при перетаскивании
+            ['dragenter', 'dragover'].forEach(eventName => {
+                chatArea.addEventListener(eventName, () => {
+                    chatArea.classList.add('drag-over');
+                }, false);
+            });
+            
+            // Убираем подсветку при уходе или сбросе
+            ['dragleave', 'drop'].forEach(eventName => {
+                chatArea.addEventListener(eventName, () => {
+                    chatArea.classList.remove('drag-over');
+                }, false);
+            });
+            
+            // Обработка drop
+            chatArea.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (!files || files.length === 0) return;
+                
+                const file = files[0];
+                console.log('[drag-drop] Файл получен:', file.name, file.type, file.size);
+                
+                if (!file.type.startsWith('image/')) {
+                    alert('Перетащите изображение');
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) {
+                    alert('Максимум 10MB');
+                    return;
+                }
+                
+                // Передаём в ту же функцию обработки
+                simulateFileInput(file);
+            }, false);
+        }
+        
+        // Имитация выбора файла для переиспользования логики
+        function simulateFileInput(file) {
+            // Создаём временный DataTransfer для имитации FileList
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            
+            // Вызываем ту же логику, что и handleImageUpload, но напрямую
+            processImageFile(file);
+        }
+        
+        async function processImageFile(file) {
+            console.log('[process-image] Обработка файла:', file.name);
+            
+            try {
+                // 1. Сжимаем изображение
+                console.log('[process-image] Сжатие...');
+                const blob = await compressImageToBlob(file, 1024, 0.7);
+                console.log('[process-image] Сжато до:', blob.size, 'bytes');
+                
+                // 2. Показываем превью
+                const blobUrl = URL.createObjectURL(blob);
+                pendingImage = { url: null, blobUrl: blobUrl, blob: blob };
+                console.log('[process-image] Превью показано');
+                renderAttachmentPreview();
+                
+                // 3. Загружаем в Storage
+                const fileName = currentUser.id + '/' + generateUUID() + '.jpg';
+                console.log('[process-image] Загрузка в Storage...');
+                const { error: uploadError } = await db.storage
+                    .from(IMAGE_BUCKET)
+                    .upload(fileName, blob, { upsert: false, cacheControl: '31536000' });
+                
+                if (uploadError) {
+                    console.error('[process-image] upload error:', uploadError);
+                    URL.revokeObjectURL(blobUrl);
+                    pendingImage = null;
+                    renderAttachmentPreview();
+                    alert('Не удалось загрузить изображение в хранилище. Попробуйте ещё раз.');
+                    return;
+                }
+                console.log('[process-image] Загружено');
+                
+                // 4. Получаем URL
+                const { data: urlData } = db.storage
+                    .from(IMAGE_BUCKET)
+                    .getPublicUrl(fileName);
+                
+                if (!urlData || !urlData.publicUrl) {
+                    console.error('[process-image] no public URL');
+                    URL.revokeObjectURL(blobUrl);
+                    pendingImage = null;
+                    renderAttachmentPreview();
+                    alert('Не удалось получить ссылку на изображение.');
+                    return;
+                }
+                console.log('[process-image] URL:', urlData.publicUrl);
+                
+                // 5. Готово
+                pendingImage = { url: urlData.publicUrl };
+                renderAttachmentPreview();
+                console.log('[process-image] Готово к отправке');
+                
+            } catch (err) {
+                console.error('[process-image] error:', err);
+                pendingImage = null;
+                renderAttachmentPreview();
+                alert('Ошибка обработки изображения: ' + (err.message || 'неизвестная ошибка'));
+            }
         }
 
         function scrollToBottomOnMobile() {
@@ -8282,59 +8408,11 @@ const CAPSULE_POSITIONS = [
         async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            console.log('[image] Файл выбран:', file.name, file.type, file.size);
             if (!file.type.startsWith('image/')) { alert('Только изображения'); event.target.value = ''; return; }
             if (file.size > 10 * 1024 * 1024) { alert('Максимум 10MB'); event.target.value = ''; return; }
-
-            try {
-                // 1. Сжимаем изображение
-                const blob = await compressImageToBlob(file, 1024, 0.7);
-
-                // 2. Показываем превью через blob URL (мгновенно)
-                const blobUrl = URL.createObjectURL(blob);
-                pendingImage = { url: null, blobUrl: blobUrl, blob: blob };
-                renderAttachmentPreview();
-
-                // 3. Загружаем в Supabase Storage
-                const fileName = currentUser.id + '/' + generateUUID() + '.jpg';
-                const { error: uploadError } = await db.storage
-                    .from(IMAGE_BUCKET)
-                    .upload(fileName, blob, { upsert: false, cacheControl: '31536000' });
-
-                if (uploadError) {
-                    console.error('[storage] upload error:', uploadError);
-                    URL.revokeObjectURL(blobUrl);
-                    pendingImage = null;
-                    renderAttachmentPreview();
-                    alert('Не удалось загрузить изображение в хранилище. Попробуйте ещё раз.');
-                    event.target.value = '';
-                    return;
-                }
-
-                // 4. Получаем публичный URL
-                const { data: urlData } = db.storage
-                    .from(IMAGE_BUCKET)
-                    .getPublicUrl(fileName);
-
-                if (!urlData || !urlData.publicUrl) {
-                    console.error('[storage] no public URL');
-                    URL.revokeObjectURL(blobUrl);
-                    pendingImage = null;
-                    renderAttachmentPreview();
-                    alert('Не удалось получить ссылку на изображение.');
-                    event.target.value = '';
-                    return;
-                }
-
-                // 5. Сохраняем публичный URL, освобождаем blob URL
-                pendingImage = { url: urlData.publicUrl };
-                renderAttachmentPreview();
-
-            } catch (err) {
-                console.error('[handleImageUpload] error:', err);
-                pendingImage = null;
-                renderAttachmentPreview();
-                alert('Ошибка обработки изображения: ' + (err.message || 'неизвестная ошибка'));
-            }
+            
+            await processImageFile(file);
             event.target.value = '';
         }
 
