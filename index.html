@@ -590,6 +590,9 @@
             }
         });
 
+        // ========== КОНСТАНТЫ ==========
+        const IMAGE_BUCKET = 'chat-images';
+
         // ========== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========
         let ably;
         let supabaseChannels = {};   // { chatId: channel }
@@ -627,7 +630,8 @@
         let sendBtnDisabled = false;
 
         let mediaRecorder;
-        let pendingImage = null;   // { dataUrl }
+        let pendingImage = null;   // { url }
+        const canvasForCompression = document.createElement('canvas');
         let pendingAudio = null;   // { blob, duration, url }
         let pendingForward = null; // { text, image, audio, duration, forwarded_from }
         let pendingAudioPreview = null;
@@ -3364,7 +3368,7 @@
 
             // Отправляем вложения
             if (pendingImage) {
-                const img = pendingImage.dataUrl;
+                const img = pendingImage.url;
                 pendingImage = null;
                 renderAttachmentPreview();
                 await sendImageMessage(img);
@@ -3529,9 +3533,13 @@
             }
         }
 
-        async function sendImageMessage(imageDataUrl) {
+        async function sendImageMessage(imageUrl) {
             if (!currentChat) {
                 alert('Сначала выберите чат');
+                return;
+            }
+            if (!imageUrl) {
+                toastMsg('Не удалось загрузить изображение.');
                 return;
             }
             if (locallyDeletedChats.has(currentChat.id)) {
@@ -3551,7 +3559,7 @@
                 senderName: currentUser.name,
                 senderIsVip: currentUser.is_vip,
                 senderIsAdmin: currentUser.is_admin,
-                image: imageDataUrl,
+                image: imageUrl,
                 time: timeString,
                 timestamp: timestamp,
                 isAdmin: currentUser.is_admin,
@@ -3588,7 +3596,7 @@
             const dbMessage = {
                 chat_id: currentChat.id,
                 sender_id: currentUser.id,
-                image: imageDataUrl,
+                image: imageUrl,
                 is_admin: currentUser.is_admin,
                 read_at: null,
                 reply_to: replyToMessage ? replyToMessage.id : null,
@@ -8238,18 +8246,96 @@ const CAPSULE_POSITIONS = [
             }, MESSAGE_COOLDOWN);
         }
 
-        function handleImageUpload(event) {
+        function compressImageToBlob(file, maxSize, quality) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    URL.revokeObjectURL(url);
+                    let w = img.naturalWidth;
+                    let h = img.naturalHeight;
+                    if (w <= maxSize && h <= maxSize) {
+                        // Не требуется масштабирование — конвертируем в JPEG напрямую
+                        canvasForCompression.width = w;
+                        canvasForCompression.height = h;
+                    } else {
+                        if (w > h) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        else { w = Math.round(w * maxSize / h); h = maxSize; }
+                        canvasForCompression.width = w;
+                        canvasForCompression.height = h;
+                    }
+                    const ctx = canvasForCompression.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvasForCompression.toBlob(
+                        (blob) => {
+                            if (blob) resolve(blob);
+                            else reject(new Error('Canvas toBlob failed'));
+                        },
+                        'image/jpeg',
+                        quality
+                    );
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image load failed')); };
+            });
+        }
+
+        async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            if (!file.type.startsWith('image/')) { alert('Только изображения'); return; }
-            if (file.size > 5 * 1024 * 1024) { alert('Максимум 5MB'); event.target.value = ''; return; }
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onloadend = () => {
-                pendingImage = { dataUrl: reader.result };
+            if (!file.type.startsWith('image/')) { alert('Только изображения'); event.target.value = ''; return; }
+            if (file.size > 10 * 1024 * 1024) { alert('Максимум 10MB'); event.target.value = ''; return; }
+
+            try {
+                // 1. Сжимаем изображение
+                const blob = await compressImageToBlob(file, 1024, 0.7);
+
+                // 2. Показываем превью через blob URL (мгновенно)
+                const blobUrl = URL.createObjectURL(blob);
+                pendingImage = { url: null, blobUrl: blobUrl, blob: blob };
                 renderAttachmentPreview();
-                event.target.value = '';
-            };
+
+                // 3. Загружаем в Supabase Storage
+                const fileName = currentUser.id + '/' + generateUUID() + '.jpg';
+                const { error: uploadError } = await db.storage
+                    .from(IMAGE_BUCKET)
+                    .upload(fileName, blob, { upsert: false, cacheControl: '31536000' });
+
+                if (uploadError) {
+                    console.error('[storage] upload error:', uploadError);
+                    URL.revokeObjectURL(blobUrl);
+                    pendingImage = null;
+                    renderAttachmentPreview();
+                    alert('Не удалось загрузить изображение в хранилище. Попробуйте ещё раз.');
+                    event.target.value = '';
+                    return;
+                }
+
+                // 4. Получаем публичный URL
+                const { data: urlData } = db.storage
+                    .from(IMAGE_BUCKET)
+                    .getPublicUrl(fileName);
+
+                if (!urlData || !urlData.publicUrl) {
+                    console.error('[storage] no public URL');
+                    URL.revokeObjectURL(blobUrl);
+                    pendingImage = null;
+                    renderAttachmentPreview();
+                    alert('Не удалось получить ссылку на изображение.');
+                    event.target.value = '';
+                    return;
+                }
+
+                // 5. Сохраняем публичный URL, освобождаем blob URL
+                pendingImage = { url: urlData.publicUrl };
+                renderAttachmentPreview();
+
+            } catch (err) {
+                console.error('[handleImageUpload] error:', err);
+                pendingImage = null;
+                renderAttachmentPreview();
+                alert('Ошибка обработки изображения: ' + (err.message || 'неизвестная ошибка'));
+            }
+            event.target.value = '';
         }
 
         function renderAttachmentPreview() {
@@ -8257,9 +8343,10 @@ const CAPSULE_POSITIONS = [
             if (!box) return;
             let html = '';
             if (pendingImage) {
+                const imgSrc = pendingImage.url || pendingImage.blobUrl || '';
                 html += `
                     <div style="position:relative; display:inline-block; margin-right:8px;">
-                        <img src="${pendingImage.dataUrl}" style="max-height:80px; max-width:120px; border-radius:12px; object-fit:cover; display:block;">
+                        <img src="${imgSrc}" style="max-height:80px; max-width:120px; border-radius:12px; object-fit:cover; display:block;">
                         <button onclick="clearPendingImage()" style="position:absolute; top:-8px; right:-8px; width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.7); color:#fff; border:none; cursor:pointer; font-size:16px; line-height:1;">×</button>
                     </div>`;
             }
